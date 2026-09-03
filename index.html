@@ -1664,6 +1664,556 @@ header,
 button#yardTalkBtn{display:none !important;}
 </style>
 
+
+<style>
+/* ==============================================================
+   MOBILE OVERLAP CLEANUP — VISUAL/GEOMETRY ONLY
+   Keeps game rules, scoring, domino faces, fixed tile size and controls intact.
+   ============================================================== */
+/* Played tiles always read above the watermark. */
+.board .dom-physical{
+  z-index:30 !important;
+}
+
+/* Keep the same centered TDOT JERK logo, but make it a true watermark so
+   the played chain stays easy to read. */
+.table .sponsor-logo,
+.table .center-logo,
+.table #centerLogo,
+.table #tableLogo{
+  opacity:.28 !important;
+}
+
+/* Ticker stays lower-left but no longer competes with the active timer. */
+#contactTicker{
+  z-index:70 !important;
+}
+#playerTimers{
+  z-index:90 !important;
+}
+
+@media (orientation:landscape) and (max-height:650px){
+  #contactTicker{
+    left:10px !important;
+    bottom:8px !important;
+    width:min(390px,38vw) !important;
+    max-width:calc(100% - 90px) !important;
+    height:30px !important;
+  }
+  #contactTicker span{
+    font-size:12px !important;
+    line-height:1 !important;
+  }
+
+  /* Permanent, non-overlapping timer positions. */
+  .timer-p1{
+    right:10px !important; left:auto !important;
+    top:72% !important; bottom:auto !important;
+    transform:translateY(-50%) !important;
+  }
+  .timer-p2{
+    right:10px !important; left:auto !important;
+    top:26% !important; bottom:auto !important;
+    transform:translateY(-50%) !important;
+  }
+  .timer-p3{
+    left:10px !important; right:auto !important;
+    top:26% !important; bottom:auto !important;
+    transform:translateY(-50%) !important;
+  }
+  .timer-p4{
+    left:10px !important; right:auto !important;
+    top:56% !important; bottom:auto !important;
+    transform:translateY(-50%) !important;
+  }
+
+  .player-timer{
+    width:50px !important;
+    min-width:50px !important;
+    height:36px !important;
+    font-size:20px !important;
+  }
+}
+</style>
+
+
+<style>
+/* ==============================================================
+   FINAL RESPONSIVE TABLE CLEANUP — positioning only
+   Domino size, faces, rules, scoring and play logic are unchanged.
+   ============================================================== */
+/* Watermark remains centered but stays behind the playable chain. */
+.table .sponsor-logo,
+.table .center-logo,
+.table #centerLogo,
+.table #tableLogo{opacity:.20 !important;z-index:2 !important;}
+.board .dom-physical{z-index:40 !important;}
+
+/* Give the ticker enough room on computer/tablet screens and keep it clear
+   of the chain and timers. */
+#contactTicker{
+  left:12px !important;
+  bottom:10px !important;
+  width:clamp(300px,38vw,560px) !important;
+  max-width:calc(100% - 120px) !important;
+  height:34px !important;
+  z-index:70 !important;
+}
+#contactTicker .contact-ticker-track{height:100% !important;align-items:center !important;}
+
+/* Keep active timer in one protected table position instead of floating
+   over the ticker or chain. */
+#playerTimers{z-index:90 !important;}
+.player-timer.active{
+  left:auto !important;
+  right:14px !important;
+  top:24% !important;
+  bottom:auto !important;
+  transform:none !important;
+}
+
+/* Keep Next Hand away from the orange table border. */
+#nextHandBtn,.next-hand-btn,button[onclick*="nextHand"],button[onclick*="NextHand"]{
+  margin:8px !important;
+}
+
+/* Short landscape phones: ticker is wide enough to read, timer stays above it. */
+@media (orientation:landscape) and (max-height:650px){
+  #contactTicker{
+    left:10px !important;
+    bottom:8px !important;
+    width:min(46vw,430px) !important;
+    max-width:calc(100% - 100px) !important;
+    height:30px !important;
+  }
+  #contactTicker span{font-size:12px !important;line-height:1 !important;}
+  .player-timer.active{
+    left:auto !important;
+    right:10px !important;
+    top:28% !important;
+    bottom:auto !important;
+    transform:none !important;
+  }
+}
+
+/* Very wide laptop/desktop tables: keep UI controls inset from edges. */
+@media (min-width:1000px) and (min-height:600px){
+  #contactTicker{width:min(42vw,620px) !important;height:36px !important;}
+  .player-timer.active{right:18px !important;top:22% !important;}
+}
+</style>
+
+
+<style>
+/* ==============================================================
+   TWO-SCREEN FINAL CORRECTION — VISUAL POSITIONING ONLY
+   Based on laptop + landscape screenshots. No game/scoring changes.
+   ============================================================== */
+/* Keep all four hands safely inside the orange table boundary. */
+.hand-you{bottom:18px !important;}
+.hand-top{top:54px !important;}
+.hand-left{left:48px !important;max-height:54% !important;}
+.hand-right{right:48px !important;max-height:54% !important;}
+
+/* The scrolling ad stays lower-left, but ends before the centered P1 hand. */
+#contactTicker{
+  left:14px !important;
+  bottom:14px !important;
+  width:clamp(280px,34vw,520px) !important;
+  max-width:36% !important;
+  height:34px !important;
+}
+#contactTicker .contact-ticker-track{height:100% !important;align-items:center !important;}
+
+/* Active timer gets its own protected right-side area and never sits on P1/ticker. */
+.player-timer.active{
+  left:auto !important;
+  right:18px !important;
+  top:22% !important;
+  bottom:auto !important;
+  transform:none !important;
+}
+
+/* Keep Next Hand visibly inset from the border. */
+#nextHandBtn,.next-hand-btn,button[onclick*="nextHand"],button[onclick*="NextHand"]{
+  margin:12px !important;
+}
+
+/* Played chain always wins visually over the logo. */
+.table .sponsor-logo,
+.table .center-logo,
+.table #centerLogo,
+.table #tableLogo{opacity:.16 !important;}
+.board .dom-physical{z-index:45 !important;}
+
+/* Short landscape screens need tighter hand/ticker clearances, not smaller played tiles. */
+@media (orientation:landscape) and (max-height:650px){
+  .hand-you{bottom:14px !important;}
+  .hand-top{top:48px !important;}
+  .hand-left{left:42px !important;max-height:52% !important;}
+  .hand-right{right:42px !important;max-height:52% !important;}
+  #contactTicker{
+    left:10px !important;
+    bottom:10px !important;
+    width:min(34vw,390px) !important;
+    max-width:34% !important;
+    height:30px !important;
+  }
+  .player-timer.active{right:10px !important;top:20% !important;}
+}
+</style>
+
+
+<style>
+/* =============================================================
+   ASAP SCREEN CORRECTION — visual positioning only.
+   Keeps domino size, game rules, scoring and multiplayer logic unchanged.
+   ============================================================= */
+/* More breathing room for revealed/current hands inside the table. */
+.hand-you{bottom:28px !important;}
+.hand-top{top:60px !important;}
+.hand-left{left:54px !important;max-height:50% !important;}
+.hand-right{right:54px !important;max-height:50% !important;}
+
+/* Keep the ad fully inside the table and clear of P1's hand. */
+#contactTicker{
+  left:16px !important;
+  bottom:16px !important;
+  width:min(40vw,560px) !important;
+  max-width:42% !important;
+  height:34px !important;
+}
+#contactTicker .contact-ticker-track{height:100% !important;align-items:center !important;}
+
+/* Watermark is still visible but cannot compete with live dominoes. */
+.table .sponsor-logo,
+.table .center-logo,
+.table #centerLogo,
+.table #tableLogo{opacity:.11 !important;z-index:2 !important;}
+.board .dom-physical{z-index:50 !important;}
+
+/* Protected active-timer location. */
+.player-timer.active{
+  right:20px !important;
+  top:25% !important;
+  left:auto !important;
+  bottom:auto !important;
+  transform:none !important;
+}
+
+@media (orientation:landscape) and (max-height:650px){
+  .hand-you{bottom:24px !important;}
+  .hand-top{top:54px !important;}
+  .hand-left{left:46px !important;max-height:48% !important;}
+  .hand-right{right:46px !important;max-height:48% !important;}
+  #contactTicker{
+    left:12px !important;
+    bottom:12px !important;
+    width:min(40vw,430px) !important;
+    max-width:40% !important;
+    height:30px !important;
+  }
+  .player-timer.active{right:12px !important;top:24% !important;}
+}
+</style>
+
+
+<style>
+/* FINAL TIMER RESTORE — visible only for the active player, fixed protected location. */
+#playerTimers{position:absolute !important;inset:0 !important;overflow:visible !important;z-index:100000 !important;pointer-events:none !important;}
+.player-timer{display:none !important;position:absolute !important;}
+.player-timer.active{
+  display:flex !important;
+  left:auto !important;
+  right:20px !important;
+  top:25% !important;
+  bottom:auto !important;
+  transform:none !important;
+  width:54px !important;
+  min-width:54px !important;
+  height:40px !important;
+  border:3px solid #ffd92f !important;
+  border-radius:12px !important;
+  background:#08713b !important;
+  color:#ffd92f !important;
+  font-size:24px !important;
+  font-weight:900 !important;
+  z-index:100001 !important;
+  opacity:1 !important;
+  visibility:visible !important;
+}
+@media (orientation:landscape) and (max-height:650px){
+  .player-timer.active{right:12px !important;top:24% !important;width:50px !important;min-width:50px !important;height:36px !important;font-size:20px !important;}
+}
+</style>
+
+<style>
+/* USER REQUEST: scrolling window 20% shorter in width only. */
+#contactTicker{
+  width:min(32vw,448px) !important;
+  max-width:33.6% !important;
+}
+@media (orientation:landscape) and (max-height:650px){
+  #contactTicker{
+    width:min(32vw,344px) !important;
+    max-width:32% !important;
+  }
+}
+</style>
+
+
+<style>
+/* USER FIX: keep Player 3's hand completely inside the orange table and restore a fixed timer position for every player. */
+.hand-top{
+  top:86px !important;
+  max-width:70% !important;
+}
+
+/* Only the active player's timer is shown, but each player's timer now has its own protected location. */
+.player-timer{display:none !important;}
+.player-timer.active{
+  display:flex !important;
+  position:absolute !important;
+  width:54px !important;
+  min-width:54px !important;
+  height:40px !important;
+  z-index:100001 !important;
+}
+.timer-p1.active{
+  left:auto !important; right:23% !important; top:auto !important; bottom:30px !important; transform:none !important;
+}
+.timer-p2.active{
+  left:auto !important; right:20px !important; top:25% !important; bottom:auto !important; transform:none !important;
+}
+.timer-p3.active{
+  left:62% !important; right:auto !important; top:78px !important; bottom:auto !important; transform:none !important;
+}
+.timer-p4.active{
+  left:20px !important; right:auto !important; top:72% !important; bottom:auto !important; transform:none !important;
+}
+@media (orientation:landscape) and (max-height:650px){
+  .hand-top{top:74px !important;max-width:68% !important;}
+  .timer-p1.active{right:22% !important;bottom:24px !important;}
+  .timer-p2.active{right:12px !important;top:25% !important;}
+  .timer-p3.active{left:62% !important;top:66px !important;}
+  .timer-p4.active{left:12px !important;top:72% !important;}
+}
+</style>
+
+
+<style>
+/* USER REQUEST: make the scrolling window 20% wider than the current version. */
+#contactTicker{
+  width:min(38.4vw,538px) !important;
+  max-width:40.32% !important;
+}
+@media (orientation:landscape) and (max-height:650px){
+  #contactTicker{
+    width:min(38.4vw,413px) !important;
+    max-width:38.4% !important;
+  }
+}
+</style>
+
+
+<style>
+/* USER REQUEST: shorten the current scrolling window by 20% so it clears Player 1's hand. */
+#contactTicker{
+  width:min(30.72vw,430px) !important;
+  max-width:32.256% !important;
+}
+@media (orientation:landscape) and (max-height:650px){
+  #contactTicker{
+    width:min(30.72vw,330px) !important;
+    max-width:30.72% !important;
+  }
+}
+</style>
+
+
+<style>
+/* NEXT HAND — permanent protected position on the right side */
+#nextHandBtn,
+#blockedNextHand,
+.next-hand-btn,
+button[onclick*="nextHand"],
+button[onclick*="NextHand"]{
+  position:fixed !important;
+  right:24px !important;
+  top:15% !important;
+  left:auto !important;
+  bottom:auto !important;
+  transform:none !important;
+  margin:0 !important;
+  z-index:99999 !important;
+}
+@media (orientation:landscape) and (max-height:650px){
+  #nextHandBtn,
+  #blockedNextHand,
+  .next-hand-btn,
+  button[onclick*="nextHand"],
+  button[onclick*="NextHand"]{
+    right:16px !important;
+    top:16% !important;
+  }
+}
+</style>
+
+
+<style>
+/* Scrolling contact box — requested 3/4 inch thickness (72 CSS px) */
+#contactTicker,
+.contact-ticker,
+.contact-ticker-window{
+  height:72px !important;
+  min-height:72px !important;
+  max-height:72px !important;
+  box-sizing:border-box !important;
+  display:flex !important;
+  align-items:center !important;
+}
+#contactTicker .contact-ticker-track,
+.contact-ticker .contact-ticker-track{
+  line-height:1.15 !important;
+}
+</style>
+
+
+<style>
+/* Hide only the temporary "Team A/B goes N." table announcement */
+#status.score-goes-message,
+.status.score-goes-message,
+.score-goes-message{display:none !important;}
+</style>
+<script>
+(function(){
+  function removeTeamGoesMessage(){
+    document.querySelectorAll('*').forEach(function(el){
+      if(el.children.length) return;
+      const t=(el.textContent||'').trim();
+      if(/^Team\s+[AB]\s+goes\s+\d+\.?$/i.test(t)){
+        el.style.setProperty('display','none','important');
+      }
+    });
+  }
+  removeTeamGoesMessage();
+  window.addEventListener('load',removeTeamGoesMessage);
+  new MutationObserver(removeTeamGoesMessage).observe(document.body,{childList:true,subtree:true,characterData:true});
+})();
+</script>
+
+
+<style>
+#contactTicker,
+.contact-ticker,
+.contact-ticker-window{
+  height:48px !important;
+  min-height:48px !important;
+  max-height:48px !important;
+  box-sizing:border-box !important;
+  overflow:hidden !important;
+  display:flex !important;
+  align-items:center !important;
+}
+#contactTicker .contact-ticker-track,
+#contactTicker .contact-ticker-track span:not(.ticker-brand-flash):not(.ticker-tdot):not(.ticker-jerk),
+.contact-ticker .contact-ticker-track,
+.contact-ticker-window .contact-ticker-track{
+  font-size:12px !important;
+  line-height:12px !important;
+  white-space:nowrap !important;
+}
+#contactTicker .ticker-brand-flash,
+#contactTicker .ticker-brand-flash .ticker-tdot,
+#contactTicker .ticker-brand-flash .ticker-jerk{
+  font-size:30px !important;
+  line-height:30px !important;
+}
+</style>
+
+<style id="verified-final-ticker-sizing">
+#contactTicker{
+  height:48px !important;
+  min-height:48px !important;
+  max-height:48px !important;
+  box-sizing:border-box !important;
+  overflow:hidden !important;
+  display:flex !important;
+  align-items:center !important;
+}
+#contactTicker .contact-ticker-track{
+  font-size:20px !important;
+  line-height:20px !important;
+  white-space:nowrap !important;
+}
+#contactTicker .contact-ticker-track > span{
+  font-size:20px !important;
+  line-height:20px !important;
+}
+#contactTicker .ticker-brand-flash,
+#contactTicker .ticker-brand-flash .ticker-tdot,
+#contactTicker .ticker-brand-flash .ticker-jerk{
+  font-size:30px !important;
+  line-height:30px !important;
+}
+</style>
+<script id="verified-final-ticker-sizing-js">
+(function(){
+  function applyVerifiedTickerSizing(){
+    const ticker = document.getElementById('contactTicker');
+    if(!ticker) return;
+
+    ticker.style.setProperty('height','48px','important');
+    ticker.style.setProperty('min-height','48px','important');
+    ticker.style.setProperty('max-height','48px','important');
+
+    const track = ticker.querySelector('.contact-ticker-track');
+    if(track){
+      track.style.setProperty('font-size','20px','important');
+      track.style.setProperty('line-height','20px','important');
+    }
+
+    ticker.querySelectorAll('.contact-ticker-track > span').forEach(function(el){
+      el.style.setProperty('font-size','20px','important');
+      el.style.setProperty('line-height','20px','important');
+    });
+
+    ticker.querySelectorAll('.ticker-brand-flash, .ticker-tdot, .ticker-jerk').forEach(function(el){
+      el.style.setProperty('font-size','30px','important');
+      el.style.setProperty('line-height','30px','important');
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', applyVerifiedTickerSizing, {once:true});
+  window.addEventListener('load', applyVerifiedTickerSizing, {once:true});
+})();
+</script>
+
+
+<style id="remove-team-a-goes-one">
+.team-a-goes-one-hidden{display:none !important;}
+</style>
+<script id="remove-team-a-goes-one-js">
+(function(){
+  function removeTeamAGoesOne(){
+    document.querySelectorAll('body *').forEach(function(el){
+      if(el.children.length) return;
+      const t=(el.textContent||'').replace(/\s+/g,' ').trim();
+      if(/^Team A goes 1\.?$/i.test(t)){
+        el.textContent='';
+        el.style.setProperty('display','none','important');
+        el.classList.add('team-a-goes-one-hidden');
+      }
+    });
+  }
+  document.addEventListener('DOMContentLoaded', removeTeamAGoesOne);
+  window.addEventListener('load', removeTeamAGoesOne);
+  new MutationObserver(removeTeamAGoesOne).observe(document.documentElement,{
+    childList:true,subtree:true,characterData:true
+  });
+})();
+</script>
+
 </head>
 <body>
 <div id="turnTimer"></div>
@@ -1687,8 +2237,8 @@ button#yardTalkBtn{display:none !important;}
 
 <div id="contactTicker" aria-label="TDOT JERK contact information">
   <div class="contact-ticker-track">
-    <span><span class="ticker-brand-flash"><span class="ticker-tdot">TDOT</span>&nbsp;<span class="ticker-jerk">JERK</span></span> • This is absolutely the best authentic jerk chicken in Toronto • Call or order online now • 416-534-5375 • tdotjerk.ca • 26 Roncesvalles Ave., Toronto, Ontario</span>
-    <span aria-hidden="true"><span class="ticker-brand-flash"><span class="ticker-tdot">TDOT</span>&nbsp;<span class="ticker-jerk">JERK</span></span> • This is absolutely the best authentic jerk chicken in Toronto • Call or order online now • 416-534-5375 • tdotjerk.ca • 26 Roncesvalles Ave., Toronto, Ontario</span>
+    <span><span class="ticker-brand-flash"><span class="ticker-tdot">TDOT</span>&nbsp;<span class="ticker-jerk">JERK</span></span> • The best authentic jerk chicken in Toronto • Call or order online now • 416-534-5375 • www.tdotjerk.ca • 26 Roncesvalles Ave., Toronto, Ontario</span>
+    <span aria-hidden="true"><span class="ticker-brand-flash"><span class="ticker-tdot">TDOT</span>&nbsp;<span class="ticker-jerk">JERK</span></span> • The best authentic jerk chicken in Toronto • Call or order online now • 416-534-5375 • www.tdotjerk.ca • 26 Roncesvalles Ave., Toronto, Ontario</span>
   </div>
 </div>
 
@@ -2019,27 +2569,31 @@ function renderPhotoTemplateBoard(){
   // These must be defined before the auto-fit check uses them.
   const SAFE_X=Math.max(10,W*0.015);
   const SAFE_Y=Math.max(10,H*0.018);
+  const SHORT_LANDSCAPE=(W/H)>1.75 && H<520;
+  const STRAIGHT_MIN=12;
+  const STRAIGHT_MAX=14;
+  const SAFE_TOP=SHORT_LANDSCAPE?Math.max(52,H*0.10,SAFE_Y):Math.max(58,H*0.09,SAFE_Y);
+  const SAFE_BOTTOM=SHORT_LANDSCAPE?Math.max(112,H*0.22,SAFE_Y):Math.max(104,H*0.18,SAFE_Y);
 
-    // AUTO-FIT: keep the requested 50%-bigger dominoes whenever they fit.
+    // Fit estimate is retained for diagnostics only; played tiles stay fixed-size.
     // If the chain would run beyond the table, shrink all played dominoes
     // proportionally until the complete chain fits inside the safe board area.
     const estimateFits=(scale)=>{
       const baseHW=Math.max(44,Math.min(62,W*0.053))*scale;
       const baseHH=baseHW*0.51;
       const gap=3;
-      // Automatically allow 8–10 straight dominoes before the corners.
-      // Use the largest count that comfortably fits the current table width.
+      // Always keep at least 12 dominoes straight before any corner.
+      // Use 12–14 straight when the available table width allows it.
       const usableStraightWidth=Math.max(0,(W-SAFE_X*2)*0.72);
-      const straightCount=Math.max(12,Math.min(14,Math.floor(usableStraightWidth/(baseHW+gap))));
-      const cornerDepth=3;
+      const straightCount=Math.max(STRAIGHT_MIN,Math.min(STRAIGHT_MAX,Math.floor(usableStraightWidth/(baseHW+gap))));
+      const cornerDepth=2;
       const returnAllowance=Math.max(0,Math.ceil((board.length-straightCount-cornerDepth)/2));
       const horizontalNeed=(straightCount*baseHW)+(returnAllowance*baseHW)+(gap*(straightCount+returnAllowance+2));
       const verticalNeed=(cornerDepth*baseHW)+baseHH+(gap*(cornerDepth+2));
       return horizontalNeed <= (W-SAFE_X*2) && verticalNeed <= (H-SAFE_Y*2);
     };
-    while(fitScale>0.55 && !estimateFits(fitScale)){
-      fitScale=Math.max(0.55,fitScale-0.02);
-    }
+    // Fixed-size rule: do not shrink played dominoes during a hand.
+    // Fit is handled by earlier mobile corners and safe positioning instead.
 
   const HW=BASE_HW*fitScale;
   const HH=HW*0.51;
@@ -2047,7 +2601,7 @@ function renderPhotoTemplateBoard(){
   const VH=HW;
 
   // Scale the gap too, so spacing stays proportional.
-  const GAP=Math.max(2,3*fitScale);
+  const GAP=6; // equal fixed spacing at every straight, corner and return transition
 
   // Keep the played chain clear of the four player-hand areas.
   // These are renderer-only safety margins; no game logic is changed.
@@ -2094,7 +2648,7 @@ function renderPhotoTemplateBoard(){
   }
 
   const OPEN_X=W/2;
-  const OPEN_Y=H*0.50;
+  const OPEN_Y=H*(SHORT_LANDSCAPE?0.42:0.46);
   // Turn earlier so long chains use corners while every tile stays 100%.
   const LEFT_TURN_X=OPEN_X-((HW+GAP)*4.5);
   const RIGHT_TURN_X=OPEN_X+((HW+GAP)*4.5);
@@ -2126,11 +2680,11 @@ function renderPhotoTemplateBoard(){
         const centerO=isDouble?'v':'h';
         const centerD=dims(centerO);
         const nx=x+outward*(prevD.w/2+GAP+centerD.w/2);
-        // AUTO 8–10 STRAIGHT BEFORE CORNERS:
-        // Choose the longest straight opening that fits the table width.
+        // HARD RULE: 12–14 STRAIGHT BEFORE CORNERS.
+        // A corner can NEVER begin before the 12th played domino.
         // The existing double-at-the-turn rule is preserved.
         const usableStraightWidth=Math.max(0,(W-SAFE_X*2)*0.72);
-        const straightBeforeCorner=Math.max(12,Math.min(14,Math.floor(usableStraightWidth/(HW+GAP))));
+        const straightBeforeCorner=Math.max(STRAIGHT_MIN,Math.min(STRAIGHT_MAX,Math.floor(usableStraightWidth/(HW+GAP))));
         const turnTile=board.find(bt=>bt.playedOrder===straightBeforeCorner);
         const turnIsDouble=!!(turnTile&&turnTile.a===turnTile.b);
         const cornerStartOrder=turnIsDouble
@@ -2176,16 +2730,16 @@ function renderPhotoTemplateBoard(){
         continue;
       }
 
-      if(phase===1&&cornerCount===2){
-        // SPECIAL CASE ONLY:
-        // If the third corner-position tile is a DOUBLE, allow it to become
-        // a third corner domino and keep it perfectly aligned with the first two.
-        if(isDouble){
+      if(phase===1&&cornerCount>=2){
+        // HARD SYMMETRIC RULE: BOTH left and right corners.
+        // Normal case: exactly TWO dominoes form the corner.
+        // ONLY EXCEPTION: if the would-be third corner-position domino is a DOUBLE,
+        // allow that double to become corner domino #3, aligned with the first two.
+        if(cornerCount===2&&isDouble){
           const cornerO3='h';
           const cornerD3=dims(cornerO3);
           x=columnX;
           y=y+vdir*(prevD.h/2+GAP+cornerD3.h/2);
-
           const flip=flipForMatch(t,cornerO3,vdir>0?'top':'bottom',match);
           put(t,x,y,cornerO3,flip);
           prevO=cornerO3; prevD=cornerD3;
@@ -2193,26 +2747,11 @@ function renderPhotoTemplateBoard(){
           continue;
         }
 
-        // Normal case: after exactly two corner dominoes, start the return row.
-        phase=2;
-        const returnO='h';
-        const returnD=dims(returnO);
-        returnY=y+vdir*(prevD.h/2-returnD.h/2);
-        x=columnX+returnDir*(prevD.w/2+GAP+returnD.w/2);
-        y=returnY;
-
-        const flip=flipForMatch(t,returnO,returnDir>0?'left':'right',match);
-        put(t,x,y,returnO,flip);
-        prevO=returnO; prevD=returnD;
-        continue;
-      }
-
-      if(phase===1&&cornerCount===3){
-        // After the special third-corner double, the NEXT tile starts the return row.
+        // After two normal corner dominoes (or after the allowed third double),
+        // the next domino MUST start the return row.
         phase=2;
         const returnO=isDouble?'v':'h';
         const returnD=dims(returnO);
-
         returnY=y+vdir*(prevD.h/2-returnD.h/2);
         x=columnX+returnDir*(prevD.w/2+GAP+returnD.w/2);
         y=returnY;
@@ -2255,13 +2794,13 @@ function renderPhotoTemplateBoard(){
     const chainCX=(minX+maxX)/2;
     const chainCY=(minY+maxY)/2;
     const targetCX=W/2;
-    const targetCY=H/2;
+    const targetCY=SHORT_LANDSCAPE?H*0.41:H*0.45;
     let dx=targetCX-chainCX;
     let dy=targetCY-chainCY;
 
-    // Keep the centered chain inside the playable table whenever possible.
+    // Keep the centered chain inside the playable table and above the ticker.
     dx=Math.max(SAFE_X-minX,Math.min(dx,(W-SAFE_X)-maxX));
-    dy=Math.max(SAFE_Y-minY,Math.min(dy,(H-SAFE_Y)-maxY));
+    dy=Math.max(SAFE_TOP-minY,Math.min(dy,(H-SAFE_BOTTOM)-maxY));
 
     for(const el of playedEls){
       el.style.left=(parseFloat(el.style.left||'0')+dx)+'px';
@@ -3345,93 +3884,26 @@ render();openSetup();
 
 
 <script>
-/* NEXT HAND BUTTON — MOVABLE */
+/* NEXT HAND BUTTON — FIXED RIGHT SIDE */
 (function(){
-  function wireNextHand(){
-    const buttons=[...document.querySelectorAll('button')].filter(
-      b => (b.textContent||'').trim()==='Next Hand'
-    );
-
-    buttons.forEach(el=>{
-      if(el.dataset.nextHandDragReady==='1') return;
-      el.dataset.nextHandDragReady='1';
-
-      let dragging=false, moved=false;
-      let startX=0, startY=0, startLeft=0, startTop=0;
-
-      el.style.touchAction='none';
-      el.style.cursor='grab';
-
-      el.addEventListener('pointerdown',ev=>{
-        if(ev.button!==undefined && ev.button!==0)return;
-
-        const r=el.getBoundingClientRect();
-
-        el.style.setProperty('position','fixed','important');
-        el.style.setProperty('left',r.left+'px','important');
-        el.style.setProperty('top',r.top+'px','important');
-        el.style.setProperty('right','auto','important');
-        el.style.setProperty('bottom','auto','important');
-        el.style.setProperty('transform','none','important');
-        el.style.setProperty('z-index','99999','important');
-
-        dragging=true;
-        moved=false;
-        startX=ev.clientX;
-        startY=ev.clientY;
-        startLeft=r.left;
-        startTop=r.top;
-
-        el.setPointerCapture?.(ev.pointerId);
-        el.style.cursor='grabbing';
-      });
-
-      el.addEventListener('pointermove',ev=>{
-        if(!dragging)return;
-
-        const dx=ev.clientX-startX;
-        const dy=ev.clientY-startY;
-
-        if(Math.abs(dx)>4 || Math.abs(dy)>4)moved=true;
-        if(!moved)return;
-
-        const maxLeft=Math.max(0,window.innerWidth-el.offsetWidth);
-        const maxTop=Math.max(0,window.innerHeight-el.offsetHeight);
-
-        const left=Math.max(0,Math.min(startLeft+dx,maxLeft));
-        const top=Math.max(0,Math.min(startTop+dy,maxTop));
-
-        el.style.setProperty('left',left+'px','important');
-        el.style.setProperty('top',top+'px','important');
-
-        ev.preventDefault();
-      });
-
-      function finish(ev){
-        if(!dragging)return;
-        dragging=false;
-        el.style.cursor='grab';
-        try{ el.releasePointerCapture?.(ev.pointerId); }catch(e){}
-      }
-
-      el.addEventListener('pointerup',finish);
-      el.addEventListener('pointercancel',finish);
-
-      el.addEventListener('click',ev=>{
-        if(moved){
-          ev.preventDefault();
-          ev.stopImmediatePropagation();
-          moved=false;
-        }
-      },true);
+  function lockNextHandRight(){
+    [...document.querySelectorAll('button')].forEach(el=>{
+      if((el.textContent||'').trim() !== 'Next Hand') return;
+      el.style.setProperty('position','fixed','important');
+      el.style.setProperty('right','24px','important');
+      el.style.setProperty('top','15%','important');
+      el.style.setProperty('left','auto','important');
+      el.style.setProperty('bottom','auto','important');
+      el.style.setProperty('transform','none','important');
+      el.style.setProperty('margin','0','important');
+      el.style.setProperty('z-index','99999','important');
+      el.style.touchAction='auto';
+      el.style.cursor='pointer';
     });
   }
-
-  wireNextHand();
-  new MutationObserver(wireNextHand).observe(document.body,{
-    childList:true,
-    subtree:true
-  });
+  lockNextHandRight();
+  new MutationObserver(lockNextHandRight).observe(document.body,{childList:true,subtree:true});
+  window.addEventListener('resize',lockNextHandRight);
 })();
 </script>
 
@@ -3561,37 +4033,24 @@ function topNextHandAction(){
 .player-timer.active{display:flex !important;}
 </style>
 <script>
+/* TIMER POSITION FIX: keep the active timer in the protected table position.
+   Do not capture viewport coordinates because resizing/zooming can push it off-screen. */
 (function(){
-  const fixedTimerPositions = new WeakMap();
-
-  function placeActiveTimers(){
+  function normalizeTimerPosition(){
     document.querySelectorAll('.player-timer').forEach(function(timer){
-      if(!timer.classList.contains('active')) return;
-
-      /* Capture its real visible starting position only after it becomes active. */
-      if(!fixedTimerPositions.has(timer)){
-        const r=timer.getBoundingClientRect();
-        fixedTimerPositions.set(timer,{left:r.left,top:r.top});
-      }
-
-      const p=fixedTimerPositions.get(timer);
-      timer.style.setProperty('position','fixed','important');
-      timer.style.setProperty('left',p.left+'px','important');
-      timer.style.setProperty('top',p.top+'px','important');
-      timer.style.setProperty('right','auto','important');
-      timer.style.setProperty('bottom','auto','important');
-      timer.style.setProperty('margin','0','important');
-      timer.style.setProperty('z-index','9999','important');
+      timer.style.removeProperty('position');
+      timer.style.removeProperty('left');
+      timer.style.removeProperty('right');
+      timer.style.removeProperty('top');
+      timer.style.removeProperty('bottom');
+      timer.style.removeProperty('margin');
+      timer.style.removeProperty('z-index');
     });
   }
-
-  requestAnimationFrame(placeActiveTimers);
+  normalizeTimerPosition();
   new MutationObserver(function(){
-    requestAnimationFrame(placeActiveTimers);
-  }).observe(document.body,{
-    childList:true,subtree:true,attributes:true,
-    attributeFilter:['class']
-  });
+    requestAnimationFrame(normalizeTimerPosition);
+  }).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
 })();
 </script>
 
@@ -4643,6 +5102,157 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     }
   }
   if(mode){mode.addEventListener('change',syncBreakStartTarget);syncBreakStartTarget();}
+})();
+</script>
+
+
+<style>
+/* ASAP FIX — keep Player 3's hand fully inside the table and away from played dominoes. */
+#hand3.hand-top{
+  top:18px !important;
+  max-width:64% !important;
+  z-index:80 !important;
+}
+/* Opponent hand may be made slightly smaller only when necessary; played dominoes are untouched. */
+#hand3 .back{width:28px !important;height:48px !important;}
+@media (orientation:landscape) and (max-height:650px){
+  #hand3.hand-top{top:14px !important;max-width:62% !important;gap:3px !important;}
+  #hand3 .back{width:26px !important;height:44px !important;}
+}
+</style>
+<script>
+(function(){
+  if(typeof window.separateFinishedHandsFromPlayedChain!=='function') return;
+  const originalSeparate=window.separateFinishedHandsFromPlayedChain;
+
+  function rectOfChildren(el){
+    if(!el) return null;
+    const rs=[...el.children].map(x=>x.getBoundingClientRect()).filter(r=>r.width>0&&r.height>0);
+    if(!rs.length){ const r=el.getBoundingClientRect(); return r.width||r.height?r:null; }
+    return {
+      left:Math.min(...rs.map(r=>r.left)), right:Math.max(...rs.map(r=>r.right)),
+      top:Math.min(...rs.map(r=>r.top)), bottom:Math.max(...rs.map(r=>r.bottom)),
+      width:Math.max(...rs.map(r=>r.right))-Math.min(...rs.map(r=>r.left)),
+      height:Math.max(...rs.map(r=>r.bottom))-Math.min(...rs.map(r=>r.top))
+    };
+  }
+
+  function keepP3InsideAndClear(){
+    const table=document.querySelector('.table');
+    const hand=document.getElementById('hand3');
+    const board=document.getElementById('board');
+    if(!table||!hand||!board||!hand.children.length) return;
+
+    const tr=table.getBoundingClientRect();
+    let hr=rectOfChildren(hand);
+    if(!hr) return;
+    const edge=10;
+
+    /* First clamp P3's actual dominoes inside the orange table boundary. */
+    let dx=0,dy=0;
+    if(hr.left<tr.left+edge) dx+=(tr.left+edge)-hr.left;
+    if(hr.right>tr.right-edge) dx-=(hr.right-(tr.right-edge));
+    if(hr.top<tr.top+edge) dy+=(tr.top+edge)-hr.top;
+    if(hr.bottom>tr.bottom-edge) dy-=(hr.bottom-(tr.bottom-edge));
+    if(dx||dy){
+      const cs=getComputedStyle(hand);
+      const current=cs.translate && cs.translate!=='none' ? cs.translate.split(' ') : ['0px','0px'];
+      const cx=parseFloat(current[0])||0, cy=parseFloat(current[1])||0;
+      hand.style.translate=`${cx+dx}px ${cy+dy}px`;
+      hr=rectOfChildren(hand);
+    }
+
+    /* Then reserve a clear lane between P3's hand and every played domino. */
+    const played=[...board.querySelectorAll('.dom-physical')];
+    if(!played.length||!hr) return;
+    const rs=played.map(e=>e.getBoundingClientRect()).filter(r=>r.width>0&&r.height>0);
+    if(!rs.length) return;
+    const chain={
+      left:Math.min(...rs.map(r=>r.left)), right:Math.max(...rs.map(r=>r.right)),
+      top:Math.min(...rs.map(r=>r.top)), bottom:Math.max(...rs.map(r=>r.bottom))
+    };
+    const margin=18;
+    const horizontalOverlap=!(chain.right<=hr.left-margin || chain.left>=hr.right+margin);
+    const verticalOverlap=chain.top < hr.bottom+margin && chain.bottom > hr.top-margin;
+    if(!(horizontalOverlap&&verticalOverlap)) return;
+
+    /* Move the PLAYED CHAIN as one unit downward only enough to clear P3.
+       Domino size, spacing, corners, order and orientation are not changed. */
+    const need=(hr.bottom+margin)-chain.top;
+    if(need<=0) return;
+
+    const hand1=rectOfChildren(document.getElementById('hand1'));
+    const ticker=document.getElementById('contactTicker')?.getBoundingClientRect();
+    let lowerLimit=tr.bottom-edge;
+    if(hand1&&hand1.top>tr.top) lowerLimit=Math.min(lowerLimit,hand1.top-margin);
+    if(ticker&&ticker.top>tr.top) lowerLimit=Math.min(lowerLimit,ticker.top-margin);
+    const room=Math.max(0,lowerLimit-chain.bottom);
+    const move=Math.min(need,room);
+    if(move<=0) return;
+
+    played.forEach(el=>{
+      const top=parseFloat(el.style.top||'0');
+      if(Number.isFinite(top)) el.style.top=(top+move)+'px';
+    });
+  }
+
+  window.separateFinishedHandsFromPlayedChain=function(){
+    originalSeparate();
+    keepP3InsideAndClear();
+  };
+
+  /* Also correct the current frame immediately after resize/orientation changes. */
+  const rerun=()=>requestAnimationFrame(()=>requestAnimationFrame(keepP3InsideAndClear));
+  window.addEventListener('resize',rerun);
+  window.addEventListener('orientationchange',rerun);
+  rerun();
+})();
+</script>
+
+<style>
+/* PLAYER 1 ONLY — keep the bottom hand fully inside the orange table border.
+   Player 3 and the played chain are intentionally untouched. */
+#hand1.hand-you{
+  bottom:42px !important;
+  max-width:72% !important;
+  overflow:visible !important;
+  z-index:85 !important;
+}
+@media (orientation:landscape) and (max-height:650px){
+  #hand1.hand-you{bottom:36px !important;max-width:70% !important;}
+}
+</style>
+<script>
+(function(){
+  function keepPlayer1Inside(){
+    const table=document.querySelector('.table');
+    const hand=document.getElementById('hand1');
+    if(!table||!hand||!hand.children.length) return;
+    const tr=table.getBoundingClientRect();
+    const rs=[...hand.children].map(el=>el.getBoundingClientRect()).filter(r=>r.width>0&&r.height>0);
+    if(!rs.length) return;
+    const hr={
+      left:Math.min(...rs.map(r=>r.left)),
+      right:Math.max(...rs.map(r=>r.right)),
+      top:Math.min(...rs.map(r=>r.top)),
+      bottom:Math.max(...rs.map(r=>r.bottom))
+    };
+    const edge=12;
+    let dx=0,dy=0;
+    if(hr.left<tr.left+edge) dx+=(tr.left+edge)-hr.left;
+    if(hr.right>tr.right-edge) dx-=(hr.right-(tr.right-edge));
+    if(hr.bottom>tr.bottom-edge) dy-=(hr.bottom-(tr.bottom-edge));
+    if(hr.top<tr.top+edge) dy+=(tr.top+edge)-hr.top;
+    if(!dx&&!dy) return;
+    const current=(getComputedStyle(hand).translate||'0px 0px').split(' ');
+    const cx=parseFloat(current[0])||0, cy=parseFloat(current[1])||0;
+    hand.style.setProperty('translate',`${cx+dx}px ${cy+dy}px`,'important');
+  }
+  const run=()=>requestAnimationFrame(()=>requestAnimationFrame(keepPlayer1Inside));
+  window.addEventListener('resize',run);
+  window.addEventListener('orientationchange',run);
+  new MutationObserver(run).observe(document.body,{childList:true,subtree:true});
+  run();
 })();
 </script>
 
