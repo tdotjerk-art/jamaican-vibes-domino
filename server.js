@@ -6,7 +6,6 @@ const crypto=require("crypto");
 
 const app=express(),server=http.createServer(app),io=new Server(server,{cors:{origin:"*"}});
 app.use(express.static("public"));
-app.get("/", (req,res)=>res.sendFile(__dirname + "/index.html"));
 app.get("/health",(req,res)=>res.status(200).send("ok"));
 const rooms=new Map();
 const GRACE_MS=90000;
