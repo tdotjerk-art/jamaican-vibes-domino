@@ -1,4 +1,3 @@
-
 const express=require("express");
 const http=require("http");
 const {Server}=require("socket.io");
@@ -58,8 +57,6 @@ function applyBruckAndStartWin(r,winnerSeat){
  const team=teamOf(winnerSeat);
  const other=1-team;
 
- // ONE-ONE PLAY TWO:
- // The next hand decides which team "goes two".
  if(r.oneOnePlayTwo){
    r.oneOnePlayTwo=false;
    r.bruckStartTeam=team;
@@ -70,7 +67,6 @@ function applyBruckAndStartWin(r,winnerSeat){
    return {team,count:2,won:false,bruck:false,oneOneResolved:true};
  }
 
- // No team currently "gone" any score: winner goes one.
  if(r.bruckStartTeam===null || r.bruckStartCount===0){
    r.bruckStartTeam=team;
    r.bruckStartCount=1;
@@ -80,7 +76,6 @@ function applyBruckAndStartWin(r,winnerSeat){
    return {team,count:1,won:false,bruck:false,oneOne:false};
  }
 
- // Same team wins again: 1 -> 2 -> 3 ... -> 6.
  if(r.bruckStartTeam===team){
    r.bruckStartCount+=1;
    r.teamScores=[0,0];
@@ -89,8 +84,6 @@ function applyBruckAndStartWin(r,winnerSeat){
    return {team,count:r.bruckStartCount,won:r.bruckStartCount>=6,bruck:false,oneOne:false};
  }
 
- // Opponent answers when the leading team is only on 1:
- // that creates ONE-ONE, and the NEXT hand plays for 2.
  if(r.bruckStartCount===1){
    r.oneOnePlayTwo=true;
    r.bruckStartTeam=null;
@@ -100,8 +93,6 @@ function applyBruckAndStartWin(r,winnerSeat){
    return {team,count:1,won:false,bruck:false,oneOne:true};
  }
 
- // Opponent answers a team that is on 2 or more:
- // BRUCK. The running score is erased. The NEXT hand starts again playing for 1.
  r.oneOnePlayTwo=false;
  r.bruckStartTeam=null;
  r.bruckStartCount=0;
@@ -230,6 +221,23 @@ function finishBlocked(r){
 function beginHand(r,poser=null){
  clearTimer(r);const d=shuffle(makeDeck());r.hands=[d.slice(0,7),d.slice(7,14),d.slice(14,21),d.slice(21,28)];
  r.board=[];r.playSequence=0;r.revealHands=false;r.handNo++;r.handValue=r.tiedCarry?2:(r.mode==="partner"?(r.nextPlayFor||1):1);r.phase="playing";r.poseOptions=[];r.message="";
+
+ // FIRST HAND RULE:
+ // Whoever is dealt double-six poses it automatically, regardless of seat.
+ if(r.handNo===1&&!Number.isInteger(poser)){
+   const holder=r.hands.findIndex(h=>h.some(t=>t.a===6&&t.b===6));
+   const idx=r.hands[holder].findIndex(t=>t.a===6&&t.b===6);
+   const t=r.hands[holder].splice(idx,1)[0];
+   r.playSequence++;
+   r.board=[{...t,playedOrder:r.playSequence,player:holder,side:"start"}];
+   const n=r.players[holder]?.name||`Player ${holder+1}`;
+   r.turn=(holder+1)%4;
+   addHistory(r,`Hand ${r.handNo} started. ${n} has double-six and poses 6-6.`);
+   setEvent(r,"double-six-pose",`${n} has double-six and poses 6-6.`);
+   scheduleTurn(r);
+   return
+ }
+
  if(r.tiedCarry){r.turn=r.hands.findIndex(h=>h.some(t=>t.a===6&&t.b===6));r.tiedCarry=false}
  else if(Number.isInteger(poser))r.turn=poser;
  else if(r.mode==="individual"&&Number.isInteger(r.lastIndividualWinner))r.turn=r.lastIndividualWinner;
@@ -246,7 +254,7 @@ function nextHand(r){
 }
 function startIfReady(r){
  if(r.phase!=="waiting")return;
- if(r.players.every(p=>p&&p.connected&&p.ready)){r.players.forEach(p=>p.ready=false);beginHand(r,0)}
+ if(r.players.every(p=>p&&p.connected&&p.ready)){r.players.forEach(p=>p.ready=false);beginHand(r)}
  else emitAll(r)
 }
 function pauseForDisconnect(r){
