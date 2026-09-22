@@ -2875,10 +2875,10 @@ body.jv-theme-party #jvThemeOverlay{
 
     
     <div id="playerTimers" aria-hidden="true">
-      <div id="timerP1" class="player-timer timer-p1">10</div>
-      <div id="timerP2" class="player-timer timer-p2">10</div>
-      <div id="timerP3" class="player-timer timer-p3">10</div>
-      <div id="timerP4" class="player-timer timer-p4">10</div>
+      <div id="timerP1" class="player-timer timer-p1"></div>
+      <div id="timerP2" class="player-timer timer-p2"></div>
+      <div id="timerP3" class="player-timer timer-p3"></div>
+      <div id="timerP4" class="player-timer timer-p4"></div>
     </div>
     <div id="blockedCounts" aria-hidden="true">
       <div id="countP1" class="blocked-count"></div>
@@ -3320,10 +3320,8 @@ function renderPhotoTemplateBoard(){
         }
 
         // CORNER COUNT RULE:
-        // LEFT / UP corner = ONE vertical domino.
-        // RIGHT / DOWN corner = TWO vertical dominoes.
-        // This rule applies whether the corner-starting domino is a double
-        // or a non-double. All doubles remain vertical.
+        // Both branches use exactly TWO dominoes to form the corner before
+        // starting the return row. All doubles remain vertical.
         phase=1;
         const cornerO='v';
         const cornerD=dims(cornerO);
@@ -3339,16 +3337,13 @@ function renderPhotoTemplateBoard(){
         prevO=cornerO;
         prevD=cornerD;
 
-        // Up side is complete after one domino.
-        // Down side requires one more domino going down.
-        cornerCount=(side==='left') ? 2 : 1;
+        // Both sides require the second corner domino.
+        cornerCount=1;
         continue;
       }
 
       if(phase===1&&cornerCount===1){
-        // DOWN corner only:
-        // place the SECOND vertical domino directly below the first one
-        // on the exact same center line.
+        // Place the SECOND vertical domino on the exact same center line.
         const cornerO2='v';
         const cornerD2=dims(cornerO2);
         x=columnX;
@@ -3362,10 +3357,7 @@ function renderPhotoTemplateBoard(){
       }
 
       if(phase===1&&cornerCount===2){
-        // Corner is complete:
-        // - UP side used ONE corner domino.
-        // - DOWN side used TWO corner dominoes.
-        // Now start the return row.
+        // The two-domino corner is complete. Now start the return row.
         phase=2;
         const returnO='h';
         const returnD=dims(returnO);
@@ -3462,13 +3454,11 @@ function openSetup(){
 }
 function setMode(m){mode=m}
 
-const TURN_TIME_SECONDS=10;
+const TURN_TIME_SECONDS=20;
 function turnTimeForPlayer(playerIndex){
   const hand = hands && hands[playerIndex];
   const count = Array.isArray(hand) ? hand.length : 0;
-  if(count===2) return 15;
-  if(count===3) return 12;
-  return 10;
+  return count>=1 && count<=3 ? 30 : 20;
 }
 let turnTimerSeconds=TURN_TIME_SECONDS;
 let turnTimerInterval=null;
@@ -3550,7 +3540,8 @@ function startTurnTimer(){
   stopTurnTimer();
   paintTurnTimer();
 
-  // Only Player 1 gets the existing 10-second auto-play decision timer.
+  // Only Player 1 needs a local auto-play interval. Computer turns execute
+  // through runTurn, while every active player still gets the visible clock.
   // Other player timers are visual indicators only; AI behavior is unchanged.
   if(gameOver || turn!==0){
     return;
@@ -3869,15 +3860,6 @@ function humanChoose(i){
 
   const t=hands[0][i];
   if(!t)return;
-
-  // First click only SELECTS the domino.
-  // Clicking a different domino changes the selection.
-  // Clicking the already-selected domino again confirms and plays it.
-  if(selectedHumanIndex!==i){
-    selectedHumanIndex=i;
-    render();
-    return;
-  }
 
   if(!board.length){
     humanCommit(i,'start');
@@ -5505,10 +5487,6 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     if(!onlineState || onlineState.phase!=='playing' || turn!==0)return;
     const t=hands[0][i]; if(!t)return;
 
-    if(selectedHumanIndex!==i){
-      selectedHumanIndex=i; render(); return;
-    }
-
     if(!board.length){
       socket()?.emit('play-domino',{tileId:t.id,side:'start'});
       selectedHumanIndex=null;
@@ -5732,7 +5710,14 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     sock.on('connect',()=>setConnection('connected','ONLINE • CONNECTED'));
     sock.on('disconnect',()=>setConnection('disconnected','ONLINE • DISCONNECTED'));
     sock.io.on('reconnect_attempt',()=>setConnection('reconnecting','ONLINE • RECONNECTING'));
-    sock.io.on('reconnect',()=>setConnection('connected','ONLINE • CONNECTED'));
+    sock.io.on('reconnect',()=>{
+      setConnection('connected','ONLINE • CONNECTED');
+      // A Socket.IO reconnect has a new socket id. Reclaim the saved seat
+      // automatically so a brief network drop does not leave the game paused.
+      if(roomCode&&myToken&&!spectator){
+        sock.emit('reconnect-player',{roomCode,token:myToken});
+      }
+    });
 
     sock.on('seat-assigned',d=>{
       mySeat=d.seat;myToken=d.token;roomCode=d.code;spectator=false;

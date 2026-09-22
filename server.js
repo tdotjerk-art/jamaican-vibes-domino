@@ -22,7 +22,9 @@ const ends=b=>!b.length?[null,null]:b.length===1?vals(b[0]):[b[0].a,b[b.length-1
 const canPlay=(b,t)=>!b.length||(()=>{const[L,R]=ends(b);return t.a===L||t.b===L||t.a===R||t.b===R})();
 const orientLeft=(t,L)=>t.b===L?{...t}:{a:t.b,b:t.a,faceA:t.faceB??t.b,faceB:t.faceA??t.a,id:t.id};
 const orientRight=(t,R)=>t.a===R?{...t}:{a:t.b,b:t.a,faceA:t.faceB??t.b,faceB:t.faceA??t.a,id:t.id};
-const turnSeconds=c=>c===2?15:c===3?12:10;
+// Approved clock: 20 seconds while a player holds 4-7 dominoes,
+// then 30 seconds while they hold 1-3 dominoes.
+const turnSeconds=c=>c>=1&&c<=3?30:20;
 const connectedPlayers=r=>r.players.filter(p=>p&&p.connected).length;
 const addHistory=(r,s)=>{r.history.push(s);if(r.history.length>60)r.history.shift()};
 
@@ -354,10 +356,17 @@ io.on("connection",socket=>{
    if(socket.data.spectator){r.spectators.delete(socket.id);emitAll(r);return}
    const seat=socket.data.seat,p=r.players[seat];if(!p||p.id!==socket.id)return;
    p.connected=false;p.id=null;p.ready=false;pauseForDisconnect(r);
-   p.graceTimer=setTimeout(()=>abandonSeat(r,seat),GRACE_MS);emitAll(r)
+   p.graceTimer=setTimeout(()=>abandonSeat(r,seat),GRACE_MS);
+   // The reconnect grace period should not keep a shutting-down process alive.
+   p.graceTimer.unref?.();
+   emitAll(r)
  });
 });
 
 const PORT=process.env.PORT||3000;
-server.listen(PORT,"0.0.0.0",()=>console.log(`Jamaican Vibes Domino server ready on port ${PORT}.`));
+if(require.main===module){
+ server.listen(PORT,"0.0.0.0",()=>console.log(`Jamaican Vibes Domino server ready on port ${PORT}.`));
+}
+
+module.exports={server,io,turnSeconds,makeDeck,ends,canPlay,orientLeft,orientRight,applyBruckAndStartWin};
 // github write test 2026-09-05
