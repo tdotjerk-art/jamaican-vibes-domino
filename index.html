@@ -2832,6 +2832,42 @@ body.jv-theme-party #jvThemeOverlay{
 #jvCode{text-transform:uppercase;letter-spacing:2px;font-weight:900}
 </style>
 
+<style>
+/* DOMINO SIZE UPDATE: exactly 20% larger than the previous build. */
+.dom-physical{
+  width:48px !important;
+  height:86.4px !important;
+}
+.dom-physical .pipgrid{
+  width:33.6px !important;
+  height:33.6px !important;
+}
+.dom-physical .pip{
+  width:8.4px !important;
+  height:8.4px !important;
+  min-width:8.4px !important;
+  min-height:8.4px !important;
+}
+.back{
+  width:40.8px !important;
+  height:72px !important;
+}
+.hand-left .back,.hand-right .back,.hand-top .back{
+  width:36px !important;
+  height:62.4px !important;
+}
+@media(max-width:650px){
+  .dom-physical{
+    width:40.8px !important;
+    height:74.4px !important;
+  }
+  .hand-left .back,.hand-right .back,.hand-top .back{
+    width:30px !important;
+    height:55.2px !important;
+  }
+}
+</style>
+
 </head>
 <body>
 <div id="turnTimer"></div>
@@ -2846,7 +2882,6 @@ body.jv-theme-party #jvThemeOverlay{
   <div class="toolbar">
     
     <button class="alt" onclick="showRules()">📖 Rules</button>
-    <button class="alt" onclick="yardTalk()">🔊 Yard Talk</button>
   </div>
 
   <div id="scoreboard" class="scoreboard"></div>
@@ -2875,10 +2910,10 @@ body.jv-theme-party #jvThemeOverlay{
 
     
     <div id="playerTimers" aria-hidden="true">
-      <div id="timerP1" class="player-timer timer-p1">10</div>
-      <div id="timerP2" class="player-timer timer-p2">10</div>
-      <div id="timerP3" class="player-timer timer-p3">10</div>
-      <div id="timerP4" class="player-timer timer-p4">10</div>
+      <div id="timerP1" class="player-timer timer-p1"></div>
+      <div id="timerP2" class="player-timer timer-p2"></div>
+      <div id="timerP3" class="player-timer timer-p3"></div>
+      <div id="timerP4" class="player-timer timer-p4"></div>
     </div>
     <div id="blockedCounts" aria-hidden="true">
       <div id="countP1" class="blocked-count"></div>
@@ -3173,11 +3208,10 @@ function renderPhotoTemplateBoard(){
 
   const W=host.clientWidth;
   const H=host.clientHeight;
-  // FIXED PLAYED-DOMINO SIZE.
-  // Automatic shrinking has been removed completely.
-  // Played dominoes stay the same size no matter how long the chain gets.
+  // LOCKED SIZE: played dominoes stay 20% larger for the entire hand.
+  // Never shrink dominoes that are already on the table as the chain grows.
   const BASE_HW=Math.min(62,Math.max(28,W*0.105));
-  const fitScale=1.24;
+  const fitScale=1.488;
 
   // Maximum usable playing surface: allow the chain very close to the board edges.
   const SAFE_X=Math.max(10,W*0.015);
@@ -3238,26 +3272,9 @@ function renderPhotoTemplateBoard(){
 
   const OPEN_X=W/2;
 
-  // PROTECTED TDOT JERK WORD AREA:
-  // Keep all played dominoes out of the central TDOT JERK lettering.
-  // The first straight row runs ABOVE the words.
-  // Corners happen outside the left/right edges of the words.
-  // Left return row runs ABOVE the words; right return row runs BELOW the words.
-  const LOGO_WORD_LEFT=W*0.105;
-  const LOGO_WORD_RIGHT=W*0.895;
-  const LOGO_WORD_TOP=H*0.43;
-  const LOGO_WORD_BOTTOM=H*0.57;
-  const LOGO_CLEAR_GAP=Math.max(6,GAP*1.5);
-
-  // Use the vertical-double half height here so even a double on the
-  // upper row cannot drop into the protected wording.
-  const OPEN_Y=Math.max(
-    SAFE_Y + VH/2,
-    LOGO_WORD_TOP - LOGO_CLEAR_GAP - VH/2
-  );
-
-  const LEFT_TURN_X=LOGO_WORD_LEFT-LOGO_CLEAR_GAP-VW/2;
-  const RIGHT_TURN_X=LOGO_WORD_RIGHT+LOGO_CLEAR_GAP+VW/2;
+  // The opening double six belongs at the center of the playing surface.
+  // Dominoes may cross the sponsor logo; only the felt edges constrain them.
+  const OPEN_Y=H/2;
 
   const opening=board[anchor];
   const openingO=(opening.a===opening.b)?'v':'h';
@@ -3277,7 +3294,8 @@ function renderPhotoTemplateBoard(){
     // This creates one upper return row and one lower return row.
     const vdir=side==='left' ? -1 : 1;
     const returnDir=-outward;
-    let phase=0, cornerCount=0;
+    const cornerCount=1;
+    let phase=0;
     let x=OPEN_X,y=OPEN_Y;
     let prevO=openingO,prevD=dims(prevO);
     let columnX=null,returnY=null;
@@ -3292,25 +3310,11 @@ function renderPhotoTemplateBoard(){
         const centerD=dims(centerO);
         const nx=x+outward*(prevD.w/2+GAP+centerD.w/2);
         // FIXED CORNER RULE:
-        // Keep the first 10 played dominoes straight before any corner starts.
-        // If the 10th played domino is a double, delay the corner until after the 11th domino.
+        // The first 10 played dominoes always form the center straight.
+        // The first later domino received by each branch is its one-domino corner.
         const straightBeforeCorner=10;
-        const turnTile=board.find(bt=>bt.playedOrder===straightBeforeCorner);
-        const turnIsDouble=!!(turnTile&&turnTile.a===turnTile.b);
-        const cornerStartOrder=turnIsDouble ? 12 : 11;
-
-        // Corner timing still respects the first-10 rule, but the corner
-        // cannot turn downward through TDOT JERK. Keep going straight
-        // above the wording until this branch is fully outside it.
-        const outsideWord=(side==='left')
-          ? (nx<=LEFT_TURN_X)
-          : (nx>=RIGHT_TURN_X);
-
-        const hitTurn=(
-          t.playedOrder!==undefined &&
-          t.playedOrder>=cornerStartOrder &&
-          outsideWord
-        );
+        const hitTurn=t.playedOrder!==undefined &&
+          t.playedOrder>straightBeforeCorner;
 
         if(!hitTurn){
           const flip=flipForMatch(t,centerO,outward>0?'left':'right',match);
@@ -3319,11 +3323,7 @@ function renderPhotoTemplateBoard(){
           continue;
         }
 
-        // CORNER COUNT RULE:
-        // LEFT / UP corner = ONE vertical domino.
-        // RIGHT / DOWN corner = TWO vertical dominoes.
-        // This rule applies whether the corner-starting domino is a double
-        // or a non-double. All doubles remain vertical.
+        // A single vertical domino forms the corner on either side.
         phase=1;
         const cornerO='v';
         const cornerD=dims(cornerO);
@@ -3339,48 +3339,17 @@ function renderPhotoTemplateBoard(){
         prevO=cornerO;
         prevD=cornerD;
 
-        // Up side is complete after one domino.
-        // Down side requires one more domino going down.
-        cornerCount=(side==='left') ? 2 : 1;
         continue;
       }
 
-      if(phase===1&&cornerCount===1){
-        // DOWN corner only:
-        // place the SECOND vertical domino directly below the first one
-        // on the exact same center line.
-        const cornerO2='v';
-        const cornerD2=dims(cornerO2);
-        x=columnX;
-        y=y+vdir*(prevD.h/2+GAP+cornerD2.h/2);
-        const flip=flipForMatch(t,cornerO2,vdir>0?'top':'bottom',match);
-        put(t,x,y,cornerO2,flip);
-        prevO=cornerO2;
-        prevD=cornerD2;
-        cornerCount=2;
-        continue;
-      }
-
-      if(phase===1&&cornerCount===2){
-        // Corner is complete:
-        // - UP side used ONE corner domino.
-        // - DOWN side used TWO corner dominoes.
-        // Now start the return row.
+      if(phase===1){
+        // Start the return row immediately after the one-domino corner.
         phase=2;
         const returnO='h';
         const returnD=dims(returnO);
         const naturalReturnY=y+vdir*(prevD.h/2-returnD.h/2);
 
-        // TWO SEPARATE RETURN ROWS AROUND TDOT JERK:
-        // LEFT branch stays ABOVE the wording.
-        // RIGHT branch stays BELOW the wording.
-        // VH/2 is used so vertical doubles also remain clear of the words.
-        const clearUpperY=LOGO_WORD_TOP-LOGO_CLEAR_GAP-VH/2;
-        const clearLowerY=LOGO_WORD_BOTTOM+LOGO_CLEAR_GAP+VH/2;
-
-        returnY=(side==='left')
-          ? Math.min(naturalReturnY,clearUpperY)
-          : Math.max(naturalReturnY,clearLowerY);
+        returnY=naturalReturnY;
 
         x=columnX+returnDir*(prevD.w/2+GAP+returnD.w/2);
         y=returnY;
@@ -3427,15 +3396,18 @@ function renderPhotoTemplateBoard(){
       maxY=Math.max(maxY,r.bottom-hostRect.top);
     }
 
-    // IMPORTANT:
-    // Do not re-center the chain over the logo.
-    // The layout above deliberately routes dominoes around TDOT JERK.
-    // Only nudge the entire chain if it actually crosses an outside table edge.
-    let dx=0;
+    // Recenter the complete chain horizontally after every play. This corrects
+    // an uneven left/right run by moving every played domino the same distance.
+    // Domino size, gaps, connections and corner geometry remain unchanged.
+    let dx=(W/2)-((minX+maxX)/2);
     let dy=0;
 
-    if(minX<SAFE_X) dx=SAFE_X-minX;
-    if(maxX+dx>W-SAFE_X) dx+=(W-SAFE_X)-(maxX+dx);
+    // If the centered chain fits inside the felt, keep it inside the safe edge.
+    const chainWidth=maxX-minX;
+    if(chainWidth<=W-(SAFE_X*2)){
+      if(minX+dx<SAFE_X) dx+=SAFE_X-(minX+dx);
+      if(maxX+dx>W-SAFE_X) dx+=(W-SAFE_X)-(maxX+dx);
+    }
     if(minY<SAFE_Y) dy=SAFE_Y-minY;
     if(maxY+dy>H-SAFE_Y) dy+=(H-SAFE_Y)-(maxY+dy);
 
@@ -3462,13 +3434,11 @@ function openSetup(){
 }
 function setMode(m){mode=m}
 
-const TURN_TIME_SECONDS=10;
+const TURN_TIME_SECONDS=20;
 function turnTimeForPlayer(playerIndex){
   const hand = hands && hands[playerIndex];
   const count = Array.isArray(hand) ? hand.length : 0;
-  if(count===2) return 15;
-  if(count===3) return 12;
-  return 10;
+  return count>=1 && count<=3 ? 30 : 20;
 }
 let turnTimerSeconds=TURN_TIME_SECONDS;
 let turnTimerInterval=null;
@@ -3550,7 +3520,8 @@ function startTurnTimer(){
   stopTurnTimer();
   paintTurnTimer();
 
-  // Only Player 1 gets the existing 10-second auto-play decision timer.
+  // Only Player 1 needs a local auto-play interval. Computer turns execute
+  // through runTurn, while every active player still gets the visible clock.
   // Other player timers are visual indicators only; AI behavior is unchanged.
   if(gameOver || turn!==0){
     return;
@@ -3664,11 +3635,12 @@ function applyOfflineBruckAndStartWin(winnerPlayer){
 
   // Same team wins again: go 2, 3, 4, 5, then 6.
   if(offlineBruckTeam===tm){
-    offlineBruckCount+=1;
+    // Six ends the game. The winning score must never display 7 or higher.
+    offlineBruckCount=Math.min(6,offlineBruckCount+1);
     offlineNextPlayFor=1;
     scores[0]=0; scores[1]=0;
     scores[tm]=offlineBruckCount;
-    return {team:tm,count:offlineBruckCount,oneOneResolved:false,oneOne:false,bruck:false,won:offlineBruckCount>=6};
+    return {team:tm,count:offlineBruckCount,oneOneResolved:false,oneOne:false,bruck:false,won:offlineBruckCount===6};
   }
 
   // Opponent wins when the running team is only on 1:
@@ -3870,15 +3842,6 @@ function humanChoose(i){
   const t=hands[0][i];
   if(!t)return;
 
-  // First click only SELECTS the domino.
-  // Clicking a different domino changes the selection.
-  // Clicking the already-selected domino again confirms and plays it.
-  if(selectedHumanIndex!==i){
-    selectedHumanIndex=i;
-    render();
-    return;
-  }
-
   if(!board.length){
     humanCommit(i,'start');
     return;
@@ -4037,7 +4000,9 @@ function runTurn(){
 function finishNormalWin(p){
   stopTurnTimer();
   gameOver=true;
-  revealHands=true;
+  // A normal win keeps every opponent's remaining dominoes private.
+  // Reveal all hands only when finishBlocked() confirms a blocked game.
+  revealHands=false;
   const pts=handValue;
 
   let bruckResult=null;
@@ -4192,8 +4157,11 @@ function finishBlocked(){
 function checkMatchEnd(){
   let text=null;
   if(mode==='partner'){
-    if(scores[0]>=6)text='Team A (P1 + P3)';
-    if(scores[1]>=6)text='Team B (P2 + P4)';
+    // Clamp defensive/old state as well: partner games stop exactly at 6.
+    scores[0]=Math.min(6,scores[0]);
+    scores[1]=Math.min(6,scores[1]);
+    if(scores[0]===6)text='Team A (P1 + P3)';
+    if(scores[1]===6)text='Team B (P2 + P4)';
   }else{
     const i=scores.findIndex(x=>x>=target);if(i>=0)text=playerName(i);
   }
@@ -4207,18 +4175,13 @@ function showRules(){
   <p><b>Players:</b> Player 1 is you. Player 2 is right. Player 3 is opposite. Player 4 is left.</p>
   <p><b>Partner:</b> P1 + P3 vs P2 + P4. Winning partners choose who poses next.</p>
   <p><b>Individual:</b> winner of previous hand poses next.</p>
-  <p><b>End of hand:</b> after any hand is won, all remaining dominoes are revealed for every player.</p><p><b>Blocked:</b> counts happen automatically only when blocked. Lowest individual count wins.</p>
+  <p><b>End of hand:</b> after a normal win, the remaining dominoes stay hidden.</p><p><b>Blocked:</b> all remaining dominoes are revealed and counted automatically only when the game is blocked. Lowest individual count wins.</p>
   <p><b>Blocked tie:</b> next hand is worth 2 points; 6–6 holder poses.</p>
   <p><b>Pass:</b> automatic. PASS is shown, then play moves to next player.</p>
-  <p><b>Layout:</b> uses the permanent snake layout from your latest green-table reference. After the first 10 played dominoes, a normal corner uses ONE non-double domino. If a DOUBLE starts the corner, use TWO dominoes for that corner: the double plus one more domino. Then start the return row.</p>
+  <p><b>Layout:</b> the first 10 played dominoes form the center straight. The next domino on each side makes that side's corner by itself, including when it is a double. Then the return row starts. The opening double six begins at the center of the table.</p>
   <button onclick="closeModal()">Back</button>`);
 }
 
-function yardTalk(){
-  if(!('speechSynthesis'in window))return;
-  const lines=['Buss it!','Watch yah!','Nice play!','Good game!','Yard vibes!'];
-  speechSynthesis.speak(new SpeechSynthesisUtterance(lines[Math.floor(Math.random()*lines.length)]));
-}
 function toggleResultPopup(){
   const card=$('card');
   if(!card)return;
@@ -4953,7 +4916,7 @@ button.rules-active{
     <li>If a blocked game produces a tie across opposing sides, the next hand is worth 2 points and the player holding double-six (6–6) poses.</li>
     <li>Timer: 10 seconds normally; 12 seconds when you have 3 dominoes left; 15 seconds when you have 2 dominoes left.</li>
     <li>If the human player does not make a legal play before the timer expires, the game automatically plays a legal domino.</li>
-    <li>At the end of the hand, the remaining players' dominoes are revealed.</li>
+    <li>After a normal win, the remaining players' dominoes stay hidden. All remaining dominoes are revealed only when the game is blocked.</li>
   
 <li><strong>Bruck &amp; Start (Partner Game):</strong> The first team to <strong>go 6</strong> wins. A team starts by going 1, then 2, 3, and so on. If Team A is on 2 or more and Team B wins a hand, Team B <strong>brucks</strong> the run: the running score is cleared and the next hand starts again playing for 1. Special rule: if Team A goes 1 and Team B wins the next hand, it becomes <strong>one-one</strong>, and the next hand is <strong>ONE-ONE PLAY TWO</strong>. Whoever wins that hand goes 2. Example: A goes 1, B makes it one-one, then the next hand decides which team goes 2.</li>
 <li><strong>Offline play:</strong> The same <strong>Bruck &amp; Start</strong> and <strong>ONE-ONE PLAY TWO</strong> partner rules are used against the computer. Online and offline partner scoring now match.</li>
@@ -4966,7 +4929,7 @@ button.rules-active{
 <li><strong>Partner Poser:</strong> After a Partner hand is won, the winning team chooses which of its two partners will pose the next hand. The choice can be changed before it is confirmed.</li>
 <li><strong>Blocked Tie:</strong> If a blocked hand is tied across opposing sides, the next hand is worth 2 and the player holding double-six (6-6) poses.</li>
 <li><strong>BRUCK Restart:</strong> After a game is BRUCK, the next hand starts with whoever is dealt double-six (6-6). That player poses the 6-6 automatically.</li>
-<li><strong>Private Hands:</strong> During an active online hand, each player can see only their own hand. Other players' hands are revealed only when the hand is finished according to the game rules.</li>
+<li><strong>Private Hands:</strong> Each player can see only their own hand. Other players' dominoes stay hidden after a normal win and are revealed only when the game is blocked.</li>
 <li><strong>Room / Host:</strong> The room host selects the game mode and available match settings before play. Players must be connected and READY before an online match begins.</li>
 <li><strong>Host Fairness:</strong> A host may manage the room before the match starts, but active-game results and legal moves are controlled by the game server rather than by the host.</li>
 <li><strong>Match History:</strong> Online play keeps a game history showing important events such as plays, passes, hand wins, Brucks, One-One Play Two results, and the final match result.</li>
@@ -5505,10 +5468,6 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     if(!onlineState || onlineState.phase!=='playing' || turn!==0)return;
     const t=hands[0][i]; if(!t)return;
 
-    if(selectedHumanIndex!==i){
-      selectedHumanIndex=i; render(); return;
-    }
-
     if(!board.length){
       socket()?.emit('play-domino',{tileId:t.id,side:'start'});
       selectedHumanIndex=null;
@@ -5732,7 +5691,14 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     sock.on('connect',()=>setConnection('connected','ONLINE • CONNECTED'));
     sock.on('disconnect',()=>setConnection('disconnected','ONLINE • DISCONNECTED'));
     sock.io.on('reconnect_attempt',()=>setConnection('reconnecting','ONLINE • RECONNECTING'));
-    sock.io.on('reconnect',()=>setConnection('connected','ONLINE • CONNECTED'));
+    sock.io.on('reconnect',()=>{
+      setConnection('connected','ONLINE • CONNECTED');
+      // A Socket.IO reconnect has a new socket id. Reclaim the saved seat
+      // automatically so a brief network drop does not leave the game paused.
+      if(roomCode&&myToken&&!spectator){
+        sock.emit('reconnect-player',{roomCode,token:myToken});
+      }
+    });
 
     sock.on('seat-assigned',d=>{
       mySeat=d.seat;myToken=d.token;roomCode=d.code;spectator=false;
@@ -6388,7 +6354,6 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
   let lastAnimatedOrder=-1;
   let eventTimer=null;
   let lastBoardCount=typeof board!=='undefined' ? board.length : 0;
-  let yardTalkAuto=false;
 
   function soundEnabled(){
     try{
@@ -6493,47 +6458,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     setTimeout(()=>el.classList.remove('jv-new-play'),350);
   }
 
-  function maybeYardTalk(kind,p){
-    if(!yardTalkAuto || !('speechSynthesis' in window))return;
-    // Keep it occasional so it feels lively without talking every turn.
-    if(kind==='play' && Math.random()>.22)return;
-    const sets={
-      play:['Nice play!','Watch yah!','Good move!','Yard vibes!'],
-      pass:['Pass! Next player.','No play there.'],
-      hand:['Good hand!','Big win!','Nice game!'],
-      blocked:['Blocked game! Count it up.'],
-      match:['Champion! Good game!']
-    };
-    const options=sets[kind]||sets.play;
-    const u=new SpeechSynthesisUtterance(options[Math.floor(Math.random()*options.length)]);
-    u.rate=.98;
-    u.pitch=1.0;
-    speechSynthesis.cancel();
-    speechSynthesis.speak(u);
-  }
-
-  // Make the existing Yard Talk control a persistent ON/OFF atmosphere toggle.
-  function wireYardToggle(){
-    const btn=[...document.querySelectorAll('button')].find(
-      b=>/yard talk/i.test((b.textContent||'').trim())
-    );
-    if(!btn||btn.dataset.livelyYardWired==='1')return;
-    btn.dataset.livelyYardWired='1';
-    try{yardTalkAuto=localStorage.getItem('jvYardAuto')==='on';}catch(e){}
-    btn.classList.toggle('yard-talk-active',yardTalkAuto);
-    btn.setAttribute('aria-pressed',yardTalkAuto?'true':'false');
-
-    btn.addEventListener('click',()=>{
-      // Existing click handlers may already toggle the class, so read it after they run.
-      setTimeout(()=>{
-        yardTalkAuto=btn.classList.contains('yard-talk-active');
-        try{localStorage.setItem('jvYardAuto',yardTalkAuto?'on':'off');}catch(e){}
-        liveEvent(yardTalkAuto?'Yard Talk ON':'Yard Talk OFF');
-      },0);
-    });
-  }
-  wireYardToggle();
-  new MutationObserver(wireYardToggle).observe(document.body,{childList:true,subtree:true});
+  function maybeYardTalk(){/* announcer removed */}
 
   // Enhance PASS while preserving the original pass timing/game logic.
   if(typeof showPass==='function'){
@@ -6629,7 +6554,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     dominoLanding:true,
     handCelebration:true,
     matchCelebration:true,
-    yardTalkToggle:true
+    yardTalkToggle:false
   };
 })();
 </script>
@@ -6733,7 +6658,6 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
         </label>
         <label class="jv-check"><input type="checkbox" id="jvTutorial"> Tutorial / playable-domino hints</label>
         <label class="jv-check"><input type="checkbox" id="jvAmbience"> Low-volume yard ambience</label>
-        <label class="jv-check"><input type="checkbox" id="jvEventSpeech"> Event Yard Talk reactions</label>
         <label class="jv-check"><input type="checkbox" id="jvCrowd"> Crowd/reaction sounds</label>
         <p style="font-size:12px;opacity:.85">Ambience and reactions are generated in the browser; no song recording is used.</p>
       </section>
@@ -6819,7 +6743,6 @@ const DEFAULTS={
   theme:'classic',
   tutorial:true,
   ambience:false,
-  eventSpeech:false,
   crowd:true
 };
 
@@ -6854,7 +6777,6 @@ let streakKey=null,streakCount=0;
 let lastMatchFinished=false;
 let hintIndex=null;
 let ambienceTimer=null;
-let eventSpeechBusy=false;
 let lastBoardOrders=new Set();
 
 const ACHIEVEMENTS=[
@@ -6928,25 +6850,7 @@ function startAmbience(){
 }
 function stopAmbience(){if(ambienceTimer){clearInterval(ambienceTimer);ambienceTimer=null}}
 
-/* ----------------------------- SPEECH ----------------------------- */
-function eventTalk(kind,name=''){
-  if(!settings.eventSpeech||eventSpeechBusy||!('speechSynthesis'in window))return;
-  const lines={
-    play:['Nice play!','Watch yah!','Good move!'],
-    double:['Big double!','Watch the double!'],
-    last:[`${name||'Player'} down to the last domino!`],
-    blocked:['Blocked game! Count it up!'],
-    bruck:['Bruck! Start it over!'],
-    win:[`${name||'Player'} takes the hand!`],
-    six:['Double six! First pose!']
-  };
-  const arr=lines[kind];if(!arr)return;
-  eventSpeechBusy=true;
-  const u=new SpeechSynthesisUtterance(arr[Math.floor(Math.random()*arr.length)]);
-  u.rate=.98;u.pitch=1;
-  u.onend=()=>{eventSpeechBusy=false};u.onerror=()=>{eventSpeechBusy=false};
-  speechSynthesis.cancel();speechSynthesis.speak(u);
-}
+function eventTalk(){/* announcer removed */}
 
 /* -------------------------- BIG MOMENTS -------------------------- */
 let bigTimer=null;
@@ -6995,7 +6899,6 @@ function fillSettings(){
   q('jvTheme').value=settings.theme;
   q('jvTutorial').checked=!!settings.tutorial;
   q('jvAmbience').checked=!!settings.ambience;
-  q('jvEventSpeech').checked=!!settings.eventSpeech;
   q('jvCrowd').checked=!!settings.crowd;
 }
 function readSettings(){
@@ -7006,7 +6909,6 @@ function readSettings(){
   settings.theme=q('jvTheme').value;
   settings.tutorial=q('jvTutorial').checked;
   settings.ambience=q('jvAmbience').checked;
-  settings.eventSpeech=q('jvEventSpeech').checked;
   settings.crowd=q('jvCrowd').checked;
   saveJSON('jvCompleteSettings',settings);applyTheme();
   if(settings.ambience)startAmbience();else stopAmbience();
@@ -7113,9 +7015,6 @@ function sendQuickChat(message){
   liveMessage(`${window.playerName(0)}: ${message}`);
   if(isOnline()&&typeof window.sendOnlineGameEvent==='function'){
     window.sendOnlineGameEvent('quick-chat',{message,name:window.playerName(0)});
-  }
-  if(settings.eventSpeech&&'speechSynthesis'in window){
-    const u=new SpeechSynthesisUtterance(message);u.rate=1;speechSynthesis.cancel();speechSynthesis.speak(u);
   }
   q('jvQuickChatPanel').style.display='none';
 }
