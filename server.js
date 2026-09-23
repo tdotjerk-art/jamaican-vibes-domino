@@ -79,11 +79,12 @@ function applyBruckAndStartWin(r,winnerSeat){
  }
 
  if(r.bruckStartTeam===team){
-   r.bruckStartCount+=1;
+   // Six is the hard finish line. Never allow the winning score to pass 6.
+   r.bruckStartCount=Math.min(6,r.bruckStartCount+1);
    r.teamScores=[0,0];
    r.teamScores[team]=r.bruckStartCount;
    r.nextPlayFor=1;
-   return {team,count:r.bruckStartCount,won:r.bruckStartCount>=6,bruck:false,oneOne:false};
+   return {team,count:r.bruckStartCount,won:r.bruckStartCount===6,bruck:false,oneOne:false};
  }
 
  if(r.bruckStartCount===1){
@@ -157,7 +158,7 @@ function autoAction(r){
  playTile(r,seat,t.id,side,true)
 }
 function finishWin(r,seat){
- clearTimer(r);r.revealHands=true;r.deadline=0;const n=r.players[seat]?.name||"Player";
+ clearTimer(r);r.revealHands=false;r.deadline=0;const n=r.players[seat]?.name||"Player";
  let match=-1;
  if(r.mode==="partner"){
    const bs=applyBruckAndStartWin(r,seat);
