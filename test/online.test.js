@@ -1,7 +1,7 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const {io:connect}=require('socket.io-client');
-const {server,io}=require('../server');
+const {server,io,canPlay}=require('../server');
 
 const waitFor=(socket,event,predicate=()=>true,timeout=4000)=>new Promise((resolve,reject)=>{
   const timer=setTimeout(()=>{socket.off(event,onEvent);reject(new Error(`Timed out waiting for ${event}`));},timeout);
@@ -35,9 +35,10 @@ test('four players can start, pause, and reclaim a disconnected seat',async()=>{
       seats.push(await assigned);
     }
 
-    const playing=waitFor(first,'private-state',s=>s.phase==='playing');
+    const playing=clients.map(c=>waitFor(c,'private-state',s=>s.phase==='playing'));
     clients.forEach(c=>c.emit('toggle-ready'));
-    const started=await playing;
+    const states=await Promise.all(playing),started=states[0];
+    assert.ok(states[started.turn].hand.some(d=>canPlay(started.board,d)), 'opening automatically passes players without a legal domino');
     const remaining=Math.ceil((started.deadline-Date.now())/1000);
     assert.ok(remaining>=19&&remaining<=20,`expected about 20 seconds, received ${remaining}`);
 

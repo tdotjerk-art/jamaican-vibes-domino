@@ -2,8 +2,13 @@ const express=require("express");
 const http=require("http");
 const {Server}=require("socket.io");
 const crypto=require("crypto");
+const {createMembership}=require("./membership");
 
-const app=express(),server=http.createServer(app),io=new Server(server,{cors:{origin:"*"}});
+const app=express(),server=http.createServer(app),io=new Server(server);
+app.disable("x-powered-by");
+app.set("trust proxy",1);
+const membership=createMembership(app);
+app.use((req,res,next)=>{res.set("X-Content-Type-Options","nosniff");res.set("Referrer-Policy","same-origin");res.set("X-Frame-Options","DENY");next();});
 app.use(express.static("public"));
 app.get("/",(req,res)=>res.sendFile(__dirname + "/index.html"));
 app.get("/health",(req,res)=>res.status(200).send("ok"));
@@ -174,11 +179,12 @@ function finishWin(r,seat){
    }
    match=bs.won?bs.team:-1;
  }else{
-   r.scores[seat]+=r.handValue;r.lastIndividualWinner=seat;
+   r.scores[seat]=Math.min(r.target,r.scores[seat]+r.handValue);r.lastIndividualWinner=seat;
    addHistory(r,`${n} won hand ${r.handNo} for ${r.handValue} point${r.handValue===1?"":"s"}.`);
    match=r.scores.findIndex(v=>v>=r.target);
  }
  if(match>=0){
+   membership.recordMatch(r,match);
    r.phase="match-over";r.turn=null;r.rematchVotes.clear();
    r.message=r.mode==="partner"?`Team ${match===0?"A":"B"} wins the Bruck and Start game by going 6.`:`${r.players[match]?.name||"Player"} wins the match.`;
    addHistory(r,r.message);r.lastEvent="match-win";emitAll(r);return
@@ -209,13 +215,18 @@ function finishBlocked(r){
      addHistory(r,`${n} wins the blocked hand with ${low}. Team ${bs.team===0?"A":"B"} goes ${bs.count}. Counts: ${counts.join(", ")}.`);
    }
    if(bs.won){
+     membership.recordMatch(r,bs.team);
      r.phase="match-over";r.turn=null;r.rematchVotes.clear();
      r.message=`Team ${bs.team===0?"A":"B"} wins the Bruck and Start game by going 6.`;
      r.lastEvent="match-win";emitAll(r);return
    }
  }else{
-   r.scores[winner]+=r.handValue;r.lastIndividualWinner=winner;
+   r.scores[winner]=Math.min(r.target,r.scores[winner]+r.handValue);r.lastIndividualWinner=winner;
    addHistory(r,`${n} wins the blocked hand with ${low}. Counts: ${counts.join(", ")}.`);
+   if(r.scores[winner]>=r.target){
+     membership.recordMatch(r,winner);r.phase="match-over";r.turn=null;r.rematchVotes.clear();
+     r.message=`${n} wins the match.`;r.lastEvent="match-win";emitAll(r);return;
+   }
  }
  r.phase="hand-over";r.turn=null;
  r.message=`${n} wins the blocked hand with ${low}. Counts: ${counts.join(", ")}.`;
@@ -237,7 +248,7 @@ function beginHand(r,poser=null){
    r.turn=(holder+1)%4;
    addHistory(r,`Hand ${r.handNo} started. ${n} has double-six and poses 6-6.`);
    setEvent(r,"double-six-pose",`${n} has double-six and poses 6-6.`);
-   scheduleTurn(r);
+   nextPlayableTurn(r);
    return
  }
 
@@ -281,47 +292,75 @@ function abandonSeat(r,seat){
  if(p.graceTimer)clearTimeout(p.graceTimer);
  r.players[seat]=null;r.ready=false;promoteHost(r);clearTimer(r);
  r.hands=[[],[],[],[]];r.board=[];r.turn=null;r.phase="waiting";r.revealHands=false;r.message="A seat opened. Waiting for four ready players.";
- r.players.forEach(x=>{if(x)x.ready=false});emitAll(r)
+ r.players.forEach(x=>{if(x)x.ready=false});
+ if(!r.players.some(Boolean)){rooms.delete(r.code);return;}
+ emitAll(r)
 }
 function newRoom(name,mode,target,socket){
  let code;do code=randCode();while(rooms.has(code));
- const token=randToken(),room={code,mode:mode==="individual"?"individual":"partner",target:clampTarget(target),hostSeat:0,
+ const token=randToken(),room={matchId:crypto.randomUUID(),code,mode:mode==="individual"?"individual":"partner",target:clampTarget(target),hostSeat:0,
  players:[null,null,null,null],spectators:new Map(),hands:[[],[],[],[]],board:[],turn:null,handNo:0,handValue:1,
  tiedCarry:false,lastWinnerTeam:null,lastIndividualWinner:null,scores:[0,0,0,0],teamScores:[0,0],phase:"waiting",
  revealHands:false,playSequence:0,timer:null,deadline:0,message:"Waiting for four players to get ready.",poseOptions:[],
  history:[],lastEvent:"",rematchVotes:new Set(),phaseBeforePause:null,turnBeforePause:null,
  bruckStartTeam:null,bruckStartCount:0,oneOnePlayTwo:false,nextPlayFor:1};
- room.players[0]={id:socket.id,name,seat:0,token,connected:true,ready:false,graceTimer:null};rooms.set(code,room);return {room,token}
+ room.players[0]={userId:membership.readUser(socket.handshake.headers)?.id||null,id:socket.id,name,seat:0,token,connected:true,ready:false,graceTimer:null};rooms.set(code,room);return {room,token}
 }
 
+function roomPasswordMatches(room,password){
+ if(!room.password)return true;
+ if(typeof password!=="string"||password.length>64)return false;
+ return crypto.timingSafeEqual(room.password,crypto.createHash("sha256").update(password).digest());
+}
 io.on("connection",socket=>{
- socket.onAny(()=>{if(!actionAllowed(socket))socket.emit("action-error","Too many actions. Please slow down.")});
+ socket.use((packet,next)=>{
+   if(!actionAllowed(socket)){socket.emit("action-error","Too many actions. Please slow down.");return;}
+   if(packet[1]!==undefined&&(packet[1]===null||typeof packet[1]!=="object"||Array.isArray(packet[1]))){socket.emit("action-error","Invalid action.");return;}
+   next();
+ });
+ const seated=()=>socket.data.roomCode&&rooms.get(socket.data.roomCode)?.players.some(p=>p?.id===socket.id);
 
- socket.on("create-room",({name,mode,target})=>{
+ socket.on("create-room",({name,mode,target,password}={})=>{
+   if(seated())return socket.emit("room-error","Leave your current room first.");
+   if(rooms.size>=1000)return socket.emit("room-error","Server is busy. Try again later.");
+   const user=membership.readUser(socket.handshake.headers);
+   if(password&&(!user||!membership.vip(user.id)))return socket.emit("room-error","VIP membership is required to host a password-protected room.");
+   if(password&&(typeof password!=="string"||password.length<6||password.length>64))return socket.emit("room-error","Room password must have 6–64 characters.");
    name=String(name||"").trim().slice(0,20);if(!name)return socket.emit("room-error","A name is required.");
-   const {room,token}=newRoom(name,mode,target,socket); if(room.mode==="partner") room.target=6;socket.data.roomCode=room.code;socket.data.seat=0;socket.join(room.code);
+   const {room,token}=newRoom(name,mode,target,socket); if(password)room.password=crypto.createHash("sha256").update(password).digest(); if(room.mode==="partner") room.target=6;socket.data.roomCode=room.code;socket.data.seat=0;socket.join(room.code);
    socket.emit("seat-assigned",{code:room.code,seat:0,token});emitAll(room)
  });
- socket.on("join-room",({name,code})=>{
+ socket.on("join-room",({name,code,password}={})=>{
+   if(seated())return socket.emit("room-error","Leave your current room first.");
    name=String(name||"").trim().slice(0,20);code=String(code||"").trim().toUpperCase();const r=rooms.get(code);
-   if(!r)return socket.emit("room-error","Room not found.");if(!name)return socket.emit("room-error","A name is required.");
+   if(!r)return socket.emit("room-error","Room not found.");
+   if(!roomPasswordMatches(r,password))return socket.emit("room-error","Room password is incorrect.");
+   const user=membership.readUser(socket.handshake.headers);
+   if(user&&r.players.some(p=>p?.userId===user.id))return socket.emit("room-error","This account already has a seat. Use reconnect.");
+   if(!name)return socket.emit("room-error","A name is required.");
    if(r.phase!=="waiting"&&r.phase!=="paused")return socket.emit("room-error","That game has already started.");
    const seat=r.players.findIndex(p=>!p);if(seat<0)return socket.emit("room-error","That room is full.");
-   const token=randToken();r.players[seat]={id:socket.id,name,seat,token,connected:true,ready:false,graceTimer:null};
+   const token=randToken();r.players[seat]={userId:user?.id||null,id:socket.id,name,seat,token,connected:true,ready:false,graceTimer:null};
    socket.data.roomCode=code;socket.data.seat=seat;socket.join(code);socket.emit("seat-assigned",{code,seat,token});emitAll(r)
  });
- socket.on("join-spectator",({name,code})=>{
+ socket.on("join-spectator",({name,code,password}={})=>{
+   if(seated())return socket.emit("room-error","Leave your current room first.");
    code=String(code||"").trim().toUpperCase();const r=rooms.get(code);if(!r)return socket.emit("room-error","Room not found.");
+   if(!roomPasswordMatches(r,password))return socket.emit("room-error","Room password is incorrect.");
    const n=String(name||"Spectator").trim().slice(0,20)||"Spectator";r.spectators.set(socket.id,{name:n});
    socket.data.roomCode=code;socket.data.spectator=true;socket.join(code);socket.emit("spectator-assigned",{code});emitAll(r)
  });
- socket.on("reconnect-player",({roomCode,token})=>{
+ socket.on("reconnect-player",({roomCode,token}={})=>{
+   if(seated())return socket.emit("room-error","Leave your current room first.");
    const code=String(roomCode||"").trim().toUpperCase(),r=rooms.get(code);if(!r)return socket.emit("room-error","Room no longer exists.");
    const seat=r.players.findIndex(p=>p&&p.token===token);if(seat<0)return socket.emit("room-error","Reconnect seat not found.");
-   const p=r.players[seat];if(p.graceTimer){clearTimeout(p.graceTimer);p.graceTimer=null}p.id=socket.id;p.connected=true;
+   const p=r.players[seat];
+   if(p.connected&&p.id!==socket.id)return socket.emit("room-error","That seat is already connected.");
+   if(p.userId!==null&&membership.readUser(socket.handshake.headers)?.id!==p.userId)return socket.emit("room-error","Sign in to the account that owns this seat.");
+   if(p.graceTimer){clearTimeout(p.graceTimer);p.graceTimer=null}p.id=socket.id;p.connected=true;
    socket.data.roomCode=code;socket.data.seat=seat;socket.join(code);socket.emit("reconnect-ok",{code,seat,token});resumeIfPossible(r);emitAll(r)
  });
- socket.on("set-room-options",({mode,target})=>{
+ socket.on("set-room-options",({mode,target}={})=>{
    const r=rooms.get(socket.data.roomCode),seat=socket.data.seat;if(!r||seat!==r.hostSeat||r.phase!=="waiting")return;
    r.mode=mode==="individual"?"individual":"partner";r.target=r.mode==="partner"?6:clampTarget(target);emitAll(r)
  });
@@ -329,12 +368,12 @@ io.on("connection",socket=>{
    const r=rooms.get(socket.data.roomCode),seat=socket.data.seat;if(!r||!Number.isInteger(seat)||r.phase!=="waiting")return;
    const p=r.players[seat];if(!p||!p.connected)return;p.ready=!p.ready;setEvent(r,"ready",`${p.name} is ${p.ready?"ready":"not ready"}.`);startIfReady(r)
  });
- socket.on("play-domino",({tileId,side})=>{
+ socket.on("play-domino",({tileId,side}={})=>{
    const r=rooms.get(socket.data.roomCode),seat=socket.data.seat;if(!r||!Number.isInteger(seat))return;
    const res=playTile(r,seat,tileId,side,false);if(!res.ok)socket.emit("action-error",res.error)
  });
  socket.on("next-hand",()=>{const r=rooms.get(socket.data.roomCode);if(r&&Number.isInteger(socket.data.seat))nextHand(r)});
- socket.on("choose-poser",({seat:chosen})=>{
+ socket.on("choose-poser",({seat:chosen}={})=>{
    const r=rooms.get(socket.data.roomCode),caller=socket.data.seat;if(!r||r.phase!=="choose-poser")return;
    if(!r.poseOptions.includes(caller)||!r.poseOptions.includes(Number(chosen)))return socket.emit("action-error","That poser choice is not allowed.");
    beginHand(r,Number(chosen))
@@ -343,14 +382,14 @@ io.on("connection",socket=>{
    const r=rooms.get(socket.data.roomCode),seat=socket.data.seat;if(!r||r.phase!=="match-over"||!Number.isInteger(seat))return;
    r.rematchVotes.add(seat);r.message=`Rematch votes: ${r.rematchVotes.size}/4`;emitAll(r);
    if(r.rematchVotes.size===4){
-     r.scores=[0,0,0,0];r.teamScores=[0,0];r.bruckStartTeam=null;r.bruckStartCount=0;r.oneOnePlayTwo=false;r.nextPlayFor=1;r.handNo=0;r.tiedCarry=false;r.lastWinnerTeam=null;r.lastIndividualWinner=null;r.rematchVotes.clear();
+     r.matchId=crypto.randomUUID();r.scores=[0,0,0,0];r.teamScores=[0,0];r.bruckStartTeam=null;r.bruckStartCount=0;r.oneOnePlayTwo=false;r.nextPlayFor=1;r.handNo=0;r.tiedCarry=false;r.lastWinnerTeam=null;r.lastIndividualWinner=null;r.rematchVotes.clear();
      r.history=[];r.players.forEach(p=>{if(p)p.ready=false});r.phase="waiting";r.message="Rematch ready. Press READY.";emitAll(r)
    }
  });
  socket.on("leave-room",()=>{
    const r=rooms.get(socket.data.roomCode);if(!r)return;
-   if(socket.data.spectator){r.spectators.delete(socket.id);socket.leave(r.code);emitAll(r);return}
-   const seat=socket.data.seat;if(Number.isInteger(seat))abandonSeat(r,seat);socket.leave(r.code)
+   if(socket.data.spectator){r.spectators.delete(socket.id);socket.leave(r.code);socket.data={};emitAll(r);return}
+   const seat=socket.data.seat;if(Number.isInteger(seat))abandonSeat(r,seat);socket.leave(r.code);socket.data={}
  });
  socket.on("disconnect",()=>{
    const r=rooms.get(socket.data.roomCode);if(!r)return;
@@ -369,5 +408,5 @@ if(require.main===module){
  server.listen(PORT,"0.0.0.0",()=>console.log(`Jamaican Vibes Domino server ready on port ${PORT}.`));
 }
 
-module.exports={server,io,turnSeconds,makeDeck,ends,canPlay,orientLeft,orientRight,applyBruckAndStartWin};
+module.exports={server,io,membership,finishWin,finishBlocked,turnSeconds,makeDeck,ends,canPlay,orientLeft,orientRight,applyBruckAndStartWin};
 // github write test 2026-09-05
