@@ -16,7 +16,12 @@ npm start
 
 Open http://localhost:3000. Create an account through Account & VIP. Save the
 one-time recovery code; email delivery is not integrated. Recovery rotates that
-code and invalidates all existing sign-in sessions. Guests can still play free.
+code and invalidates all existing sign-in sessions, including connected sockets.
+Only one concurrent request can consume a recovery code. Signing out disconnects
+the sockets using that session; other signed-in sessions are unaffected. A seated
+player's game pauses under the existing 90-second reconnect rule. Sign in again
+and use Reconnect to last room to reclaim the account's seat within that window.
+Guests can still play free.
 Accounts are associated with new online rooms after sign-in; an existing guest
 match is not retroactively associated with an account. Only completed online
 matches count toward saved statistics. Single-player results stay local.
@@ -78,3 +83,9 @@ before Join VIP is enabled. If webhook deliveries fail, retry them in Stripe.
 Automated integration tests use simulated Stripe responses with actual SDK
 signature verification. They do not establish that a live Stripe account or
 public deployment has been configured.
+
+Security regression tests force overlapping recovery/login requests and signed
+webhook deliveries, and exercise session revocation and spectator transitions
+over real local Socket.IO connections. Subscription retrieval and persistence are
+serialized per subscription within the required single server process; failed
+syncs remain retryable. Do not run multiple billing/game server processes.

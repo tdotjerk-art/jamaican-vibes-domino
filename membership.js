@@ -8,7 +8,7 @@ const scrypt = promisify(crypto.scrypt);
 const digest = value => crypto.createHash('sha256').update(value).digest('hex');
 const random = () => crypto.randomBytes(32).toString('hex');
 
-function createMembership(app, { dbPath = process.env.DATABASE_PATH || path.join(__dirname, 'data', 'members.sqlite'), stripeClient } = {}) {
+function createMembership(app, { dbPath = process.env.DATABASE_PATH || path.join(__dirname, 'data', 'members.sqlite'), stripeClient, onSessionsRevoked = () => {} } = {}) {
   if (dbPath !== ':memory:') fs.mkdirSync(path.dirname(dbPath), { recursive: true });
   const db = new DatabaseSync(dbPath);
   db.exec(`PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;
@@ -30,10 +30,14 @@ function createMembership(app, { dbPath = process.env.DATABASE_PATH || path.join
   const configured = () => !!(stripe && process.env.STRIPE_VIP_PRICE_ID && process.env.STRIPE_WEBHOOK_SECRET);
   const userById = id => db.prepare('SELECT * FROM users WHERE id=?').get(id);
   const vip = id => !!db.prepare("SELECT 1 FROM subscriptions WHERE user_id=? AND status IN ('active','trialing') AND expires>? LIMIT 1").get(id, Math.floor(Date.now()/1000));
-  const readUser = headers => {
+  const sessionKey = headers => {
     const token = /(?:^|;\s*)jv_session=([a-f0-9]{64})(?:;|$)/.exec(headers.cookie || '')?.[1];
-    if (!token) return null;
-    return db.prepare('SELECT users.* FROM users JOIN sessions ON users.id=sessions.user_id WHERE sessions.token=? AND sessions.expires>?').get(digest(token), Date.now()) || null;
+    return token ? digest(token) : null;
+  };
+  const readUser = headers => {
+    const key = sessionKey(headers);
+    if (!key) return null;
+    return db.prepare('SELECT users.* FROM users JOIN sessions ON users.id=sessions.user_id WHERE sessions.token=? AND sessions.expires>?').get(key, Date.now()) || null;
   };
   const publicUser = u => u ? { id:u.id, name:u.name, email:u.email, vip:vip(u.id), theme:vip(u.id)?u.theme:'classic', hasBilling:!!u.customer } : null;
   const cookie = (res, token, age=2592000) => res.setHeader('Set-Cookie', `jv_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${age}${production?'; Secure':''}`);
@@ -64,21 +68,34 @@ function createMembership(app, { dbPath = process.env.DATABASE_PATH || path.join
     return crypto.timingSafeEqual(key,Buffer.from(hash,'hex'));
   }
   const json = require('express').json({limit:'16kb'});
+  // Rooms and billing run on one process. Serialize retrieval AND persistence so
+  // an older in-flight Stripe response cannot overwrite a newer subscription.
+  const subscriptionSyncs = new Map();
+  async function processEvent(event, id) {
+    const key = id || `event:${event.id}`;
+    const previous = subscriptionSyncs.get(key) || Promise.resolve();
+    const task = previous.catch(() => {}).then(async () => {
+      if(db.prepare('SELECT 1 FROM events WHERE id=?').get(event.id))return;
+      if(id)await syncSubscription(id);
+      db.prepare('INSERT OR IGNORE INTO events VALUES(?,?)').run(event.id,Date.now());
+    });
+    subscriptionSyncs.set(key, task);
+    try { await task; }
+    finally { if(subscriptionSyncs.get(key)===task)subscriptionSyncs.delete(key); }
+  }
   app.use('/api', (_req,res,next)=>{res.set('Cache-Control','no-store');next();});
   app.post('/api/billing/webhook',require('express').raw({type:'application/json',limit:'256kb'}),async(req,res)=>{
     if(!configured())return res.status(503).json({error:'Billing is not connected.'});
     let event;
     try { event=stripe.webhooks.constructEvent(req.body,req.get('Stripe-Signature'),process.env.STRIPE_WEBHOOK_SECRET); }
     catch { return res.status(400).json({error:'Invalid webhook signature.'}); }
-    if(db.prepare('SELECT 1 FROM events WHERE id=?').get(event.id))return res.json({received:true});
     try {
       let id=null;
       if(event.type.startsWith('customer.subscription.'))id=event.data.object.id;
       if(event.type.startsWith('checkout.session.'))id=event.data.object.subscription;
       if(event.type.startsWith('invoice.'))id=event.data.object.subscription || event.data.object.parent?.subscription_details?.subscription;
       // Fetch current state instead of trusting an old event delivered out of order.
-      if(id)await syncSubscription(typeof id==='string'?id:id.id);
-      db.prepare('INSERT OR IGNORE INTO events VALUES(?,?)').run(event.id,Date.now());
+      await processEvent(event, id && (typeof id==='string'?id:id.id));
       res.json({received:true});
     } catch { res.status(502).json({error:'Subscription sync failed. Please retry.'}); }
   });
@@ -108,7 +125,9 @@ function createMembership(app, { dbPath = process.env.DATABASE_PATH || path.join
     if(!validatePassword(req.body.password))return res.status(401).json({error:'Email or password is incorrect.'});
     const u=db.prepare('SELECT * FROM users WHERE email=?').get(String(req.body.email||'').trim().toLowerCase());
     const valid=await checkPassword(req.body.password,u?.password||await dummyHash);
-    if(!u||!valid)return res.status(401).json({error:'Email or password is incorrect.'});
+    // Recovery may have replaced credentials while scrypt was running. There is
+    // no await between this recheck and session insertion.
+    if(!u||!valid||userById(u.id)?.password!==u.password)return res.status(401).json({error:'Email or password is incorrect.'});
     issueSession(res,u);res.json({user:publicUser(u)});
   });
   app.post('/api/recover',sameOrigin,limit,json,async(req,res)=>{
@@ -116,13 +135,23 @@ function createMembership(app, { dbPath = process.env.DATABASE_PATH || path.join
     const u=db.prepare('SELECT * FROM users WHERE email=? AND recovery=?').get(String(req.body.email||'').trim().toLowerCase(),digest(code));
     if(!u||!validatePassword(req.body.password))return res.status(400).json({error:'Check your recovery code, email and new password (12–128 characters).'});
     const recovery=random(), password=await hashPassword(req.body.password);
-    db.prepare('UPDATE users SET password=?, recovery=? WHERE id=?').run(password,digest(recovery),u.id);
-    db.prepare('DELETE FROM sessions WHERE user_id=?').run(u.id);
+    db.exec('BEGIN');
+    try {
+      const updated=db.prepare('UPDATE users SET password=?, recovery=? WHERE id=? AND recovery=?').run(password,digest(recovery),u.id,digest(code));
+      if(!updated.changes){
+        db.exec('ROLLBACK');
+        return res.status(400).json({error:'Check your recovery code, email and new password (12–128 characters).'});
+      }
+      db.prepare('DELETE FROM sessions WHERE user_id=?').run(u.id);
+      db.exec('COMMIT');
+    } catch(error) { db.exec('ROLLBACK');throw error; }
+    onSessionsRevoked({userId:u.id});
     issueSession(res,u);res.json({user:publicUser(userById(u.id)),recoveryCode:recovery});
   });
   app.post('/api/logout',sameOrigin,(req,res)=>{
-    const token=/(?:^|;\s*)jv_session=([a-f0-9]{64})(?:;|$)/.exec(req.headers.cookie||'')?.[1];
-    if(token)db.prepare('DELETE FROM sessions WHERE token=?').run(digest(token));cookie(res,'',0);res.json({ok:true});
+    const token=sessionKey(req.headers);
+    if(token){db.prepare('DELETE FROM sessions WHERE token=?').run(token);onSessionsRevoked({sessionToken:token});}
+    cookie(res,'',0);res.json({ok:true});
   });
   app.get('/api/stats',authenticated,(req,res)=>{
     const totals=db.prepare('SELECT COUNT(*) AS matches, COALESCE(SUM(won),0) AS wins FROM matches WHERE user_id=?').get(req.member.id);
@@ -173,6 +202,6 @@ function createMembership(app, { dbPath = process.env.DATABASE_PATH || path.join
       db.exec('COMMIT');
     }catch(error){db.exec('ROLLBACK');throw error;}
   }
-  return {db,readUser,publicUser,vip,recordMatch};
+  return {db,readUser,sessionKey,publicUser,vip,recordMatch};
 }
 module.exports={createMembership};

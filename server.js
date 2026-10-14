@@ -7,7 +7,14 @@ const {createMembership}=require("./membership");
 const app=express(),server=http.createServer(app),io=new Server(server);
 app.disable("x-powered-by");
 app.set("trust proxy",1);
-const membership=createMembership(app);
+const membership=createMembership(app,{onSessionsRevoked:({userId,sessionToken})=>{
+  for(const socket of io.sockets.sockets.values()){
+    if(userId?socket.accountUserId===userId:membership.sessionKey(socket.handshake.headers)===sessionToken){
+      socket.emit("session-revoked","Your sign-in session ended. Sign in again to reconnect to your seat.");
+      socket.disconnect(true);
+    }
+  }
+}});
 app.use((req,res,next)=>{res.set("X-Content-Type-Options","nosniff");res.set("Referrer-Policy","same-origin");res.set("X-Frame-Options","DENY");next();});
 app.use(express.static("public"));
 app.get("/",(req,res)=>res.sendFile(__dirname + "/index.html"));
@@ -312,8 +319,20 @@ function roomPasswordMatches(room,password){
  if(typeof password!=="string"||password.length>64)return false;
  return crypto.timingSafeEqual(room.password,crypto.createHash("sha256").update(password).digest());
 }
+function leaveSpectatorRole(socket){
+  if(!socket.data.spectator)return;
+  const previous=rooms.get(socket.data.roomCode);
+  if(previous){previous.spectators.delete(socket.id);socket.leave(previous.code);}
+  socket.data={};
+  if(previous)emitAll(previous);
+}
 io.on("connection",socket=>{
+  socket.accountUserId=membership.readUser(socket.handshake.headers)?.id||null;
  socket.use((packet,next)=>{
+    if(socket.accountUserId&&membership.readUser(socket.handshake.headers)?.id!==socket.accountUserId){
+      socket.emit("session-revoked","Your sign-in session ended. Sign in again to reconnect to your seat.");
+      socket.disconnect(true);return;
+    }
    if(!actionAllowed(socket)){socket.emit("action-error","Too many actions. Please slow down.");return;}
    if(packet[1]!==undefined&&(packet[1]===null||typeof packet[1]!=="object"||Array.isArray(packet[1]))){socket.emit("action-error","Invalid action.");return;}
    next();
@@ -327,7 +346,8 @@ io.on("connection",socket=>{
    if(password&&(!user||!membership.vip(user.id)))return socket.emit("room-error","VIP membership is required to host a password-protected room.");
    if(password&&(typeof password!=="string"||password.length<6||password.length>64))return socket.emit("room-error","Room password must have 6–64 characters.");
    name=String(name||"").trim().slice(0,20);if(!name)return socket.emit("room-error","A name is required.");
-   const {room,token}=newRoom(name,mode,target,socket); if(password)room.password=crypto.createHash("sha256").update(password).digest(); if(room.mode==="partner") room.target=6;socket.data.roomCode=room.code;socket.data.seat=0;socket.join(room.code);
+    leaveSpectatorRole(socket);
+    const {room,token}=newRoom(name,mode,target,socket); if(password)room.password=crypto.createHash("sha256").update(password).digest(); if(room.mode==="partner") room.target=6;socket.data.roomCode=room.code;socket.data.seat=0;socket.join(room.code);
    socket.emit("seat-assigned",{code:room.code,seat:0,token});emitAll(room)
  });
  socket.on("join-room",({name,code,password}={})=>{
@@ -340,6 +360,7 @@ io.on("connection",socket=>{
    if(!name)return socket.emit("room-error","A name is required.");
    if(r.phase!=="waiting"&&r.phase!=="paused")return socket.emit("room-error","That game has already started.");
    const seat=r.players.findIndex(p=>!p);if(seat<0)return socket.emit("room-error","That room is full.");
+    leaveSpectatorRole(socket);
    const token=randToken();r.players[seat]={userId:user?.id||null,id:socket.id,name,seat,token,connected:true,ready:false,graceTimer:null};
    socket.data.roomCode=code;socket.data.seat=seat;socket.join(code);socket.emit("seat-assigned",{code,seat,token});emitAll(r)
  });
@@ -347,7 +368,8 @@ io.on("connection",socket=>{
    if(seated())return socket.emit("room-error","Leave your current room first.");
    code=String(code||"").trim().toUpperCase();const r=rooms.get(code);if(!r)return socket.emit("room-error","Room not found.");
    if(!roomPasswordMatches(r,password))return socket.emit("room-error","Room password is incorrect.");
-   const n=String(name||"Spectator").trim().slice(0,20)||"Spectator";r.spectators.set(socket.id,{name:n});
+    leaveSpectatorRole(socket);
+    const n=String(name||"Spectator").trim().slice(0,20)||"Spectator";r.spectators.set(socket.id,{name:n});
    socket.data.roomCode=code;socket.data.spectator=true;socket.join(code);socket.emit("spectator-assigned",{code});emitAll(r)
  });
  socket.on("reconnect-player",({roomCode,token}={})=>{
@@ -357,6 +379,7 @@ io.on("connection",socket=>{
    const p=r.players[seat];
    if(p.connected&&p.id!==socket.id)return socket.emit("room-error","That seat is already connected.");
    if(p.userId!==null&&membership.readUser(socket.handshake.headers)?.id!==p.userId)return socket.emit("room-error","Sign in to the account that owns this seat.");
+    leaveSpectatorRole(socket);
    if(p.graceTimer){clearTimeout(p.graceTimer);p.graceTimer=null}p.id=socket.id;p.connected=true;
    socket.data.roomCode=code;socket.data.seat=seat;socket.join(code);socket.emit("reconnect-ok",{code,seat,token});resumeIfPossible(r);emitAll(r)
  });

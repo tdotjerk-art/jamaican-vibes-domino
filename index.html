@@ -5696,6 +5696,11 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     setConnection('reconnecting','Connecting…');
     sock.on('connect',()=>setConnection('connected','ONLINE • CONNECTED'));
     sock.on('disconnect',()=>setConnection('disconnected','ONLINE • DISCONNECTED'));
+    sock.on('session-revoked',message=>{
+      toast(message);
+      $id('jvSetupStatus').textContent=message;
+      showScreen('jvOnlineSetup');
+    });
     sock.io.on('reconnect_attempt',()=>setConnection('reconnecting','ONLINE • RECONNECTING'));
     sock.io.on('reconnect',()=>{
       setConnection('connected','ONLINE • CONNECTED');
@@ -5940,7 +5945,8 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
   $id('jvReconnect').onclick=()=>{
     try{
       const r=JSON.parse(localStorage.getItem('jvReconnect')||'null');if(!r)return;
-      window.gameConnectionMode='online';roomCode=r.roomCode;myToken=r.token;ensureSocket().emit('reconnect-player',r);
+      window.gameConnectionMode='online';roomCode=r.roomCode;myToken=r.token;
+      const s=ensureSocket();s.disconnect();s.connect();s.emit('reconnect-player',r);
       $id('jvSetupStatus').textContent='Reconnecting…';showScreen('jvOnlineSetup');
     }catch(e){clearReconnect()}
   };
