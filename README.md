@@ -1,4 +1,16 @@
-# Jamaican Vibes Domino V3
+# Jamaican Vibes Domino
+
+## V8 — Accounts and optional VIP
+
+Free play remains available. Accounts save completed online match totals.
+Optional C$9.99/month VIP adds password-protected rooms, table rim designs
+and the last 20 completed matches. Stripe Checkout and Customer Portal are
+integrated; owner payment settings and persistent hosting are required.
+See [LAUNCH.md](LAUNCH.md) for setup and remaining launch checks.
+
+Requires Node 22.13+ (Node 24 recommended).
+
+## Original V3 features
 
 Single-player remains local. Online mode is server-authoritative.
 
@@ -83,7 +95,7 @@ The in-game Rules panel now documents:
 - 90-second disconnect/reconnect pause
 - leaving an active match
 - inactive/AFK behavior
-- 10/12/15-second timer
+- 20 seconds with 4–7 dominoes; 30 seconds with 1–3 dominoes
 - automatic pass
 - server-validated legal moves
 - winning-team poser choice

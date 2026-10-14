@@ -1,0 +1,30 @@
+# Optional configuration for a NEW paid service. Do not apply this to your live
+# service without reviewing hosting charges and migrating existing member data.
+services:
+  - type: web
+    name: jamaican-vibes-domino-memberships
+    runtime: node
+    plan: starter
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: false
+    disk:
+      name: member-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: 24
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_PATH
+        value: /var/data/members.sqlite
+      - key: APP_URL
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_VIP_PRICE_ID
+        sync: false

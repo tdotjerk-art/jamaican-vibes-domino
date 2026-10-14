@@ -4914,7 +4914,7 @@ button.rules-active{
     <li>The hand ends when a player plays their last domino or when the game becomes blocked.</li>
     <li>In a blocked game, all remaining pips are counted. The player with the lowest pip total wins.</li>
     <li>If a blocked game produces a tie across opposing sides, the next hand is worth 2 points and the player holding double-six (6–6) poses.</li>
-    <li>Timer: 10 seconds normally; 12 seconds when you have 3 dominoes left; 15 seconds when you have 2 dominoes left.</li>
+    <li>Timer: 20 seconds with 4–7 dominoes; 30 seconds with 1–3 dominoes.</li>
     <li>If the human player does not make a legal play before the timer expires, the game automatically plays a legal domino.</li>
     <li>After a normal win, the remaining players' dominoes stay hidden. All remaining dominoes are revealed only when the game is blocked.</li>
   
@@ -4923,7 +4923,7 @@ button.rules-active{
 <li><strong>Disconnect / Reconnect:</strong> If an online player loses connection during an active game, the game pauses and that player has up to 90 seconds to reconnect to the same seat and hand.</li>
 <li><strong>Leaving / Forfeit:</strong> A player who deliberately leaves an active online match, or fails to reconnect within the allowed reconnect period, is treated as having left the match. The active match ends rather than allowing another person to take over the player's private hand.</li>
 <li><strong>Inactive Player (AFK):</strong> If a player does not make a move before the turn timer expires, the game may automatically make a legal play for that player. Repeated inactivity can be shown as inactive/AFK so the other players know the player is not responding.</li>
-<li><strong>Turn Timer:</strong> A player normally has 10 seconds to play. With 3 dominoes remaining the player has 12 seconds, and with 2 dominoes remaining the player has 15 seconds.</li>
+<li><strong>Turn Timer:</strong> A player has 20 seconds with 4–7 dominoes remaining, and 30 seconds with 1–3 dominoes remaining.</li>
 <li><strong>Automatic Pass:</strong> If a player has no legal domino, the game automatically passes that player's turn and continues to the next player.</li>
 <li><strong>Legal Moves:</strong> The server validates online moves. A domino must match a legal open end; a player cannot play a domino that is not in that player's hand or play on an illegal end.</li>
 <li><strong>Partner Poser:</strong> After a Partner hand is won, the winning team chooses which of its two partners will pose the next hand. The choice can be changed before it is confirmed.</li>
@@ -5231,7 +5231,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     if(!name || !code){show('Enter your name and room code.');return;}
     window.gameConnectionMode='online';
     hideLegacyJoin();
-    connect().emit('join-room',{name,code});
+    connect().emit('join-room',{name,code,password:document.getElementById('jvRoomPassword')?.value||''});
   };
 
   window.sendOnlineGameEvent=function(type,payload){
@@ -5334,7 +5334,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
       const old=document.getElementById('onlinePlayerJoin'); if(old)old.style.display='none';
       const s=socket();
       if(!s){ document.getElementById('roomStatus').textContent='Connecting…'; return; }
-      s.emit('join-room',{name,code});
+      s.emit('join-room',{name,code,password:document.getElementById('jvRoomPassword')?.value||''});
     };
   }
 
@@ -5394,6 +5394,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
 
   window.applyAuthoritativeOnlineState=function(state){
     onlineState=state;
+    if(state.phase!=='waiting'&&typeof closeModal==='function')closeModal();
     window.authoritativeOnlineState=state;
     mode=state.mode;
     target=state.target;
@@ -5556,6 +5557,8 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
 #jvHistoryPanel{position:fixed;z-index:18000;right:12px;top:90px;width:min(330px,90vw);max-height:58vh;overflow:auto;
  background:rgba(3,28,15,.95);color:#fff;border:2px solid #ffd92f;border-radius:12px;padding:12px;display:none;font-family:Arial,sans-serif}
 #jvHistoryPanel h3{color:#ffd92f;margin:0 0 8px}
+#jvRematchPanel{background:transparent!important;pointer-events:none;}
+#jvRematchPanel .jv-card{pointer-events:auto;}
 #jvScoreBanner{position:fixed;z-index:17500;left:50%;top:72px;transform:translateX(-50%);display:none;
  background:rgba(0,0,0,.82);color:#fff;border:2px solid #ffd92f;border-radius:12px;padding:8px 14px;font:bold 15px Arial,sans-serif}
 #jvTopBar{position:fixed;z-index:17000;right:10px;top:8px;display:none;gap:6px;align-items:center}
@@ -5578,6 +5581,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
       <button class="jv-btn" id="jvOnline">PLAY ONLINE</button>
       <button class="jv-btn secondary" id="jvRules">RULES</button>
       <button class="jv-btn secondary" id="jvSettings">SETTINGS</button>
+      <button class="jv-btn secondary" id="jvAccountOpen">ACCOUNT &amp; VIP</button>
     </div>
     <button class="jv-btn green" id="jvReconnect" style="display:none">RECONNECT TO LAST ROOM</button>
     <p class="jv-small" style="text-align:center;margin-bottom:0">Single Player works locally. Online play supports four players, private hands, reconnecting, ready-up, rematches and spectators.</p>
@@ -5592,6 +5596,8 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     <select class="jv-select" id="jvMode"><option value="partner">Partner — Bruck & Start (6 straight)</option><option value="individual">Individual Game</option></select>
     <select class="jv-select" id="jvTarget"><option value="6">First to 6</option><option value="10">First to 10</option><option value="12">First to 12</option></select>
   </div>
+  <label class="jv-small" for="jvRoomPassword">Room password — VIP hosts only; guests can join free</label>
+  <input class="jv-input" id="jvRoomPassword" type="password" maxlength="64" placeholder="Optional room password (6–64 characters)">
   <button class="jv-btn" id="jvCreate">CREATE ROOM</button>
   <hr style="border-color:#496">
   <input class="jv-input" id="jvCode" maxlength="8" placeholder="Room code">
@@ -5690,6 +5696,11 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     setConnection('reconnecting','Connecting…');
     sock.on('connect',()=>setConnection('connected','ONLINE • CONNECTED'));
     sock.on('disconnect',()=>setConnection('disconnected','ONLINE • DISCONNECTED'));
+    sock.on('session-revoked',message=>{
+      toast(message);
+      $id('jvSetupStatus').textContent=message;
+      showScreen('jvOnlineSetup');
+    });
     sock.io.on('reconnect_attempt',()=>setConnection('reconnecting','ONLINE • RECONNECTING'));
     sock.io.on('reconnect',()=>{
       setConnection('connected','ONLINE • CONNECTED');
@@ -5888,7 +5899,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     $id('jvTopBar').style.display='none';$id('jvScoreBanner').style.display='none';
     if(typeof openSetup==='function')openSetup();
   };
-  $id('jvOnline').onclick=()=>showScreen('jvOnlineSetup');
+  $id('jvOnline').onclick=()=>{if(typeof closeModal==='function')closeModal();showScreen('jvOnlineSetup');};
   $id('jvRules').onclick=()=>{
     const p=$id('gameRulesPanel');if(p)p.style.display='block';
   };
@@ -5901,20 +5912,20 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     if(!name)return toast('Enter your name.');
     $id('jvSetupStatus').textContent='Creating room…';
     window.gameConnectionMode='online';
-    const s=ensureSocket();
-    s.emit('create-room',{name,mode:$id('jvMode').value,target:Number($id('jvTarget').value)});
+    const s=ensureSocket();s.disconnect();s.connect();
+    s.emit('create-room',{name,mode:$id('jvMode').value,target:Number($id('jvTarget').value),password:document.getElementById('jvRoomPassword')?.value||''});
   };
   $id('jvJoin').onclick=()=>{
     const name=$id('jvName').value.trim(),code=$id('jvCode').value.trim().toUpperCase();
     $id('jvCode').value=code;
     if(!name||!code)return toast('Enter your name and room code.');
     $id('jvSetupStatus').textContent='Joining room '+code+'…';
-    window.gameConnectionMode='online';ensureSocket().emit('join-room',{name,code});
+    window.gameConnectionMode='online';const s=ensureSocket();s.disconnect();s.connect();s.emit('join-room',{name,code,password:document.getElementById('jvRoomPassword')?.value||''});
   };
   $id('jvSpectate').onclick=()=>{
     const name=$id('jvName').value.trim()||'Spectator',code=$id('jvCode').value.trim().toUpperCase();
     if(!code)return toast('Enter the room code.');
-    window.gameConnectionMode='online';ensureSocket().emit('join-spectator',{name,code});
+    window.gameConnectionMode='online';const s=ensureSocket();s.disconnect();s.connect();s.emit('join-spectator',{name,code,password:document.getElementById('jvRoomPassword')?.value||''});
   };
   $id('jvReady').onclick=()=>{if(sock)sock.emit('toggle-ready');playSound('ready')};
   $id('jvCopyCode').onclick=async()=>{
@@ -5934,7 +5945,8 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
   $id('jvReconnect').onclick=()=>{
     try{
       const r=JSON.parse(localStorage.getItem('jvReconnect')||'null');if(!r)return;
-      window.gameConnectionMode='online';roomCode=r.roomCode;myToken=r.token;ensureSocket().emit('reconnect-player',r);
+      window.gameConnectionMode='online';roomCode=r.roomCode;myToken=r.token;
+      const s=ensureSocket();s.disconnect();s.connect();s.emit('reconnect-player',r);
       $id('jvSetupStatus').textContent='Reconnecting…';showScreen('jvOnlineSetup');
     }catch(e){clearReconnect()}
   };
@@ -7552,5 +7564,6 @@ window.JamaicanVibesCompleteFeatures={
 })();
 </script>
 
+<script src="/membership-ui.js" defer></script>
 </body>
 </html>
