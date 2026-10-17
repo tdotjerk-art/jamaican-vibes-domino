@@ -2868,6 +2868,8 @@ body.jv-theme-party #jvThemeOverlay{
 }
 </style>
 
+<link rel="stylesheet" href="/mobile-layout.css">
+<script src="/mobile-layout.js"></script>
 </head>
 <body>
 <div id="turnTimer"></div>
@@ -3208,6 +3210,10 @@ function renderPhotoTemplateBoard(){
 
   const W=host.clientWidth;
   const H=host.clientHeight;
+  if(window.JVMobileLayout && matchMedia('(max-width: 1000px) and (pointer: coarse), (max-width: 760px), (max-height: 520px)').matches){
+    window.JVMobileLayout.render(host,board,openingId,tileEl);
+    return;
+  }
   // LOCKED SIZE: played dominoes stay 20% larger for the entire hand.
   // Never shrink dominoes that are already on the table as the chain grows.
   const BASE_HW=Math.min(62,Math.max(28,W*0.105));
@@ -5393,6 +5399,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
   }
 
   window.applyAuthoritativeOnlineState=function(state){
+    if(!isOnline())return;
     onlineState=state;
     window.authoritativeOnlineState=state;
     mode=state.mode;
@@ -5683,7 +5690,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     const setConnection=(kind,text)=>{
       const pill=$id('jvConnectionPill'),label=$id('jvConnectionText');
       if(!pill||!label)return;
-      pill.className='on '+kind;
+      pill.className=(window.gameConnectionMode==='online'?'on ':'')+kind;
       label.textContent=text;
     };
 
@@ -5713,13 +5720,15 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
       spectator=true;roomCode=d.code;mySeat=null;myToken=null;
       showScreen('jvLobby');
     });
-    sock.on('room-state',renderLobby);
+    sock.on('room-state',state=>{if(window.gameConnectionMode==='online')renderLobby(state);});
     sock.on('private-state',state=>{
+      if(window.gameConnectionMode!=='online')return;
       lastState=state;
       if(window.applyAuthoritativeOnlineState)window.applyAuthoritativeOnlineState(state);
       renderGameExtras(state);
     });
     sock.on('spectator-state',state=>{
+      if(window.gameConnectionMode!=='online')return;
       lastState=state; renderSpectatorState(state); renderGameExtras(state);
     });
     sock.on('room-error',msg=>{$id('jvSetupStatus').textContent=msg;toast(msg)});
@@ -5884,7 +5893,12 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
   }
 
   $id('jvSingle').onclick=()=>{
-    window.gameConnectionMode='single';showScreen(null);
+    if(sock)sock.emit('leave-room');
+    clearReconnect();roomCode=null;mySeat=null;myToken=null;spectator=false;lastState=null;
+    window.gameConnectionMode='single';
+    window.authoritativeOnlineState=null;
+    ['onlineWaiting','onlinePoseChoice','jvConnectionPill','jvHistoryPanel'].forEach(id=>{const el=$id(id);if(el)el.style.display='none';});
+    showScreen(null);
     $id('jvTopBar').style.display='none';$id('jvScoreBanner').style.display='none';
     if(typeof openSetup==='function')openSetup();
   };
@@ -5922,6 +5936,8 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
   };
   function leave(){
     if(sock)sock.emit('leave-room');clearReconnect();roomCode=null;mySeat=null;myToken=null;spectator=false;
+    window.gameConnectionMode=null;window.authoritativeOnlineState=null;
+    ['onlineWaiting','onlinePoseChoice','jvConnectionPill'].forEach(id=>{const el=$id(id);if(el)el.style.display='none';});
     $id('jvTopBar').style.display='none';$id('jvScoreBanner').style.display='none';showScreen('jvHome');
   }
   $id('jvLeave').onclick=leave;$id('jvLeaveTop').onclick=leave;$id('jvLeaveAfter').onclick=leave;
@@ -7552,5 +7568,6 @@ window.JamaicanVibesCompleteFeatures={
 })();
 </script>
 
+<script>window.JVMobileLayout.mount();</script>
 </body>
 </html>
