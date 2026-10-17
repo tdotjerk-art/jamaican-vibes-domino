@@ -97,8 +97,11 @@ function applyBruckAndStartWin(r,winnerSeat){
  }
 
  r.oneOnePlayTwo=false;
+ r.doubleSixPoseAfterBruck=true;
+ r.lastWinnerTeam=null;
  r.bruckStartTeam=null;
  r.bruckStartCount=0;
+ r.scores=[0,0,0,0];
  r.teamScores=[0,0];
  r.nextPlayFor=1;
  return {team,count:0,won:false,bruck:true,oneOne:false};
@@ -162,13 +165,13 @@ function finishWin(r,seat){
  let match=-1;
  if(r.mode==="partner"){
    const bs=applyBruckAndStartWin(r,seat);
-   r.lastWinnerTeam=teamOf(seat);
+   r.lastWinnerTeam=bs.bruck?null:teamOf(seat);
    if(bs.oneOne){
      addHistory(r,`${n} makes it ONE-ONE. The next hand plays for 2.`);
    }else if(bs.oneOneResolved){
      addHistory(r,`${n} wins ONE-ONE PLAY TWO. Team ${bs.team===0?"A":"B"} goes 2.`);
    }else if(bs.bruck){
-     addHistory(r,`${n} BRUCKS the game. The score resets and the next hand starts again playing for 1.`);
+     addHistory(r,`${n} BRUCKS the game. The score resets and the next hand starts at 0–0 with the double-six holder posing, playing for 1.`);
    }else{
      addHistory(r,`${n} wins hand ${r.handNo}. Team ${bs.team===0?"A":"B"} goes ${bs.count}.`);
    }
@@ -198,13 +201,13 @@ function finishBlocked(r){
  const n=r.players[winner]?.name||"Player";
  if(r.mode==="partner"){
    const bs=applyBruckAndStartWin(r,winner);
-   r.lastWinnerTeam=teamOf(winner);
+   r.lastWinnerTeam=bs.bruck?null:teamOf(winner);
    if(bs.oneOne){
      addHistory(r,`${n} wins the blocked hand with ${low}, making it ONE-ONE. The next hand plays for 2. Counts: ${counts.join(", ")}.`);
    }else if(bs.oneOneResolved){
      addHistory(r,`${n} wins ONE-ONE PLAY TWO on a blocked hand. Team ${bs.team===0?"A":"B"} goes 2. Counts: ${counts.join(", ")}.`);
    }else if(bs.bruck){
-     addHistory(r,`${n} BRUCKS the game on a blocked hand. The score resets and the next hand plays for 1. Counts: ${counts.join(", ")}.`);
+     addHistory(r,`${n} BRUCKS the game on a blocked hand. The score resets and the next hand starts at 0–0 with the double-six holder posing, playing for 1. Counts: ${counts.join(", ")}.`);
    }else{
      addHistory(r,`${n} wins the blocked hand with ${low}. Team ${bs.team===0?"A":"B"} goes ${bs.count}. Counts: ${counts.join(", ")}.`);
    }
@@ -225,9 +228,12 @@ function beginHand(r,poser=null){
  clearTimer(r);const d=shuffle(makeDeck());r.hands=[d.slice(0,7),d.slice(7,14),d.slice(14,21),d.slice(21,28)];
  r.board=[];r.playSequence=0;r.revealHands=false;r.handNo++;r.handValue=r.tiedCarry?2:(r.mode==="partner"?(r.nextPlayFor||1):1);r.phase="playing";r.poseOptions=[];r.message="";
 
- // FIRST HAND RULE:
+ // FIRST HAND AND BRUCK RESTART RULE:
  // Whoever is dealt double-six poses it automatically, regardless of seat.
- if(r.handNo===1&&!Number.isInteger(poser)){
+ if(r.doubleSixPoseAfterBruck || (r.handNo===1&&!Number.isInteger(poser))){
+   r.doubleSixPoseAfterBruck=false;
+   r.tiedCarry=false;
+   r.handValue=1;
    const holder=r.hands.findIndex(h=>h.some(t=>t.a===6&&t.b===6));
    const idx=r.hands[holder].findIndex(t=>t.a===6&&t.b===6);
    const t=r.hands[holder].splice(idx,1)[0];
@@ -249,7 +255,7 @@ function beginHand(r,poser=null){
 }
 function nextHand(r){
  if(r.phase!=="hand-over")return;
- if(r.tiedCarry){beginHand(r);return}
+ if(r.doubleSixPoseAfterBruck || r.tiedCarry){beginHand(r);return}
  if(r.mode==="partner"&&r.lastWinnerTeam!==null){
    r.phase="choose-poser";r.poseOptions=r.lastWinnerTeam===0?[0,2]:[1,3];r.turn=null;r.message="Winning partners: choose who poses next.";emitAll(r);return
  }
@@ -290,7 +296,7 @@ function newRoom(name,mode,target,socket){
  tiedCarry:false,lastWinnerTeam:null,lastIndividualWinner:null,scores:[0,0,0,0],teamScores:[0,0],phase:"waiting",
  revealHands:false,playSequence:0,timer:null,deadline:0,message:"Waiting for four players to get ready.",poseOptions:[],
  history:[],lastEvent:"",rematchVotes:new Set(),phaseBeforePause:null,turnBeforePause:null,
- bruckStartTeam:null,bruckStartCount:0,oneOnePlayTwo:false,nextPlayFor:1};
+ bruckStartTeam:null,bruckStartCount:0,oneOnePlayTwo:false,doubleSixPoseAfterBruck:false,nextPlayFor:1};
  room.players[0]={id:socket.id,name,seat:0,token,connected:true,ready:false,graceTimer:null};rooms.set(code,room);return {room,token}
 }
 
@@ -343,7 +349,7 @@ io.on("connection",socket=>{
    const r=rooms.get(socket.data.roomCode),seat=socket.data.seat;if(!r||r.phase!=="match-over"||!Number.isInteger(seat))return;
    r.rematchVotes.add(seat);r.message=`Rematch votes: ${r.rematchVotes.size}/4`;emitAll(r);
    if(r.rematchVotes.size===4){
-     r.scores=[0,0,0,0];r.teamScores=[0,0];r.bruckStartTeam=null;r.bruckStartCount=0;r.oneOnePlayTwo=false;r.nextPlayFor=1;r.handNo=0;r.tiedCarry=false;r.lastWinnerTeam=null;r.lastIndividualWinner=null;r.rematchVotes.clear();
+     r.scores=[0,0,0,0];r.teamScores=[0,0];r.bruckStartTeam=null;r.bruckStartCount=0;r.oneOnePlayTwo=false;r.doubleSixPoseAfterBruck=false;r.nextPlayFor=1;r.handNo=0;r.tiedCarry=false;r.lastWinnerTeam=null;r.lastIndividualWinner=null;r.rematchVotes.clear();
      r.history=[];r.players.forEach(p=>{if(p)p.ready=false});r.phase="waiting";r.message="Rematch ready. Press READY.";emitAll(r)
    }
  });
@@ -369,5 +375,5 @@ if(require.main===module){
  server.listen(PORT,"0.0.0.0",()=>console.log(`Jamaican Vibes Domino server ready on port ${PORT}.`));
 }
 
-module.exports={server,io,turnSeconds,makeDeck,ends,canPlay,orientLeft,orientRight,applyBruckAndStartWin};
+module.exports={server,io,turnSeconds,makeDeck,ends,canPlay,orientLeft,orientRight,applyBruckAndStartWin,nextHand,finishWin,finishBlocked};
 // github write test 2026-09-05
