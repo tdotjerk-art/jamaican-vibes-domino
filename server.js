@@ -247,6 +247,14 @@ function beginHand(r,poser=null){
    return
  }
 
+ // Deal and send each player's new hand before the winning partners choose.
+ if(!r.tiedCarry && !Number.isInteger(poser) && r.mode==="partner" && r.lastWinnerTeam!==null){
+   r.phase="choose-poser";r.poseOptions=r.lastWinnerTeam===0?[0,2]:[1,3];r.turn=null;r.deadline=0;
+   r.message="New hand dealt. Winning partners: choose who poses.";
+   addHistory(r,`Hand ${r.handNo} dealt. Winning partners are choosing who poses.`);
+   emitAll(r);return
+ }
+
  if(r.tiedCarry){r.turn=r.hands.findIndex(h=>h.some(t=>t.a===6&&t.b===6));r.tiedCarry=false}
  else if(Number.isInteger(poser))r.turn=poser;
  else if(r.mode==="individual"&&Number.isInteger(r.lastIndividualWinner))r.turn=r.lastIndividualWinner;
@@ -255,11 +263,15 @@ function beginHand(r,poser=null){
 }
 function nextHand(r){
  if(r.phase!=="hand-over")return;
- if(r.doubleSixPoseAfterBruck || r.tiedCarry){beginHand(r);return}
- if(r.mode==="partner"&&r.lastWinnerTeam!==null){
-   r.phase="choose-poser";r.poseOptions=r.lastWinnerTeam===0?[0,2]:[1,3];r.turn=null;r.message="Winning partners: choose who poses next.";emitAll(r);return
- }
  beginHand(r)
+}
+function choosePoser(r,seat){
+ if(r.phase!=="choose-poser" || !r.poseOptions.includes(seat))return;
+ // Keep the hand that was already dealt; choosing a poser must never reshuffle.
+ r.phase="playing";r.poseOptions=[];r.turn=seat;
+ const n=r.players[seat]?.name||`Player ${seat+1}`;
+ addHistory(r,`${n} was chosen to pose hand ${r.handNo}.`);
+ setEvent(r,"poser-chosen",`${n} poses.`);scheduleTurn(r)
 }
 function startIfReady(r){
  if(r.phase!=="waiting")return;
@@ -343,7 +355,7 @@ io.on("connection",socket=>{
  socket.on("choose-poser",({seat:chosen})=>{
    const r=rooms.get(socket.data.roomCode),caller=socket.data.seat;if(!r||r.phase!=="choose-poser")return;
    if(!r.poseOptions.includes(caller)||!r.poseOptions.includes(Number(chosen)))return socket.emit("action-error","That poser choice is not allowed.");
-   beginHand(r,Number(chosen))
+   choosePoser(r,Number(chosen))
  });
  socket.on("rematch-vote",()=>{
    const r=rooms.get(socket.data.roomCode),seat=socket.data.seat;if(!r||r.phase!=="match-over"||!Number.isInteger(seat))return;
@@ -375,5 +387,5 @@ if(require.main===module){
  server.listen(PORT,"0.0.0.0",()=>console.log(`Jamaican Vibes Domino server ready on port ${PORT}.`));
 }
 
-module.exports={server,io,turnSeconds,makeDeck,ends,canPlay,orientLeft,orientRight,applyBruckAndStartWin,nextHand,finishWin,finishBlocked};
+module.exports={server,io,turnSeconds,makeDeck,ends,canPlay,orientLeft,orientRight,applyBruckAndStartWin,nextHand,finishWin,finishBlocked,choosePoser};
 // github write test 2026-09-05
