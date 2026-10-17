@@ -3738,22 +3738,11 @@ function dealHand(first=false){
   handValue=1;
 
   if(mode==='partner' && lastWinnerTeam!==null && !first){
-    // If the 10-second hand-over countdown already selected a poser,
-    // start the new hand immediately with that player.
-    if(Number.isInteger(pendingCountdownPoser)){
-      turn=pendingCountdownPoser;
-      pendingCountdownPoser=null;
-      render();
-      status(`${playerName(turn)} poses.`);
-      if(turn===0){
-        setTimeout(startPoseTimer,0);
-      }else{
-        setTimeout(runTurn,300);
-      }
-      return;
-    }
-
-    // Fallback: use the normal partner-choice rule.
+    // Show the new hand before asking the partners who should pose.
+    pendingCountdownPoser=null;
+    gameOver=true;
+    turn=null;
+    render();
     choosePartnerPose(lastWinnerTeam);
     return;
   }
@@ -3813,6 +3802,7 @@ function choosePartnerPose(team){
       }
       return best;
     };
+    gameOver=false;
     turn=strength(members[1])>strength(members[0])?members[1]:members[0];
     render();
     status(`${playerName(turn)} poses.`);
@@ -3824,8 +3814,9 @@ function choosePartnerPose(team){
   // Player 3 is a computer player, so Player 1 chooses whether
   // Player 1 or Player 3 will pose.
   show(`<h2>Winning partners: choose who poses</h2>
-  <p>Player 1: choose Player 1 or Player 3 to pose next.</p>
+  <p>The new hand has been dealt. Player 1: choose Player 1 or Player 3 to pose next.</p>
   <div class="row">${members.map(p=>`<button onclick="selectPosePlayer(${p},${team})">${playerName(p)}</button>`).join('')}</div>`);
+  $('card').classList.add('partner-pose-choice');
 }
 function selectPosePlayer(p,team){
   pendingPosePlayer=p;
@@ -3835,9 +3826,11 @@ function selectPosePlayer(p,team){
   <div class="row"><button onclick="confirmPartnerPose()">Confirm</button>
   <button class="alt" onclick="selectPosePlayer(${other},${team})">Change to ${playerName(other)}</button>
   <button class="alt" onclick="choosePartnerPose(${team})">Go Back</button></div>`);
+  $('card').classList.add('partner-pose-choice');
 }
 function confirmPartnerPose(){
   if(pendingPosePlayer===null)return;
+  gameOver=false;
   turn=pendingPosePlayer;pendingPosePlayer=null;closeModal();render();
   status(`${playerName(turn)} poses.`);setTimeout(runTurn,250);
 }
@@ -4198,20 +4191,20 @@ function toggleResultPopup(){
 
 function show(x){
   const card=$('card');
-  card.classList.remove('minimized');
+  card.classList.remove('minimized','partner-pose-choice');
   card.innerHTML=`<button class="modal-min-btn" onclick="toggleResultPopup()" aria-label="Minimize popup">—</button>`+x;
   $('modal').classList.remove('result-no-dim');
   $('modal').classList.add('show');
 }
 function showResult(x){
   const card=$('card');
-  card.classList.remove('minimized');
+  card.classList.remove('minimized','partner-pose-choice');
   card.innerHTML=`<button class="modal-min-btn" onclick="toggleResultPopup()" aria-label="Minimize popup">—</button>`+x;
   $('modal').classList.add('result-no-dim');
   $('modal').classList.add('show');
 }
 function closeModal(){
-  $('card').classList.remove('hand-won-top');
+  $('card').classList.remove('hand-won-top','partner-pose-choice');
   $('modal').classList.remove('show');
   $('modal').classList.remove('result-no-dim');
 }
@@ -4304,6 +4297,8 @@ render();openSetup();
   function removePlayerInfo(){
     const wanted=/^(Player\s*[1-4](?:\s*[•·-]\s*YOU)?|Player\s*1\s*•\s*YOU|\d+\s*tiles?)$/i;
     document.querySelectorAll('body *').forEach(el=>{
+      // Player names on real controls must stay visible (including poser choices).
+      if(el.closest('button, a, input, select, textarea'))return;
       if(el.children.length>4) return;
       const own=[...el.childNodes]
         .filter(n=>n.nodeType===3)
@@ -5387,7 +5382,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     const box=document.createElement('div');
     box.id='onlinePoseChoice';
     box.className='online-pose-choice';
-    box.innerHTML='<h3 style="color:#ffd92f;margin-top:0">Choose who poses next</h3><p>Winning partners can choose either partner.</p>';
+    box.innerHTML='<h3 style="color:#ffd92f;margin-top:0">Choose who poses next</h3><p>Your new hand has been dealt. Winning partners can choose either partner.</p>';
     state.poseOptions.forEach(serverSeat=>{
       const b=document.createElement('button');
       const local=s2l(serverSeat);
@@ -6100,50 +6095,6 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     if(notice){notice.style.display='none';notice.textContent='';}
   }
 
-  function setCountdownPoser(p){
-    pendingCountdownPoser=Number(p);
-    const chosen=document.getElementById('jvCountdownPoseChosen');
-    if(chosen)chosen.textContent=playerName(p)+' will pose when the countdown reaches 0.';
-  }
-  window.setCountdownPoser=setCountdownPoser;
-
-  function preparePartnerPoserChoice(){
-    if(typeof mode==='undefined' || mode!=='partner')return;
-    if(typeof tiedCarry!=='undefined' && tiedCarry)return;
-
-    // After a BRUCK there is no winning-partner poser choice.
-    // Whoever receives double-six in the new deal poses automatically.
-    if(typeof doubleSixPoseAfterBruck!=='undefined' && doubleSixPoseAfterBruck){
-      status('BRUCK — next hand will be posed by whoever receives 6–6.');
-      return;
-    }
-    if(typeof lastWinnerTeam==='undefined' || lastWinnerTeam===null)return;
-
-    const members=lastWinnerTeam===0?[0,2]:[1,3];
-
-    // SINGLE PLAYER: P2 + P4 are computers, so the computer chooses immediately.
-    if(window.gameConnectionMode!=='online' && lastWinnerTeam===1){
-      pendingCountdownPoser=members[Math.floor(Math.random()*members.length)];
-      status(`${playerName(pendingCountdownPoser)} was chosen to pose when the countdown reaches 0.`);
-      return;
-    }
-
-    // SINGLE PLAYER: P1 chooses P1 or P3 during the countdown.
-    if(window.gameConnectionMode!=='online' && lastWinnerTeam===0){
-      pendingCountdownPoser=Number.isInteger(lastPartnerWinningPlayer)
-        ? lastPartnerWinningPlayer
-        : members[0];
-
-      show(`<h2>Winning partners: choose who poses</h2>
-        <p>Choose before the 10-second countdown reaches 0.</p>
-        <div class="row">
-          <button onclick="setCountdownPoser(${members[0]})">${playerName(members[0])}</button>
-          <button onclick="setCountdownPoser(${members[1]})">${playerName(members[1])}</button>
-        </div>
-        <p id="jvCountdownPoseChosen"><b>${playerName(pendingCountdownPoser)}</b> will pose if you do not change it.</p>`);
-    }
-  }
-
   function nextHandAction(){
     if(!active)return;
     cancelCountdown();
@@ -6153,7 +6104,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
       if(typeof closeModal==='function')closeModal();
     }catch(e){}
 
-    // dealHand() now uses pendingCountdownPoser and starts immediately.
+    // Deal first; dealHand() then asks the winning partners who should pose.
     if(typeof dealHand==='function')dealHand(false);
   }
 
@@ -6176,8 +6127,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     seconds=10;
     pendingCountdownPoser=null;
 
-    // Give the winning partners their pose decision WHILE the clock is running.
-    preparePartnerPoserChoice();
+    // The countdown ends by dealing; poser selection happens after that deal.
 
     paint();
     paintButton();
@@ -7569,5 +7519,18 @@ window.JamaicanVibesCompleteFeatures={
 </script>
 
 <script>window.JVMobileLayout.mount();</script>
+<style id="jv-partner-pose-choice-style">
+#card.partner-pose-choice{
+ position:fixed !important;top:12px !important;left:50% !important;
+ transform:translateX(-50%) !important;width:min(420px,calc(100vw - 24px)) !important;
+ box-sizing:border-box;background:#082d18 !important;border:2px solid #ffd92f !important;
+ border-radius:12px;padding:12px !important;color:#fff !important;
+ max-height:calc(100dvh - 24px);overflow:auto;pointer-events:auto !important;
+}
+#card.partner-pose-choice h2,#card.partner-pose-choice p{display:block !important;}
+#card.partner-pose-choice .row{display:flex;gap:8px;flex-wrap:wrap;}
+#card.partner-pose-choice button{visibility:visible !important;}
+#modal:has(#card.partner-pose-choice){background:transparent !important;pointer-events:none !important;}
+</style>
 </body>
 </html>
