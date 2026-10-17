@@ -1,0 +1,69 @@
+/* A single phone layout supersedes the older, conflicting screen-fit patches. */
+#jvGameActions{display:flex;align-items:center;justify-content:center;gap:6px;flex:0 0 auto}
+#jvGameActions #jvQuitGameBtn{position:static!important;transform:none!important;translate:none!important;margin:0!important}
+#jvGameActions #jvFeatureToolbar{margin:0;display:flex;gap:5px}
+#jvGameFeedback{display:flex;flex:0 0 auto;flex-wrap:wrap;justify-content:center;gap:4px}
+#jvGameFeedback:empty,#jvGameActions:empty{display:none}
+#jvGameFeedback #onlineWaiting,#jvGameFeedback #jvStreakBadge,#jvGameFeedback #jvCoach,#jvGameFeedback #status{
+ position:static!important;inset:auto!important;transform:none!important;translate:none!important;
+ width:auto!important;min-width:0!important;max-width:100%!important;margin:2px!important;
+ font-size:12px!important;line-height:1.3!important;padding:4px 8px!important;
+}
+@media (max-width:1000px) and (pointer:coarse), (max-width:760px), (max-height:520px){
+ html,body{height:auto!important;min-height:100%;overflow:auto!important}
+ body .app{display:flex!important;flex-direction:column!important;height:auto!important;min-height:100dvh!important;max-height:none!important;overflow:visible!important;padding:4px!important;gap:3px}
+ .app>.brand{display:none!important}
+ .app>header{flex:0 0 auto!important;min-height:24px!important;gap:4px!important;flex-wrap:nowrap!important}
+ .app>header h1{font-size:14px!important;line-height:1.1!important;margin:0!important}
+ .app>header .pill{font-size:10px!important;padding:4px!important;white-space:nowrap}
+ .app>.toolbar{margin:0!important;height:28px!important;justify-content:flex-end!important}
+ .app>.toolbar button{font-size:11px!important;padding:5px 9px!important;min-height:28px!important}
+ .app>#scoreboard{order:2;gap:3px!important;margin:0!important;flex-wrap:nowrap!important}
+ .app>#scoreboard .pill{font-size:10px!important;padding:5px!important;min-height:24px!important;white-space:nowrap}
+ #jvGameActions{order:1;justify-content:flex-start;overflow-x:auto;max-width:100%;min-height:34px}
+ #jvGameActions #jvQuitGameBtn{font-size:11px!important;min-height:32px!important;padding:5px 8px!important;white-space:nowrap;flex:none}
+ #jvGameActions #jvFeatureToolbar{flex-wrap:nowrap;flex:none}
+ #jvGameActions button{font-size:11px!important;min-height:32px!important;padding:5px 8px!important;white-space:nowrap}
+ #jvGameFeedback{order:4;min-height:26px}
+ #jvGameFeedback #status:empty{display:none!important}
+ .app>.table{order:3;flex:1 0 auto!important;min-height:460px!important;height:calc(100dvh - 146px)!important;aspect-ratio:auto!important;margin:0!important;overflow:hidden!important}
+ .table #board{left:44px!important;right:44px!important;top:20%!important;bottom:24%!important;overflow:hidden!important}
+ .table .hand{padding:0!important;gap:3px!important;translate:none!important;overflow:visible!important}
+ .table #hand1{left:50%!important;right:auto!important;top:auto!important;bottom:35px!important;width:calc(100% - 12px)!important;max-width:none!important;transform:translateX(-50%)!important;flex-direction:row!important;flex-wrap:nowrap!important;justify-content:center!important}
+ .table #hand3{left:50%!important;right:auto!important;top:24px!important;bottom:auto!important;max-width:80%!important;transform:translateX(-50%)!important;flex-direction:row!important}
+ .table #hand2,.table #hand4{top:50%!important;bottom:auto!important;max-height:none!important;transform:translateY(-50%)!important;flex-direction:column!important}
+ .table #hand2{left:auto!important;right:5px!important}
+ .table #hand4{left:5px!important;right:auto!important}
+ .table .hand .dom-physical{width:28px!important;height:52px!important;flex:0 0 28px!important;padding:2px!important;transform:none!important}
+ .table .hand .back{width:24px!important;height:42px!important;flex-shrink:0!important}
+ .table #hand2 .back,.table #hand4 .back{width:28px!important;height:16px!important}
+ .table #hand2 .dom-physical,.table #hand4 .dom-physical{width:26px!important;height:47px!important;flex-basis:47px!important}
+ .table .dom-physical .half{min-height:0!important;min-width:0!important;flex:1 1 0!important;height:calc(50% - 1px)!important;overflow:hidden!important}
+ .table .dom-physical .pipgrid{width:100%!important;height:100%!important;max-width:100%!important;max-height:100%!important;padding:1px!important;display:grid!important;grid-template:repeat(3,minmax(0,1fr))/repeat(3,minmax(0,1fr))!important}
+ .table .dom-physical .pip{width:65%!important;height:auto!important;aspect-ratio:1!important;min-width:0!important;min-height:0!important;max-height:100%!important}
+ .table .dom-physical .divider{flex:0 0 1px!important;height:1px!important;min-height:1px!important}
+ .table #contactTicker{bottom:5px!important;width:90%!important;max-width:90%!important;height:22px!important;left:50%!important;transform:translateX(-50%)!important}
+ .table .player{display:block!important;font-size:9px!important;min-width:0!important;max-width:85px!important;padding:2px!important}
+ .table #p1{bottom:92px!important;top:auto!important;left:50%!important;right:auto!important;transform:translateX(-50%)!important}
+ .table #p3{top:3px!important;bottom:auto!important;left:50%!important;right:auto!important;transform:translateX(-50%)!important}
+ .table #p2{top:calc(50% - 85px)!important;bottom:auto!important;right:2px!important;left:auto!important;transform:none!important}
+ .table #p4{top:calc(50% - 85px)!important;bottom:auto!important;left:2px!important;right:auto!important;transform:none!important}
+ .table .player .count{font-size:8px!important}
+ .live-player-name{display:none!important}
+ .table .player-timer{width:28px!important;min-width:28px!important;height:25px!important;font-size:14px!important;border-width:2px!important}
+ .table #timerP1{left:auto!important;right:8px!important;top:auto!important;bottom:94px!important;transform:none!important}
+ .table #timerP3{left:auto!important;right:8px!important;top:5px!important;bottom:auto!important;transform:none!important}
+ .table #timerP2{left:auto!important;right:5px!important;top:calc(50% + 70px)!important;bottom:auto!important;transform:none!important}
+ .table #timerP4{left:5px!important;right:auto!important;top:calc(50% + 70px)!important;bottom:auto!important;transform:none!important}
+ #jvConnectionPill{position:static!important;max-width:100%;font-size:10px!important;margin:3px!important;width:max-content}
+ #jvTopBar,#jvScoreBanner{position:static!important;transform:none!important;translate:none!important;max-width:100%!important;font-size:11px!important}
+ @media(orientation:landscape){
+  .app>.table{min-height:340px!important;height:calc(100dvh - 120px)!important}
+  .table #board{top:58px!important;bottom:94px!important;left:60px!important;right:60px!important}
+  .table #hand3 .back{height:28px!important;width:17px!important}
+  .table #hand1{bottom:28px!important}
+  .table #hand1 .dom-physical{height:48px!important;width:26px!important;flex-basis:26px!important}
+  .table #p1{bottom:78px!important}
+  .table #timerP1{bottom:78px!important}
+ }
+}
