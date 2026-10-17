@@ -67,3 +67,6 @@
   .table #timerP1{bottom:78px!important}
  }
 }
+
+/* Keep the dealt-hand poser choice above floating game controls. */
+#modal:has(#card.partner-pose-choice){z-index:2147483647 !important;}
