@@ -48,7 +48,7 @@ test('local bruck restart poses double-six from every seat without choosing a pa
  const deal=html.slice(html.indexOf('function dealHand('),html.indexOf('\nlet pendingPosePlayer=',html.indexOf('function dealHand(')));
  for(let holder=0;holder<4;holder++){
   const deck=Array.from({length:28},(_,id)=>({id,a:0,b:1}));deck[holder*7]={id:99,a:6,b:6};
-  const ctx={deck,doubleSixPoseAfterBruck:true,pendingCountdownPoser:2,mode:'partner',lastWinnerTeam:0,handNo:4,
+  const ctx={localMatchOver:false,deck,doubleSixPoseAfterBruck:true,pendingCountdownPoser:2,mode:'partner',lastWinnerTeam:0,handNo:4,
    playSequence:0,clearBlockedCounts(){},shuffle:d=>d,makeDeck:()=>deck,render(){},status(){},playerName:p=>`P${p+1}`,
    setTimeout(){},runTurn(){},choosePartnerPose(){throw Error('Bruck must bypass partner selection');}};
   vm.createContext(ctx);vm.runInContext(deal+'\ndealHand(false);',ctx);

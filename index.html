@@ -2945,7 +2945,7 @@ const POS={0:[],1:[5],2:[1,9],3:[1,5,9],4:[1,3,7,9],5:[1,3,5,7,9],6:[1,3,4,6,7,9
 let mode='partner', target=6;
 let hands=[[],[],[],[]], board=[], turn=0;
 let scores=[0,0,0,0]; let revealHands=false;
-let handNo=0, handValue=1, gameOver=true;
+let handNo=0, handValue=1, gameOver=true, localMatchOver=false;
 // OFFLINE PARTNER — BRUCK & START state
 let offlineBruckTeam=null;
 let offlineBruckCount=0;
@@ -3683,6 +3683,7 @@ function offlineBruckMessage(result, winnerPlayer){
 }
 
 function startMatch(){
+  localMatchOver=false;
   target=(mode==='partner')?6:Number($('targetSel').value);
   scores=[0,0,0,0];
   offlineBruckTeam=null;
@@ -3694,6 +3695,7 @@ function startMatch(){
 }
 
 function dealHand(first=false){
+  if(localMatchOver && !first)return;
   selectedHumanIndex=null;
   clearBlockedCounts();
   const d=shuffle(makeDeck());
@@ -4001,6 +4003,7 @@ function runTurn(){
 }
 
 function finishNormalWin(p){
+  if(localMatchOver)return;
   stopTurnTimer();
   gameOver=true;
   // A normal win keeps every opponent's remaining dominoes private.
@@ -4101,6 +4104,7 @@ function showBlockedCounts(counts, message){
 }
 
 function finishBlocked(){
+  if(localMatchOver)return;
   stopTurnTimer();
   gameOver=true;
   revealHands=true;
@@ -4169,6 +4173,8 @@ function checkMatchEnd(){
     const i=scores.findIndex(x=>x>=target);if(i>=0)text=playerName(i);
   }
   if(!text)return false;
+  localMatchOver=true;gameOver=true;
+  stopTurnTimer();stopPoseTimer();renderScores();
   showResult(`<h2>🏆 MATCH WINNER</h2><p><b>${text}</b></p><button onclick="openSetup()">Play Again</button>`);
   return true;
 }
@@ -6136,6 +6142,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
 
   function startCountdown(){
     cancelCountdown();
+    if(localMatchOver)return;
     active=true;
     seconds=10;
     pendingCountdownPoser=null;
@@ -6169,7 +6176,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
 
       // Start the countdown automatically after a completed hand.
       // The visible yellow Next Hand button has been removed.
-      if(typeof gameOver!=='undefined' && gameOver){
+      if(typeof gameOver!=='undefined' && gameOver && !localMatchOver){
         startCountdown();
       }
       return result;
@@ -6183,7 +6190,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
 
       // Start the countdown automatically after a blocked hand.
       // The visible yellow Next Hand button has been removed.
-      if(typeof gameOver!=='undefined' && gameOver){
+      if(typeof gameOver!=='undefined' && gameOver && !localMatchOver){
         startCountdown();
       }
       return result;

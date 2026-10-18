@@ -34,7 +34,7 @@ test('local partners see the newly dealt hand before the poser decision',()=>{
  const deal=html.slice(html.indexOf('function dealHand('),html.indexOf('\nlet pendingPosePlayer=',html.indexOf('function dealHand(')));
  for(const team of [0,1]){
   let rendered=false,chosen=false;
-  const ctx={mode:'partner',lastWinnerTeam:team,handNo:2,playSequence:0,tiedCarry:false,doubleSixPoseAfterBruck:false,pendingCountdownPoser:2,
+  const ctx={localMatchOver:false,mode:'partner',lastWinnerTeam:team,handNo:2,playSequence:0,tiedCarry:false,doubleSixPoseAfterBruck:false,pendingCountdownPoser:2,
    clearBlockedCounts(){},shuffle:d=>d,makeDeck,render(){rendered=true;},
    choosePartnerPose(t){
     chosen=true;assert.equal(t,team);assert.equal(rendered,true);
