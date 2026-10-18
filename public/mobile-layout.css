@@ -69,4 +69,4 @@
 }
 
 /* Keep the dealt-hand poser choice above floating game controls. */
-#modal:has(#card.partner-pose-choice){z-index:2147483647 !important;}
+#modal:has(#card:is(.partner-pose-choice,.domino-end-choice)){z-index:2147483647 !important;}
