@@ -312,6 +312,8 @@ function newRoom(name,mode,target,socket){
  room.players[0]={id:socket.id,name,seat:0,token,connected:true,ready:false,graceTimer:null};rooms.set(code,room);return {room,token}
 }
 
+require("./voice").installVoice(io,rooms);
+
 io.on("connection",socket=>{
  socket.onAny(()=>{if(!actionAllowed(socket))socket.emit("action-error","Too many actions. Please slow down.")});
 

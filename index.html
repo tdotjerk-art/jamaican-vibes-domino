@@ -2871,6 +2871,8 @@ body.jv-theme-party #jvThemeOverlay{
 <link rel="stylesheet" href="/mobile-layout.css">
 <script src="/mobile-layout.js"></script>
 <script src="/domino-input.js"></script>
+<link rel="stylesheet" href="/voice-chat.css">
+<script src="/voice-chat.js"></script>
 </head>
 <body>
 <div id="turnTimer"></div>
@@ -5688,6 +5690,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     if(sock)return sock;
     sock=io();
     window.onlineSocket=sock;
+    window.JVVoice?.attach(sock);
     window.getOnlineSocket=()=>sock;
 
     const setConnection=(kind,text)=>{
@@ -5711,6 +5714,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     });
 
     sock.on('seat-assigned',d=>{
+      closeModal();
       mySeat=d.seat;myToken=d.token;roomCode=d.code;spectator=false;
       window.onlineSeat=mySeat;
       if(window.assignOnlineSeat)window.assignOnlineSeat(mySeat);
@@ -5737,6 +5741,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     sock.on('room-error',msg=>{$id('jvSetupStatus').textContent=msg;toast(msg)});
     sock.on('action-error',msg=>toast(msg));
     sock.on('reconnect-ok',d=>{
+      closeModal();
       mySeat=d.seat;myToken=d.token;roomCode=d.code;spectator=false;saveReconnect();showScreen('jvLobby');toast('Reconnected.');
     });
     return sock;
@@ -5905,7 +5910,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     $id('jvTopBar').style.display='none';$id('jvScoreBanner').style.display='none';
     if(typeof openSetup==='function')openSetup();
   };
-  $id('jvOnline').onclick=()=>showScreen('jvOnlineSetup');
+  $id('jvOnline').onclick=()=>{closeModal();showScreen('jvOnlineSetup');};
   $id('jvRules').onclick=()=>{
     const p=$id('gameRulesPanel');if(p)p.style.display='block';
   };

@@ -1,0 +1,8 @@
+.jv-voice{border:1px solid #ffd92f;border-radius:10px;background:#082d18;color:#fff;padding:8px;box-sizing:border-box;font-family:Arial,sans-serif;max-width:100%;}
+.jv-voice[hidden],.jv-voice [hidden]{display:none!important;}
+.jv-voice strong{margin-right:8px;}.jv-voice [data-voice-status]{font-size:12px;}
+.jv-voice-buttons{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+.jv-voice button{position:static!important;transform:none!important;min-height:36px;padding:7px 10px;border:0;border-radius:6px;background:#ffd92f;color:#111;font-weight:bold;cursor:pointer;touch-action:manipulation;}
+.jv-voice [data-voice-mute][aria-pressed=true]{background:#fff;}.jv-voice small{display:block;margin-top:4px;overflow-wrap:anywhere;}
+#jvVoiceGame{order:2;flex:0 0 auto;width:100%;margin:3px 0;}
+#jvVoiceLobby{margin-top:10px;}
