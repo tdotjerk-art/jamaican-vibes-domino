@@ -2870,6 +2870,7 @@ body.jv-theme-party #jvThemeOverlay{
 
 <link rel="stylesheet" href="/mobile-layout.css">
 <script src="/mobile-layout.js"></script>
+<script src="/domino-input.js"></script>
 </head>
 <body>
 <div id="turnTimer"></div>
@@ -3161,12 +3162,12 @@ function separateFinishedHandsFromPlayedChain(){
 
 function render(){
   for(let i=0;i<4;i++)$('p'+(i+1)).classList.toggle('active',turn===i&&!gameOver);
-  $('hand1').innerHTML='';
-  hands[0].forEach((t,i)=>{
-    const el=tileEl(t,'v',()=>humanChoose(i));
-    if(i===selectedHumanIndex) el.classList.add('selected-domino');
-    $('hand1').appendChild(el);
+  JVDominoInput.renderHand($('hand1'),hands[0],t=>tileEl(t,'v'),id=>{
+    // Resolve the current index: a redraw or previous play can change the hand.
+    const i=hands[0].findIndex(t=>String(t.id)===id);
+    if(i>=0)humanChoose(i);
   });
+  Array.from($('hand1').children).forEach((el,i)=>el.classList.toggle('selected-domino',i===selectedHumanIndex));
   ['hand2','hand3','hand4'].forEach((id,idx)=>{
     $(id).innerHTML='';
     if(revealHands) hands[idx+1].forEach(t=>$(id).appendChild(tileEl(t,'v')));
@@ -3863,6 +3864,7 @@ function humanChoose(i){
         <button onclick="closeModal();humanCommit(${i},'left')">⬅️ Left End</button>
         <button onclick="closeModal();humanCommit(${i},'right')">Right End ➡️</button>
       </div>`);
+    $('card').classList.add('domino-end-choice');
     return;
   }
 
@@ -4191,20 +4193,20 @@ function toggleResultPopup(){
 
 function show(x){
   const card=$('card');
-  card.classList.remove('minimized','partner-pose-choice');
+  card.classList.remove('minimized','partner-pose-choice','domino-end-choice');
   card.innerHTML=`<button class="modal-min-btn" onclick="toggleResultPopup()" aria-label="Minimize popup">—</button>`+x;
   $('modal').classList.remove('result-no-dim');
   $('modal').classList.add('show');
 }
 function showResult(x){
   const card=$('card');
-  card.classList.remove('minimized','partner-pose-choice');
+  card.classList.remove('minimized','partner-pose-choice','domino-end-choice');
   card.innerHTML=`<button class="modal-min-btn" onclick="toggleResultPopup()" aria-label="Minimize popup">—</button>`+x;
   $('modal').classList.add('result-no-dim');
   $('modal').classList.add('show');
 }
 function closeModal(){
-  $('card').classList.remove('hand-won-top','partner-pose-choice');
+  $('card').classList.remove('hand-won-top','partner-pose-choice','domino-end-choice');
   $('modal').classList.remove('show');
   $('modal').classList.remove('result-no-dim');
 }
@@ -5078,7 +5080,8 @@ button.rules-active{
     for(let i=0;i<4;i++){
       const el=document.getElementById('liveNameP'+(i+1));
       if(!el) continue;
-      el.textContent=seatNames[i]||('Player '+(i+1));
+      const name=seatNames[i]||('Player '+(i+1));
+      if(el.textContent!==name)el.textContent=name;
       const r=handRectForPlayer(i);
       if(r){
         if(i===0){ el.style.left=Math.min(vw-120,r.right+8)+'px'; el.style.top=(r.top+r.height/2-10)+'px'; }
@@ -5149,7 +5152,11 @@ button.rules-active{
   };
 
   addEventListener('resize',positionNames);
-  new MutationObserver(function(){requestAnimationFrame(positionNames);})
+  let namesFrame=null;
+  new MutationObserver(function(){
+    if(namesFrame!==null)return;
+    namesFrame=requestAnimationFrame(()=>{namesFrame=null;positionNames();});
+  })
     .observe(document.body,{childList:true,subtree:true});
   requestAnimationFrame(positionNames);
 })();
@@ -5482,9 +5489,10 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     if(!leftLegal&&!rightLegal){ status("That domino can't play."); return; }
     if(leftLegal&&rightLegal){
       show(`<h2>Choose which end</h2><div class="row">
-        <button onclick="closeModal();window.onlinePlaySelected(${JSON.stringify('__ID__')},'left')">⬅️ Left End</button>
-        <button onclick="closeModal();window.onlinePlaySelected(${JSON.stringify('__ID__')},'right')">Right End ➡️</button>
-      </div>`.replaceAll('__ID__',String(t.id)));
+        <button onclick="closeModal();window.onlinePlaySelected(${Number(t.id)},'left')">⬅️ Left End</button>
+        <button onclick="closeModal();window.onlinePlaySelected(${Number(t.id)},'right')">Right End ➡️</button>
+      </div>`);
+      $('card').classList.add('domino-end-choice');
       return;
     }
     socket()?.emit('play-domino',{tileId:t.id,side:leftLegal?'left':'right'});
@@ -7520,17 +7528,17 @@ window.JamaicanVibesCompleteFeatures={
 
 <script>window.JVMobileLayout.mount();</script>
 <style id="jv-partner-pose-choice-style">
-#card.partner-pose-choice{
+#card:is(.partner-pose-choice,.domino-end-choice){
  position:fixed !important;top:12px !important;left:50% !important;
  transform:translateX(-50%) !important;width:min(420px,calc(100vw - 24px)) !important;
  box-sizing:border-box;background:#082d18 !important;border:2px solid #ffd92f !important;
  border-radius:12px;padding:12px !important;color:#fff !important;
  max-height:calc(100dvh - 24px);overflow:auto;pointer-events:auto !important;
 }
-#card.partner-pose-choice h2,#card.partner-pose-choice p{display:block !important;}
-#card.partner-pose-choice .row{display:flex;gap:8px;flex-wrap:wrap;}
-#card.partner-pose-choice button{visibility:visible !important;}
-#modal:has(#card.partner-pose-choice){background:transparent !important;pointer-events:none !important;}
+#card:is(.partner-pose-choice,.domino-end-choice) h2,#card:is(.partner-pose-choice,.domino-end-choice) p{display:block !important;}
+#card:is(.partner-pose-choice,.domino-end-choice) .row{display:flex;gap:8px;flex-wrap:wrap;}
+#card:is(.partner-pose-choice,.domino-end-choice) button{visibility:visible !important;}
+#modal:has(#card:is(.partner-pose-choice,.domino-end-choice)){background:transparent !important;pointer-events:none !important;}
 </style>
 </body>
 </html>
