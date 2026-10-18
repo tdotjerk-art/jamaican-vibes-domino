@@ -2942,7 +2942,7 @@ body.jv-theme-party #jvThemeOverlay{
 const $=id=>document.getElementById(id);
 const POS={0:[],1:[5],2:[1,9],3:[1,5,9],4:[1,3,7,9],5:[1,3,5,7,9],6:[1,3,4,6,7,9]};
 
-let mode='partner', target=6;
+let mode=new URLSearchParams(location.search).get('mode')==='individual'?'individual':'partner', target=6;
 let hands=[[],[],[],[]], board=[], turn=0;
 let scores=[0,0,0,0]; let revealHands=false;
 let handNo=0, handValue=1, gameOver=true, localMatchOver=false;
@@ -2953,6 +2953,7 @@ let offlineOneOnePlayTwo=false;
 let offlineNextPlayFor=1;
 let passStreak=0, tiedCarry=false, doubleSixPoseAfterBruck=false;
 let lastWinnerTeam=null, lastIndividualWinner=null;
+let individualTieRule='double-six-two';
 let lastPartnerWinningPlayer=null;
 let openingId=null, nextTileId=1, playSequence=0;
 
@@ -3437,9 +3438,20 @@ function openSetup(){
     <button id="individualBtn" onclick="setMode('individual')">🧍 Individual</button>
   </div>
   <p><b>Target</b></p>
-  <select id="targetSel"><option value="6">6 points</option><option value="10">10 points</option><option value="20">20 points</option></select>
+  <select id="targetSel"><option value="6">6 points</option></select>
   <p class="small">P1 + P3 are partners. P2 + P4 are partners.</p>
   <button id="startMatchBtn" onclick="startMatch()">Start Match</button>`);
+}
+function showIndividualSetup(){
+  show(`<h2>Individual — First to 6</h2><p>Everyone plays for themselves. Scores carry forward.</p>
+    <label for="individualTieRule">When the lowest counts tie on a blocked hand:</label>
+    <select id="individualTieRule">
+      <option value="double-six-two">Play for 2 — double-six poses</option>
+      <option value="last-winner-one">Play for 1 — previous hand winner poses</option>
+    </select>
+    <button type="button" onclick="startMatch()">Start Individual Game</button>`);
+  $('card').classList.add('individual-setup');
+  $('individualTieRule').value=individualTieRule;
 }
 function setMode(m){mode=m}
 
@@ -3684,7 +3696,9 @@ function offlineBruckMessage(result, winnerPlayer){
 
 function startMatch(){
   localMatchOver=false;
-  target=(mode==='partner')?6:Number($('targetSel').value);
+  const tieChoice=document.getElementById('individualTieRule');
+  if(mode==='individual'&&tieChoice)individualTieRule=tieChoice.value==='last-winner-one'?'last-winner-one':'double-six-two';
+  target=6;
   scores=[0,0,0,0];
   offlineBruckTeam=null;
   offlineBruckCount=0;
@@ -3726,7 +3740,13 @@ function dealHand(first=false){
   }
 
   if(tiedCarry){
-    handValue=2;
+    if(mode==='individual'&&individualTieRule==='last-winner-one'&&Number.isInteger(lastIndividualWinner)){
+      handValue=1;tiedCarry=false;turn=lastIndividualWinner;
+      render();status(`${playerName(turn)} won the previous hand and poses. Play for 1.`);
+      if(turn===0)setTimeout(startPoseTimer,0);else setTimeout(runTurn,300);
+      return;
+    }
+    handValue=mode==='individual'&&individualTieRule==='last-winner-one'?1:2;
     turn=hands.findIndex(h=>h.some(t=>t.a===6&&t.b===6));
     const idx=hands[turn].findIndex(t=>t.a===6&&t.b===6);
     const t=hands[turn].splice(idx,1)[0];
@@ -4023,7 +4043,7 @@ function finishNormalWin(p){
       pendingCountdownPoser=null;
     }
   }else{
-    scores[p]+=pts;lastIndividualWinner=p;
+    scores[p]=Math.min(6,scores[p]+handValue);lastIndividualWinner=p;
   }
 
   render();
@@ -4128,7 +4148,7 @@ function finishBlocked(){
     tiedCarry=true;
     showBlockedCounts(
       counts,
-      'Blocked & tied. Next hand is worth 2 points.'
+      mode==='individual'&&individualTieRule==='last-winner-one'?'Blocked & tied. Previous hand winner poses; next hand plays for 1.':'Blocked & tied. Double-six poses; next hand plays for 2.'
     );
     return;
   }
@@ -4146,7 +4166,7 @@ function finishBlocked(){
       pendingCountdownPoser=null;
     }
   }else{
-    scores[winner]+=handValue;
+    scores[winner]=Math.min(6,scores[winner]+handValue);
     lastIndividualWinner=winner;
   }
 
@@ -4170,7 +4190,8 @@ function checkMatchEnd(){
     if(scores[0]===6)text='Team A (P1 + P3)';
     if(scores[1]===6)text='Team B (P2 + P4)';
   }else{
-    const i=scores.findIndex(x=>x>=target);if(i>=0)text=playerName(i);
+    scores=scores.map(x=>Math.min(6,x));
+    const i=scores.findIndex(x=>x===6);if(i>=0)text=playerName(i);
   }
   if(!text)return false;
   localMatchOver=true;gameOver=true;
@@ -4183,9 +4204,9 @@ function showRules(){
   show(`<h2>🇯🇲 Jamaican Vibes Domino Rules</h2>
   <p><b>Players:</b> Player 1 is you. Player 2 is right. Player 3 is opposite. Player 4 is left.</p>
   <p><b>Partner:</b> P1 + P3 vs P2 + P4. Winning partners choose who poses next.</p>
-  <p><b>Individual:</b> winner of previous hand poses next.</p>
+  <p><b>Individual — First to 6:</b> everyone plays for themselves. A normal hand win adds 1 to that player’s score; the selected blocked-tie rule can make the next hand worth 2. Scores carry forward without a bruck reset. The first player to reach 6 wins. The previous hand’s winner poses next.</p>
   <p><b>End of hand:</b> after a normal win, the remaining dominoes stay hidden.</p><p><b>Blocked:</b> all remaining dominoes are revealed and counted automatically only when the game is blocked. Lowest individual count wins.</p>
-  <p><b>Blocked tie:</b> next hand is worth 2 points; 6–6 holder poses.</p>
+  <p><b>Blocked tie:</b> partner games play the next hand for 2 points. Individual games keep scores unchanged and use the selected version: play for 2 with double-six posing, or play for 1 with the previous hand winner posing.</p>
   <p><b>Pass:</b> automatic. PASS is shown, then play moves to next player.</p>
   <p><b>Layout:</b> the first 10 played dominoes form the center straight. The next domino on each side makes that side's corner by itself, including when it is a double. Then the return row starts. The opening double six begins at the center of the table.</p>
   <button onclick="closeModal()">Back</button>`);
@@ -4201,20 +4222,20 @@ function toggleResultPopup(){
 
 function show(x){
   const card=$('card');
-  card.classList.remove('minimized','partner-pose-choice','domino-end-choice');
+  card.classList.remove('minimized','partner-pose-choice','domino-end-choice','individual-setup');
   card.innerHTML=`<button class="modal-min-btn" onclick="toggleResultPopup()" aria-label="Minimize popup">—</button>`+x;
   $('modal').classList.remove('result-no-dim');
   $('modal').classList.add('show');
 }
 function showResult(x){
   const card=$('card');
-  card.classList.remove('minimized','partner-pose-choice','domino-end-choice');
+  card.classList.remove('minimized','partner-pose-choice','domino-end-choice','individual-setup');
   card.innerHTML=`<button class="modal-min-btn" onclick="toggleResultPopup()" aria-label="Minimize popup">—</button>`+x;
   $('modal').classList.add('result-no-dim');
   $('modal').classList.add('show');
 }
 function closeModal(){
-  $('card').classList.remove('hand-won-top','partner-pose-choice','domino-end-choice');
+  $('card').classList.remove('hand-won-top','partner-pose-choice','domino-end-choice','individual-setup');
   $('modal').classList.remove('show');
   $('modal').classList.remove('result-no-dim');
 }
@@ -4924,7 +4945,7 @@ button.rules-active{
     <li>If you have no legal play, the game automatically passes your turn.</li>
     <li>The hand ends when a player plays their last domino or when the game becomes blocked.</li>
     <li>In a blocked game, all remaining pips are counted. The player with the lowest pip total wins.</li>
-    <li>If a blocked game produces a tie across opposing sides, the next hand is worth 2 points and the player holding double-six (6–6) poses.</li>
+    <li>In a partner game, a blocked tie across opposing sides makes the next hand worth 2 points. In an individual game, a tie leaves all scores unchanged. Choose play for 2 with double-six posing, or play for 1 with the previous hand winner posing.</li>
     <li>Timer: 10 seconds normally; 12 seconds when you have 3 dominoes left; 15 seconds when you have 2 dominoes left.</li>
     <li>If the human player does not make a legal play before the timer expires, the game automatically plays a legal domino.</li>
     <li>After a normal win, the remaining players' dominoes stay hidden. All remaining dominoes are revealed only when the game is blocked.</li>
@@ -4938,7 +4959,8 @@ button.rules-active{
 <li><strong>Automatic Pass:</strong> If a player has no legal domino, the game automatically passes that player's turn and continues to the next player.</li>
 <li><strong>Legal Moves:</strong> The server validates online moves. A domino must match a legal open end; a player cannot play a domino that is not in that player's hand or play on an illegal end.</li>
 <li><strong>Partner Poser:</strong> After a Partner hand is won, the winning team chooses which of its two partners will pose the next hand. The choice can be changed before it is confirmed.</li>
-<li><strong>Blocked Tie:</strong> If a blocked hand is tied across opposing sides, the next hand is worth 2 and the player holding double-six (6-6) poses.</li>
+<li><strong>Individual — First to 6:</strong> every player keeps their own running score. Normal wins add 1 point; choose whether a blocked tie makes the next hand worth 2 with double-six posing, or worth 1 with the previous winner posing. No bruck reset. First to 6 wins.</li>
+<li><strong>Blocked Tie:</strong> no points are awarded for the tie. The next hand is worth 2 in partner mode or 1 in individual mode; the double-six holder poses.</li>
 <li><strong>BRUCK Restart:</strong> After a game is BRUCK, the next hand starts with whoever is dealt double-six (6-6). That player poses the 6-6 automatically.</li>
 <li><strong>Private Hands:</strong> Each player can see only their own hand. Other players' dominoes stay hidden after a normal win and are revealed only when the game is blocked.</li>
 <li><strong>Room / Host:</strong> The room host selects the game mode and available match settings before play. Players must be connected and READY before an online match begins.</li>
@@ -5300,10 +5322,10 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     const roomCode=document.getElementById('roomCode');
     const modeSel=document.createElement('select');
     modeSel.id='onlineModeSelect';
-    modeSel.innerHTML='<option value="partner">Partner — Bruck & Start</option><option value="individual">Individual Game</option>';
+    modeSel.innerHTML='<option value="partner">Partner — Bruck & Start</option><option value="individual">Individual — First to 6</option>';
     const targetSel=document.createElement('select');
     targetSel.id='onlineTargetSelect';
-    targetSel.innerHTML='<option value="6">First to 6</option><option value="10">First to 10</option><option value="12">First to 12</option>';
+    targetSel.innerHTML='<option value="6">First to 6</option>';
     roomCode.parentNode.insertBefore(modeSel,roomCode);
     roomCode.parentNode.insertBefore(targetSel,roomCode);
   }
@@ -5592,7 +5614,8 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
   <div class="jv-card">
     <h1 class="jv-title">JAMAICAN VIBES DOMINO</h1>
     <div class="jv-grid">
-      <button class="jv-btn" id="jvSingle">SINGLE PLAYER</button>
+      <button class="jv-btn" id="jvSingle">SINGLE PLAYER — CHOOSE MODE</button>
+      <button class="jv-btn green" id="jvIndividualSix">PLAY FOR YOURSELF — FIRST TO 6</button>
       <button class="jv-btn" id="jvOnline">PLAY ONLINE</button>
       <button class="jv-btn secondary" id="jvRules">RULES</button>
       <button class="jv-btn secondary" id="jvSettings">SETTINGS</button>
@@ -5607,9 +5630,10 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
   <h2 class="jv-title" style="font-size:30px">ONLINE PLAY</h2>
   <input class="jv-input" id="jvName" maxlength="20" placeholder="Your name">
   <div class="jv-grid">
-    <select class="jv-select" id="jvMode"><option value="partner">Partner — Bruck & Start (6 straight)</option><option value="individual">Individual Game</option></select>
-    <select class="jv-select" id="jvTarget"><option value="6">First to 6</option><option value="10">First to 10</option><option value="12">First to 12</option></select>
+    <select class="jv-select" id="jvMode"><option value="partner">Partner — Bruck & Start (6 straight)</option><option value="individual">Individual — First to 6</option></select>
+    <select class="jv-select" id="jvTarget"><option value="6">First to 6</option></select>
   </div>
+  <select class="jv-select" id="jvTieRule"><option value="double-six-two">Blocked tie: play for 2, double-six poses</option><option value="last-winner-one">Blocked tie: play for 1, previous winner poses</option></select>
   <button class="jv-btn" id="jvCreate">CREATE ROOM</button>
   <hr style="border-color:#496">
   <input class="jv-input" id="jvCode" maxlength="8" placeholder="Room code">
@@ -5842,11 +5866,12 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     const opt=$id('jvLobbyOptions');opt.innerHTML='';
     if(!spectator && state.hostSeat===mySeat && state.phase==='waiting'){
       opt.innerHTML=`<div class="jv-grid">
-       <select class="jv-select" id="jvHostMode"><option value="partner">Partner — Bruck & Start</option><option value="individual">Individual Game</option></select>
-       <select class="jv-select" id="jvHostTarget"><option value="6">First to 6</option><option value="10">First to 10</option><option value="12">First to 12</option></select>
+       <select class="jv-select" id="jvHostMode"><option value="partner">Partner — Bruck & Start</option><option value="individual">Individual — First to 6</option></select>
+       <select class="jv-select" id="jvHostTieRule"><option value="double-six-two">Blocked tie: play for 2, double-six poses</option><option value="last-winner-one">Blocked tie: play for 1, previous winner poses</option></select>
+       <select class="jv-select" id="jvHostTarget"><option value="6">First to 6</option></select>
       </div>`;
-      $id('jvHostMode').value=state.mode;$id('jvHostTarget').value=String(state.target);
-      $id('jvHostMode').onchange=sendOptions;$id('jvHostTarget').onchange=sendOptions;
+      $id('jvHostMode').value=state.mode;$id('jvHostTarget').value=String(state.target);$id('jvHostTieRule').value=state.tieRule||'double-six-two';$id('jvHostTieRule').disabled=state.mode!=='individual';
+      $id('jvHostMode').onchange=sendOptions;$id('jvHostTarget').onchange=sendOptions;$id('jvHostTieRule').onchange=sendOptions;
     }else{
       opt.textContent=(state.mode==='partner'?'Partner':'Individual')+' • First to '+state.target;
       opt.className='jv-small';opt.style.textAlign='center';
@@ -5863,7 +5888,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
 
   function sendOptions(){
     if(!sock)return;
-    sock.emit('set-room-options',{mode:$id('jvHostMode').value,target:Number($id('jvHostTarget').value)});
+    sock.emit('set-room-options',{mode:$id('jvHostMode').value,target:Number($id('jvHostTarget').value),tieRule:$id('jvHostTieRule').value});
   }
 
   function renderGameExtras(state){
@@ -5916,6 +5941,15 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     $id('jvTopBar').style.display='none';$id('jvScoreBanner').style.display='none';
     if(typeof openSetup==='function')openSetup();
   };
+  $id('jvIndividualSix').onclick=()=>{
+    $id('jvSingle').click();
+    setMode('individual');
+    showIndividualSetup();
+  };
+  if(new URLSearchParams(location.search).get('mode')==='individual'){
+    $id('jvMode').value='individual';
+    $id('jvSingle').textContent='INDIVIDUAL SETUP — FIRST TO 6';
+  }
   $id('jvOnline').onclick=()=>{closeModal();showScreen('jvOnlineSetup');};
   $id('jvRules').onclick=()=>{
     const p=$id('gameRulesPanel');if(p)p.style.display='block';
@@ -5930,7 +5964,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     $id('jvSetupStatus').textContent='Creating room…';
     window.gameConnectionMode='online';
     const s=ensureSocket();
-    s.emit('create-room',{name,mode:$id('jvMode').value,target:Number($id('jvTarget').value)});
+    s.emit('create-room',{name,mode:$id('jvMode').value,target:Number($id('jvTarget').value),tieRule:$id('jvTieRule').value});
   };
   $id('jvJoin').onclick=()=>{
     const name=$id('jvName').value.trim(),code=$id('jvCode').value.trim().toUpperCase();
@@ -5984,6 +6018,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
   const mode=document.getElementById('jvMode'), target=document.getElementById('jvTarget');
   function syncBreakStartTarget(){
     if(!mode||!target)return;
+    const tie=document.getElementById('jvTieRule');if(tie)tie.disabled=mode.value!=='individual';
     if(mode.value==='partner'){
       target.value='6';
       target.disabled=true;
@@ -7540,17 +7575,18 @@ window.JamaicanVibesCompleteFeatures={
 
 <script>window.JVMobileLayout.mount();</script>
 <style id="jv-partner-pose-choice-style">
-#card:is(.partner-pose-choice,.domino-end-choice){
+#card:is(.partner-pose-choice,.domino-end-choice,.individual-setup){
  position:fixed !important;top:12px !important;left:50% !important;
  transform:translateX(-50%) !important;width:min(420px,calc(100vw - 24px)) !important;
  box-sizing:border-box;background:#082d18 !important;border:2px solid #ffd92f !important;
  border-radius:12px;padding:12px !important;color:#fff !important;
  max-height:calc(100dvh - 24px);overflow:auto;pointer-events:auto !important;
 }
-#card:is(.partner-pose-choice,.domino-end-choice) h2,#card:is(.partner-pose-choice,.domino-end-choice) p{display:block !important;}
-#card:is(.partner-pose-choice,.domino-end-choice) .row{display:flex;gap:8px;flex-wrap:wrap;}
-#card:is(.partner-pose-choice,.domino-end-choice) button{visibility:visible !important;}
-#modal:has(#card:is(.partner-pose-choice,.domino-end-choice)){background:transparent !important;pointer-events:none !important;}
+#card:is(.partner-pose-choice,.domino-end-choice,.individual-setup) h2,#card:is(.partner-pose-choice,.domino-end-choice,.individual-setup) p{display:block !important;}
+#card:is(.partner-pose-choice,.domino-end-choice,.individual-setup) .row{display:flex;gap:8px;flex-wrap:wrap;}
+#card:is(.partner-pose-choice,.domino-end-choice,.individual-setup) button{visibility:visible !important;}
+#modal:has(#card:is(.partner-pose-choice,.domino-end-choice,.individual-setup)){background:transparent !important;pointer-events:none !important;}
+#card.individual-setup label,#card.individual-setup select{display:block!important;margin:10px 0;width:100%;font-size:16px;}
 </style>
 </body>
 </html>

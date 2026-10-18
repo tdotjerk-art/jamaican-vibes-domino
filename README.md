@@ -146,3 +146,24 @@ Without TURN configuration, voice attempts direct connections using STUN; some
 network combinations will not connect. Do not describe cross-network calling as
 verified until it is tested with real phones on separate networks. The browser
 checks use synthetic microphone audio on local Chromium, not real iPhone microphones.
+
+## Individual — First to 6
+
+Use **Play for yourself — First to 6** for a local game against three computer
+players, or choose **Individual — First to 6** when creating an online room.
+Every player keeps an independent running score. Normal wins are worth one;
+there is no bruck reset or partner poser selection. The first score to reach six
+ends the match, and the display never exceeds six.
+
+Before starting, choose the blocked-tie rule (a tie means two or more players share
+the lowest pip count):
+
+- **Play for 2 — double-six poses:** no points for the tied hand; on the next deal,
+  the double-six holder automatically poses 6–6 and that hand is worth two points.
+- **Play for 1 — previous hand winner poses:** no points for the tied hand; the last
+  player who won a hand poses the next hand, which is worth one point. If the first
+  hand ties before anyone has won, the double-six holder poses for one point.
+
+A two-point win from five finishes at six, keeping the existing score ceiling.
+The host selects the online tie rule before players ready up; it applies to the
+whole room and stays selected for a rematch.
