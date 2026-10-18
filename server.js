@@ -10,7 +10,8 @@ app.get("/health",(req,res)=>res.status(200).send("ok"));
 const rooms=new Map();
 const GRACE_MS=90000;
 
-const clampTarget=n=>[6,10,12].includes(Number(n))?Number(n):6;
+const clampTarget=()=>6;
+const tieRuleOf=value=>value==="last-winner-one"?value:"double-six-two";
 const randCode=()=>crypto.randomBytes(3).toString("hex").toUpperCase();
 const randToken=()=>crypto.randomBytes(24).toString("hex");
 const makeDeck=()=>{let d=[],id=1;for(let a=0;a<=6;a++)for(let b=a;b<=6;b++)d.push({a,b,faceA:a,faceB:b,id:id++});return d};
@@ -31,11 +32,11 @@ const addHistory=(r,s)=>{r.history.push(s);if(r.history.length>60)r.history.shif
 function clearTimer(r){if(r.timer){clearTimeout(r.timer);r.timer=null}}
 function publicPlayers(r){return r.players.map(p=>p?{name:p.name,seat:p.seat,connected:!!p.connected,ready:!!p.ready}:null)}
 function roomState(r){return {
- code:r.code,players:publicPlayers(r),hostSeat:r.hostSeat,mode:r.mode,target:r.target,phase:r.phase,
+ code:r.code,players:publicPlayers(r),hostSeat:r.hostSeat,mode:r.mode,target:r.target,tieRule:tieRuleOf(r.tieRule),phase:r.phase,
  message:r.message||"",spectatorCount:r.spectators.size,rematchVotes:[...r.rematchVotes]
 }}
 function gameBase(r){return {
- code:r.code,players:publicPlayers(r),hostSeat:r.hostSeat,mode:r.mode,target:r.target,phase:r.phase,
+ code:r.code,players:publicPlayers(r),hostSeat:r.hostSeat,mode:r.mode,target:r.target,tieRule:tieRuleOf(r.tieRule),phase:r.phase,
  turn:r.turn,handNo:r.handNo,handValue:r.handValue,board:r.board,handCounts:r.hands.map(h=>h.length),
  revealHands:r.revealHands,scores:r.scores,teamScores:r.teamScores,deadline:r.deadline||0,message:r.message||"",
  poseOptions:r.poseOptions||[],history:r.history,lastEvent:r.lastEvent||"",spectatorCount:r.spectators.size,
@@ -177,9 +178,9 @@ function finishWin(r,seat){
    }
    match=bs.won?bs.team:-1;
  }else{
-   r.scores[seat]+=r.handValue;r.lastIndividualWinner=seat;
+   r.scores[seat]=Math.min(6,r.scores[seat]+r.handValue);r.lastIndividualWinner=seat;
    addHistory(r,`${n} won hand ${r.handNo} for ${r.handValue} point${r.handValue===1?"":"s"}.`);
-   match=r.scores.findIndex(v=>v>=r.target);
+   match=r.scores.findIndex(v=>v>=6);
  }
  if(match>=0){
    r.phase="match-over";r.turn=null;r.rematchVotes.clear();
@@ -195,7 +196,7 @@ function finishBlocked(r){
  if(r.mode==="partner"){const teams=[...new Set(lows.map(teamOf))];tied=teams.length>1;if(!tied)winner=lows[0]}
  else{tied=lows.length>1;if(!tied)winner=lows[0]}
  if(tied){
-   r.tiedCarry=true;r.phase="hand-over";r.turn=null;r.message=`Blocked tie. Next hand is worth 2 points. Counts: ${counts.join(", ")}.`;
+   r.tiedCarry=true;r.phase="hand-over";r.turn=null;r.message=`Blocked tie. Next hand is worth ${r.mode==="individual"&&tieRuleOf(r.tieRule)==="last-winner-one"?1:2} point${r.mode==="individual"&&tieRuleOf(r.tieRule)==="last-winner-one"?"":"s"}. Counts: ${counts.join(", ")}.`;
    addHistory(r,r.message);r.lastEvent="blocked-win";emitAll(r);return
  }
  const n=r.players[winner]?.name||"Player";
@@ -217,7 +218,12 @@ function finishBlocked(r){
      r.lastEvent="match-win";emitAll(r);return
    }
  }else{
-   r.scores[winner]+=r.handValue;r.lastIndividualWinner=winner;
+   r.scores[winner]=Math.min(6,r.scores[winner]+r.handValue);r.lastIndividualWinner=winner;
+   if(r.scores[winner]===6){
+     r.phase="match-over";r.turn=null;r.rematchVotes.clear();
+     r.message=`${n} wins the individual game by reaching 6.`;
+     addHistory(r,r.message);r.lastEvent="match-win";emitAll(r);return
+   }
    addHistory(r,`${n} wins the blocked hand with ${low}. Counts: ${counts.join(", ")}.`);
  }
  r.phase="hand-over";r.turn=null;
@@ -226,14 +232,16 @@ function finishBlocked(r){
 }
 function beginHand(r,poser=null){
  clearTimer(r);const d=shuffle(makeDeck());r.hands=[d.slice(0,7),d.slice(7,14),d.slice(14,21),d.slice(21,28)];
- r.board=[];r.playSequence=0;r.revealHands=false;r.handNo++;r.handValue=r.tiedCarry?2:(r.mode==="partner"?(r.nextPlayFor||1):1);r.phase="playing";r.poseOptions=[];r.message="";
+ r.board=[];r.playSequence=0;r.revealHands=false;r.handNo++;r.handValue=r.mode==="individual"?(r.tiedCarry&&tieRuleOf(r.tieRule)==="double-six-two"?2:1):(r.tiedCarry?2:(r.nextPlayFor||1));r.phase="playing";r.poseOptions=[];r.message="";
 
  // FIRST HAND AND BRUCK RESTART RULE:
  // Whoever is dealt double-six poses it automatically, regardless of seat.
- if(r.doubleSixPoseAfterBruck || (r.handNo===1&&!Number.isInteger(poser))){
+ const freshOpening=r.doubleSixPoseAfterBruck || (r.handNo===1&&!Number.isInteger(poser));
+ const tieDoubleSix=r.tiedCarry && (r.mode!=="individual" || tieRuleOf(r.tieRule)==="double-six-two" || !Number.isInteger(r.lastIndividualWinner));
+ if(freshOpening || tieDoubleSix){
    r.doubleSixPoseAfterBruck=false;
    r.tiedCarry=false;
-   r.handValue=1;
+   if(freshOpening)r.handValue=1;
    const holder=r.hands.findIndex(h=>h.some(t=>t.a===6&&t.b===6));
    const idx=r.hands[holder].findIndex(t=>t.a===6&&t.b===6);
    const t=r.hands[holder].splice(idx,1)[0];
@@ -255,7 +263,7 @@ function beginHand(r,poser=null){
    emitAll(r);return
  }
 
- if(r.tiedCarry){r.turn=r.hands.findIndex(h=>h.some(t=>t.a===6&&t.b===6));r.tiedCarry=false}
+ if(r.tiedCarry){r.turn=r.lastIndividualWinner;r.tiedCarry=false}
  else if(Number.isInteger(poser))r.turn=poser;
  else if(r.mode==="individual"&&Number.isInteger(r.lastIndividualWinner))r.turn=r.lastIndividualWinner;
  else r.turn=0;
@@ -301,9 +309,9 @@ function abandonSeat(r,seat){
  r.hands=[[],[],[],[]];r.board=[];r.turn=null;r.phase="waiting";r.revealHands=false;r.message="A seat opened. Waiting for four ready players.";
  r.players.forEach(x=>{if(x)x.ready=false});emitAll(r)
 }
-function newRoom(name,mode,target,socket){
+function newRoom(name,mode,target,socket,tieRule){
  let code;do code=randCode();while(rooms.has(code));
- const token=randToken(),room={code,mode:mode==="individual"?"individual":"partner",target:clampTarget(target),hostSeat:0,
+ const token=randToken(),room={code,mode:mode==="individual"?"individual":"partner",target:clampTarget(target),tieRule:tieRuleOf(tieRule),hostSeat:0,
  players:[null,null,null,null],spectators:new Map(),hands:[[],[],[],[]],board:[],turn:null,handNo:0,handValue:1,
  tiedCarry:false,lastWinnerTeam:null,lastIndividualWinner:null,scores:[0,0,0,0],teamScores:[0,0],phase:"waiting",
  revealHands:false,playSequence:0,timer:null,deadline:0,message:"Waiting for four players to get ready.",poseOptions:[],
@@ -317,9 +325,9 @@ require("./voice").installVoice(io,rooms);
 io.on("connection",socket=>{
  socket.onAny(()=>{if(!actionAllowed(socket))socket.emit("action-error","Too many actions. Please slow down.")});
 
- socket.on("create-room",({name,mode,target})=>{
+ socket.on("create-room",({name,mode,target,tieRule})=>{
    name=String(name||"").trim().slice(0,20);if(!name)return socket.emit("room-error","A name is required.");
-   const {room,token}=newRoom(name,mode,target,socket); if(room.mode==="partner") room.target=6;socket.data.roomCode=room.code;socket.data.seat=0;socket.join(room.code);
+   const {room,token}=newRoom(name,mode,target,socket,tieRule); if(room.mode==="partner") room.target=6;socket.data.roomCode=room.code;socket.data.seat=0;socket.join(room.code);
    socket.emit("seat-assigned",{code:room.code,seat:0,token});emitAll(room)
  });
  socket.on("join-room",({name,code})=>{
@@ -341,9 +349,9 @@ io.on("connection",socket=>{
    const p=r.players[seat];if(p.graceTimer){clearTimeout(p.graceTimer);p.graceTimer=null}p.id=socket.id;p.connected=true;
    socket.data.roomCode=code;socket.data.seat=seat;socket.join(code);socket.emit("reconnect-ok",{code,seat,token});resumeIfPossible(r);emitAll(r)
  });
- socket.on("set-room-options",({mode,target})=>{
+ socket.on("set-room-options",({mode,target,tieRule})=>{
    const r=rooms.get(socket.data.roomCode),seat=socket.data.seat;if(!r||seat!==r.hostSeat||r.phase!=="waiting")return;
-   r.mode=mode==="individual"?"individual":"partner";r.target=r.mode==="partner"?6:clampTarget(target);emitAll(r)
+   r.mode=mode==="individual"?"individual":"partner";r.target=r.mode==="partner"?6:clampTarget(target);r.tieRule=tieRuleOf(tieRule);emitAll(r)
  });
  socket.on("toggle-ready",()=>{
    const r=rooms.get(socket.data.roomCode),seat=socket.data.seat;if(!r||!Number.isInteger(seat)||r.phase!=="waiting")return;
