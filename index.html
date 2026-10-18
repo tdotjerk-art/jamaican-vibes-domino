@@ -3455,6 +3455,8 @@ function showIndividualSetup(){
 }
 function setMode(m){mode=m}
 
+// Give each computer two seconds to play; return to the human immediately.
+const COMPUTER_MOVE_DELAY_MS=2000;
 const TURN_TIME_SECONDS=20;
 function turnTimeForPlayer(playerIndex){
   const hand = hands && hands[playerIndex];
@@ -3735,7 +3737,7 @@ function dealHand(first=false){
     render();
     status(`BRUCK restart — ${playerName(turn)} has 6–6 and poses.`);
     turn=(turn+1)%4;
-    setTimeout(runTurn,500);
+    setTimeout(runTurn,turn===0?0:COMPUTER_MOVE_DELAY_MS);
     return;
   }
 
@@ -3743,7 +3745,7 @@ function dealHand(first=false){
     if(mode==='individual'&&individualTieRule==='last-winner-one'&&Number.isInteger(lastIndividualWinner)){
       handValue=1;tiedCarry=false;turn=lastIndividualWinner;
       render();status(`${playerName(turn)} won the previous hand and poses. Play for 1.`);
-      if(turn===0)setTimeout(startPoseTimer,0);else setTimeout(runTurn,300);
+      if(turn===0)setTimeout(startPoseTimer,0);else setTimeout(runTurn,turn===0?0:COMPUTER_MOVE_DELAY_MS);
       return;
     }
     handValue=mode==='individual'&&individualTieRule==='last-winner-one'?1:2;
@@ -3756,7 +3758,7 @@ function dealHand(first=false){
     render();
     status(`${playerName(turn)} has 6–6 and poses.`);
     turn=(turn+1)%4;
-    setTimeout(runTurn,500);
+    setTimeout(runTurn,turn===0?0:COMPUTER_MOVE_DELAY_MS);
     return;
   }
 
@@ -3778,7 +3780,7 @@ function dealHand(first=false){
     if(turn===0){
       setTimeout(startPoseTimer,0);
     }else{
-      setTimeout(runTurn,300);
+      setTimeout(runTurn,turn===0?0:COMPUTER_MOVE_DELAY_MS);
     }
     return;
   }
@@ -3793,7 +3795,7 @@ function dealHand(first=false){
     render();
     status(`${playerName(turn)} has 6-6 and poses the first hand.`);
     turn=(turn+1)%4;
-    setTimeout(runTurn,500);
+    setTimeout(runTurn,turn===0?0:COMPUTER_MOVE_DELAY_MS);
     return;
   }
 
@@ -3831,7 +3833,7 @@ function choosePartnerPose(team){
     turn=strength(members[1])>strength(members[0])?members[1]:members[0];
     render();
     status(`${playerName(turn)} poses.`);
-    setTimeout(runTurn,300);
+    setTimeout(runTurn,turn===0?0:COMPUTER_MOVE_DELAY_MS);
     return;
   }
 
@@ -3857,7 +3859,7 @@ function confirmPartnerPose(){
   if(pendingPosePlayer===null)return;
   gameOver=false;
   turn=pendingPosePlayer;pendingPosePlayer=null;closeModal();render();
-  status(`${playerName(turn)} poses.`);setTimeout(runTurn,250);
+  status(`${playerName(turn)} poses.`);setTimeout(runTurn,turn===0?0:COMPUTER_MOVE_DELAY_MS);
 }
 
 function humanChoose(i){
@@ -3915,7 +3917,7 @@ function humanCommit(i,side){
 
   passStreak=0;log(`Player 1 played ${t.a}-${t.b}.`);
   if(!hands[0].length){render();finishNormalWin(0);return}
-  turn=1;render();setTimeout(runTurn,400);
+  turn=1;render();setTimeout(runTurn,turn===0?0:COMPUTER_MOVE_DELAY_MS);
 }
 
 function runTurn(){
@@ -3946,7 +3948,7 @@ function runTurn(){
       setTimeout(()=>{
         render();
         status('Player 2');
-        setTimeout(runTurn,250);
+        setTimeout(runTurn,turn===0?0:COMPUTER_MOVE_DELAY_MS);
       },650);
       return;
     }
@@ -3976,7 +3978,7 @@ function runTurn(){
     }
 
     turn=(turn+1)%4;
-    setTimeout(runTurn,500);
+    setTimeout(runTurn,turn===0?0:COMPUTER_MOVE_DELAY_MS);
     return;
   }
 
@@ -4019,7 +4021,7 @@ function runTurn(){
 
   // IMPORTANT: even when turn returns to Player 1,
   // runTurn must execute so auto-pass can happen.
-  setTimeout(runTurn,450);
+  setTimeout(runTurn,turn===0?0:COMPUTER_MOVE_DELAY_MS);
 }
 
 function finishNormalWin(p){
@@ -7279,7 +7281,7 @@ window.runTurn=function(){
       passStreak++;
       if(hands.every(hand=>!hand.some(t=>canPlay(t)))){finishBlocked();return}
       turn=1;
-      setTimeout(()=>{render();status(window.playerName(1));setTimeout(runTurn,250)},650);
+      setTimeout(()=>{render();status(window.playerName(1));setTimeout(runTurn,turn===0?0:COMPUTER_MOVE_DELAY_MS)},650);
       return;
     }
     status(board.length?'':'');return;
@@ -7293,7 +7295,7 @@ window.runTurn=function(){
     recordReplay({type:'pass',player:p});stats.totalPasses++;persistStats();reactPlayer(p,'pass');
     passStreak++;
     if(hands.every(hand=>!hand.some(t=>canPlay(t)))){finishBlocked();return}
-    turn=(turn+1)%4;setTimeout(runTurn,500);return;
+    turn=(turn+1)%4;setTimeout(runTurn,turn===0?0:COMPUTER_MOVE_DELAY_MS);return;
   }
 
   const choice=chooseAIMove(p,playable),idx=choice.idx;
@@ -7315,7 +7317,7 @@ window.runTurn=function(){
 
   passStreak=0;log(`${window.playerName(p)} played ${t.a}-${t.b}.`);
   if(winning){render();fx('winning');finishNormalWin(p);return}
-  turn=(turn+1)%4;render();setTimeout(runTurn,450);
+  turn=(turn+1)%4;render();setTimeout(runTurn,turn===0?0:COMPUTER_MOVE_DELAY_MS);
 };
 
 /* New-hand wrapper: reset warnings/replay and celebrate the 6-6 pose. */
