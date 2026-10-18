@@ -121,3 +121,28 @@ Recommended deployment flow:
 Important:
 - The free Render service can spin down after inactivity.
 - Active rooms are currently stored in server memory, so a server restart can end active rooms.
+
+## Table voice chat
+
+Seated online players can tap **Join Voice**, allow microphone access, and talk
+with the other players who join voice in the same room (up to four people).
+**Mute mic** silences outgoing audio. **Leave Voice** stops the microphone without
+leaving the game. Leaving the game, closing the page, or losing the socket
+connection stops microphone tracks and peer connections. Spectators are excluded.
+No audio is recorded or stored by this application. Production requires HTTPS;
+localhost works for development. A browser that blocks autoplay shows a
+**Tap to hear players** button.
+
+Voice uses WebRTC, with Socket.IO only carrying room-scoped signaling. For reliable
+connections between mobile networks and restrictive Wi-Fi, configure an authenticated
+TURN service in the host environment:
+
+- `VOICE_TURN_URLS`: comma-separated `turn:` / `turns:` URLs from the provider.
+- Either `VOICE_TURN_USERNAME` + `VOICE_TURN_CREDENTIAL` (provider credentials),
+  or `VOICE_TURN_SECRET` (a coturn-compatible REST shared secret). The shared-secret
+  option generates one-hour credentials and does not send the shared secret to browsers.
+
+Without TURN configuration, voice attempts direct connections using STUN; some
+network combinations will not connect. Do not describe cross-network calling as
+verified until it is tested with real phones on separate networks. The browser
+checks use synthetic microphone audio on local Chromium, not real iPhone microphones.
