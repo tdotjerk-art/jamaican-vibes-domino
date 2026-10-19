@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Jamaican Vibes Domino</title>
+<script src="/sound-settings.js"></script>
 <style>
 :root{
   --gold:#ffd447;
@@ -5665,8 +5666,9 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
 <div id="jvSettingsPanel" class="jv-screen">
  <div class="jv-card">
   <h2 class="jv-title" style="font-size:28px">SETTINGS</h2>
-  <label><input type="checkbox" id="jvSound" checked> Game sounds</label>
-  <p class="jv-small">Sounds include domino placement, pass, hand win and match win. You can turn them off at any time.</p>
+  <label><input type="checkbox" id="jvSound" checked> All game sounds</label>
+  <p class="jv-small">Choose each sound below. Choices save automatically on this device. All game sounds temporarily mutes everything below without changing your individual choices. Live voice uses its own microphone controls.</p>
+  <div id="jvSoundOptions" aria-label="Individual game sounds"></div>
   <button class="jv-btn" id="jvSettingsClose">DONE</button>
  </div>
 </div>
@@ -5777,7 +5779,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
   }
 
   function playSound(kind){
-    if(!soundOn)return;
+    if(!soundOn||!window.JVSound.enabled(kind))return;
     try{
       const AC=window.AudioContext||window.webkitAudioContext,ctx=new AC(),o=ctx.createOscillator(),g=ctx.createGain();
       const map={play:[220,.06],pass:[130,.09],hand:[520,.16],match:[700,.26],ready:[360,.08]};
@@ -6413,6 +6415,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
   }
 
   function playFX(kind){
+    if(!window.JVSound.enabled(kind))return;
     try{
       if(kind==='play'){
         // Short woody "clack".
@@ -6815,6 +6818,7 @@ function isOnline(){
 
 /* ----------------------------- AUDIO ----------------------------- */
 let ac=null;
+let activeSoundKind='play';
 function audioContext(){
   if(!ac){
     const AC=window.AudioContext||window.webkitAudioContext;
@@ -6827,6 +6831,7 @@ function audioContext(){
 D.addEventListener('pointerdown',()=>{try{audioContext(); if(settings.ambience)startAmbience()}catch(e){}},{once:true,passive:true});
 
 function tone(f,d=.08,g=.035,type='triangle',delay=0){
+  if(!window.JVSound.enabled(activeSoundKind))return;
   try{
     const c=audioContext();if(!c)return;
     const t=c.currentTime+delay,o=c.createOscillator(),gn=c.createGain();
@@ -6837,7 +6842,7 @@ function tone(f,d=.08,g=.035,type='triangle',delay=0){
   }catch(e){}
 }
 function noise(duration=.22,gain=.018){
-  if(!settings.crowd)return;
+  if(!window.JVSound.enabled('crowd'))return;
   try{
     const c=audioContext();if(!c)return;
     const len=Math.floor(c.sampleRate*duration);
@@ -6849,6 +6854,7 @@ function noise(duration=.22,gain=.018){
   }catch(e){}
 }
 function fx(kind){
+  activeSoundKind=kind==='winning'?'hand':kind;
   if(kind==='double'){tone(88,.13,.055,'triangle');tone(176,.07,.028,'square',.03)}
   if(kind==='winning'){tone(196,.08,.05,'square');tone(392,.12,.05,'triangle',.07);noise(.28,.022)}
   if(kind==='last'){tone(330,.08,.035);tone(440,.10,.035,'triangle',.09)}
@@ -6859,9 +6865,10 @@ function fx(kind){
 }
 function startAmbience(){
   stopAmbience();
-  if(!settings.ambience)return;
+  if(!window.JVSound.enabled('ambience'))return;
   const tick=()=>{
-    if(!settings.ambience)return;
+    if(!window.JVSound.enabled('ambience'))return;
+    activeSoundKind='ambience';
     // Low-volume off-beat pulse; intentionally no melody/song recording.
     tone(140,.045,.008,'triangle',0);
     tone(210,.035,.006,'triangle',.22);
@@ -6869,6 +6876,11 @@ function startAmbience(){
   tick();ambienceTimer=setInterval(tick,900);
 }
 function stopAmbience(){if(ambienceTimer){clearInterval(ambienceTimer);ambienceTimer=null}}
+window.addEventListener('jv-sound-change',()=>{
+  settings.ambience=window.JVSound.get('ambience');settings.crowd=window.JVSound.get('crowd');
+  saveJSON('jvCompleteSettings',settings);
+  if(window.JVSound.enabled('ambience'))startAmbience();else stopAmbience();
+});
 
 function eventTalk(){/* announcer removed */}
 
@@ -6918,8 +6930,8 @@ function fillSettings(){
   q('jvPersonaP4').value=settings.personas[3];
   q('jvTheme').value=settings.theme;
   q('jvTutorial').checked=!!settings.tutorial;
-  q('jvAmbience').checked=!!settings.ambience;
-  q('jvCrowd').checked=!!settings.crowd;
+  q('jvAmbience').checked=window.JVSound.get('ambience');
+  q('jvCrowd').checked=window.JVSound.get('crowd');
 }
 function readSettings(){
   settings.names=[1,2,3,4].map((n,i)=>(q('jvNameP'+n).value.trim()||DEFAULTS.names[i]).slice(0,20));
