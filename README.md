@@ -6,7 +6,7 @@ Added in V3:
 - Home screen
 - Online lobby with room code
 - Four-player Ready system
-- Host controls for Partner/Individual and target 6/10/12
+- Host controls for Partner/Cut Throat and target 6/10/12
 - 90-second reconnect grace period with seat/token recovery
 - Game pause while a player reconnects
 - Leave Game
@@ -33,7 +33,7 @@ Use a Node host with persistent WebSocket support. Start command: npm start.
 Recommended pre-launch test matrix:
 - 4 real phones/computers
 - create/join/ready
-- Partner and Individual
+- Partner and Cut Throat
 - timer expiry at 4+, 3 and 2 dominoes
 - forced pass / multiple passes
 - blocked win
@@ -147,10 +147,10 @@ network combinations will not connect. Do not describe cross-network calling as
 verified until it is tested with real phones on separate networks. The browser
 checks use synthetic microphone audio on local Chromium, not real iPhone microphones.
 
-## Individual — First to 6
+## Cut Throat — First to 6
 
-Use **Play for yourself — First to 6** for a local game against three computer
-players, or choose **Individual — First to 6** when creating an online room.
+Use **Cut Throat — First to 6** for a local game against three computer
+players, or choose **Cut Throat — First to 6** when creating an online room.
 Every player keeps an independent running score. Normal wins are worth one;
 there is no bruck reset or partner poser selection. The first score to reach six
 ends the match, and the display never exceeds six.

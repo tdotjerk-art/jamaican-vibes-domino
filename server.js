@@ -221,7 +221,7 @@ function finishBlocked(r){
    r.scores[winner]=Math.min(6,r.scores[winner]+r.handValue);r.lastIndividualWinner=winner;
    if(r.scores[winner]===6){
      r.phase="match-over";r.turn=null;r.rematchVotes.clear();
-     r.message=`${n} wins the individual game by reaching 6.`;
+     r.message=`${n} wins the Cut Throat game by reaching 6.`;
      addHistory(r,r.message);r.lastEvent="match-win";emitAll(r);return
    }
    addHistory(r,`${n} wins the blocked hand with ${low}. Counts: ${counts.join(", ")}.`);

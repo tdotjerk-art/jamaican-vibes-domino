@@ -3436,7 +3436,7 @@ function openSetup(){
   <p><b>Mode</b></p>
   <div class="row">
     <button id="partnerBtn" onclick="setMode('partner')">👥 Partner</button>
-    <button id="individualBtn" onclick="setMode('individual')">🧍 Individual</button>
+    <button id="individualBtn" onclick="setMode('individual')">🧍 Cut Throat</button>
   </div>
   <p><b>Target</b></p>
   <select id="targetSel"><option value="6">6 points</option></select>
@@ -3444,13 +3444,13 @@ function openSetup(){
   <button id="startMatchBtn" onclick="startMatch()">Start Match</button>`);
 }
 function showIndividualSetup(){
-  show(`<h2>Individual — First to 6</h2><p>Everyone plays for themselves. Scores carry forward.</p>
+  show(`<h2>Cut Throat — First to 6</h2><p>Everyone plays for themselves. Scores carry forward.</p>
     <label for="individualTieRule">When the lowest counts tie on a blocked hand:</label>
     <select id="individualTieRule">
       <option value="double-six-two">Play for 2 — double-six poses</option>
       <option value="last-winner-one">Play for 1 — previous hand winner poses</option>
     </select>
-    <button type="button" onclick="startMatch()">Start Individual Game</button>`);
+    <button type="button" onclick="startMatch()">Start Cut Throat Game</button>`);
   $('card').classList.add('individual-setup');
   $('individualTieRule').value=individualTieRule;
 }
@@ -4941,7 +4941,7 @@ button.rules-active{
     <li>If you have no legal move, your turn passes automatically. A hand ends when someone plays their last domino or nobody can play.</li>
     <li>After a normal win, other hands stay hidden. When blocked, all remaining dominoes are revealed and their pips counted; the lowest individual count wins.</li>
   </ul>
-  <h3>Individual — play for yourself, first to 6</h3>
+  <h3>Cut Throat — first to 6</h3>
   <ul>
     <li>No partners and no bruck reset. Each player keeps their own running score across hands. For example, 1, 2, 1, 0 stays on the scoreboard as play continues.</li>
     <li>A normal hand win earns 1 point. The previous hand winner poses the next hand. The first player to reach 6 wins; scores never pass 6 and the match stops there.</li>
@@ -5322,7 +5322,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     const roomCode=document.getElementById('roomCode');
     const modeSel=document.createElement('select');
     modeSel.id='onlineModeSelect';
-    modeSel.innerHTML='<option value="partner">Partner — Bruck & Start</option><option value="individual">Individual — First to 6</option>';
+    modeSel.innerHTML='<option value="partner">Partner — Bruck & Start</option><option value="individual">Cut Throat — First to 6</option>';
     const targetSel=document.createElement('select');
     targetSel.id='onlineTargetSelect';
     targetSel.innerHTML='<option value="6">First to 6</option>';
@@ -5615,7 +5615,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     <h1 class="jv-title">JAMAICAN VIBES DOMINO</h1>
     <div class="jv-grid">
       <button class="jv-btn" id="jvSingle">SINGLE PLAYER — CHOOSE MODE</button>
-      <button class="jv-btn green" id="jvIndividualSix">PLAY FOR YOURSELF — FIRST TO 6</button>
+      <button class="jv-btn green" id="jvIndividualSix">CUT THROAT — FIRST TO 6</button>
       <button class="jv-btn" id="jvOnline">PLAY ONLINE</button>
       <button class="jv-btn secondary" id="jvRules">RULES</button>
       <button class="jv-btn secondary" id="jvSettings">SETTINGS</button>
@@ -5630,7 +5630,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
   <h2 class="jv-title" style="font-size:30px">ONLINE PLAY</h2>
   <input class="jv-input" id="jvName" maxlength="20" placeholder="Your name">
   <div class="jv-grid">
-    <select class="jv-select" id="jvMode"><option value="partner">Partner — Bruck & Start (6 straight)</option><option value="individual">Individual — First to 6</option></select>
+    <select class="jv-select" id="jvMode"><option value="partner">Partner — Bruck & Start (6 straight)</option><option value="individual">Cut Throat — First to 6</option></select>
     <select class="jv-select" id="jvTarget"><option value="6">First to 6</option></select>
   </div>
   <select class="jv-select" id="jvTieRule"><option value="double-six-two">Blocked tie: play for 2, double-six poses</option><option value="last-winner-one">Blocked tie: play for 1, previous winner poses</option></select>
@@ -5806,7 +5806,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
       dot.className='jv-dot'+(p&&p.connected?' on':'');
 
       const name=document.createElement('span');
-      const teamLabel=state.mode==='partner'?(i%2===0?'TEAM A':'TEAM B'):'INDIVIDUAL';
+      const teamLabel=state.mode==='partner'?(i%2===0?'TEAM A':'TEAM B'):'CUT THROAT';
       const seatLabel=document.createElement('span');
       seatLabel.className='jv-seat-label';
       seatLabel.textContent='SEAT '+(i+1)+' • '+teamLabel+'  ';
@@ -5852,7 +5852,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
           const partner=(mySeat+2)%4;
           seatInfo.textContent=`You are Seat ${mySeat+1} • ${mySeat%2===0?'Team A':'Team B'} • Your partner is Seat ${partner+1}`;
         }else{
-          seatInfo.textContent=`You are Seat ${mySeat+1} • Individual game`;
+          seatInfo.textContent=`You are Seat ${mySeat+1} • Cut Throat game`;
         }
       }else{
         seatInfo.textContent='';
@@ -5867,14 +5867,14 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     const opt=$id('jvLobbyOptions');opt.innerHTML='';
     if(!spectator && state.hostSeat===mySeat && state.phase==='waiting'){
       opt.innerHTML=`<div class="jv-grid">
-       <select class="jv-select" id="jvHostMode"><option value="partner">Partner — Bruck & Start</option><option value="individual">Individual — First to 6</option></select>
+       <select class="jv-select" id="jvHostMode"><option value="partner">Partner — Bruck & Start</option><option value="individual">Cut Throat — First to 6</option></select>
        <select class="jv-select" id="jvHostTieRule"><option value="double-six-two">Blocked tie: play for 2, double-six poses</option><option value="last-winner-one">Blocked tie: play for 1, previous winner poses</option></select>
        <select class="jv-select" id="jvHostTarget"><option value="6">First to 6</option></select>
       </div>`;
       $id('jvHostMode').value=state.mode;$id('jvHostTarget').value=String(state.target);$id('jvHostTieRule').value=state.tieRule||'double-six-two';$id('jvHostTieRule').disabled=state.mode!=='individual';
       $id('jvHostMode').onchange=sendOptions;$id('jvHostTarget').onchange=sendOptions;$id('jvHostTieRule').onchange=sendOptions;
     }else{
-      opt.textContent=(state.mode==='partner'?'Partner':'Individual')+' • First to '+state.target;
+      opt.textContent=(state.mode==='partner'?'Partner':'Cut Throat')+' • First to '+state.target;
       opt.className='jv-small';opt.style.textAlign='center';
     }
     $id('jvLobbyMessage').textContent=state.message||'';
@@ -5949,7 +5949,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
   };
   if(new URLSearchParams(location.search).get('mode')==='individual'){
     $id('jvMode').value='individual';
-    $id('jvSingle').textContent='INDIVIDUAL SETUP — FIRST TO 6';
+    $id('jvSingle').textContent='CUT THROAT SETUP — FIRST TO 6';
   }
   $id('jvOnline').onclick=()=>{closeModal();showScreen('jvOnlineSetup');};
   $id('jvRules').onclick=()=>{
@@ -7205,7 +7205,7 @@ function renderHistory(){
   matchHistory.slice(0,20).forEach(m=>{
     const d=new Date(m.finished||m.started||Date.now());
     const row=D.createElement('div');row.className='jv-history-row';
-    row.textContent=`${d.toLocaleDateString()} — ${m.mode==='partner'?'Partner':'Individual'} — ${m.winner||'Match'} — ${(m.hands||[]).length} hand${(m.hands||[]).length===1?'':'s'}`;
+    row.textContent=`${d.toLocaleDateString()} — ${m.mode==='partner'?'Partner':'Cut Throat'} — ${m.winner||'Match'} — ${(m.hands||[]).length} hand${(m.hands||[]).length===1?'':'s'}`;
     box.appendChild(row);
   });
   if(isOnline()&&window.authoritativeOnlineState&&Array.isArray(window.authoritativeOnlineState.history)){
