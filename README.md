@@ -167,3 +167,35 @@ the lowest pip count):
 A two-point win from five finishes at six, keeping the existing score ceiling.
 The host selects the online tie rule before players ready up; it applies to the
 whole room and stays selected for a rematch.
+
+
+## Jamaican 3 Cards
+
+Open `/three-cards.html`, or choose **Jamaican 3 Cards** on the home menu.
+This is the owner's rank-matching card game, separate from Domino, without betting.
+Use single-player against computers or create an online table for 2–6 players.
+Online players must each select the same game count (multiples of five) and ready
+up before the host starts. At the end they must unanimously choose the same
+extension to continue with existing scores.
+
+The 52-card deck is shuffled for every game. Highest dealer pick wins (Ace high;
+highest ties repick). Deal three cards each; the next face-up card stays on the
+table. Turning up a 6 or Jack awards the dealer one point per seated player.
+Starting to the dealer's right, match the face-up rank with your own card and play
+one companion card from your hand. That companion is the new rank to match.
+A player can decline; priority rotates right. A last matching card plays alone
+and wins. If the opening card goes unused, the second player to the dealer's
+right draws next. Draws stay face up: the drawer has first choice, then others
+in rotation. Subsequent unused draws advance to the right.
+
+The hand winner gains one and everyone else loses one; the winner deals next.
+Deck exhaustion is a counted draw with no hand points; the dealer keeps any
+bonus and everyone picks again for the next dealer. Positive ending scores are
+winners, negative scores are losses, and zero is even. Full rules are available
+inside the card game.
+
+Online rooms use a separate Socket.IO namespace, server-validated actions, private
+hand views and a browser-held reconnect token. Play pauses while any seat is
+disconnected. All card session state is in memory; process restarts lose it.
+Single-player progress lasts for the current page only. Cross-device/iPhone
+Safari play needs actual-device verification.

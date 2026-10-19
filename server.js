@@ -321,6 +321,7 @@ function newRoom(name,mode,target,socket,tieRule){
 }
 
 require("./voice").installVoice(io,rooms);
+require("./three-cards-online").installThreeCards(io);
 
 io.on("connection",socket=>{
  socket.onAny(()=>{if(!actionAllowed(socket))socket.emit("action-error","Too many actions. Please slow down.")});
@@ -399,3 +400,4 @@ if(require.main===module){
 
 module.exports={server,io,turnSeconds,makeDeck,ends,canPlay,orientLeft,orientRight,applyBruckAndStartWin,nextHand,finishWin,finishBlocked,choosePoser};
 // github write test 2026-09-05
+
