@@ -4203,15 +4203,8 @@ function checkMatchEnd(){
 }
 
 function showRules(){
-  show(`<h2>🇯🇲 Jamaican Vibes Domino Rules</h2>
-  <p><b>Players:</b> Player 1 is you. Player 2 is right. Player 3 is opposite. Player 4 is left.</p>
-  <p><b>Partner:</b> P1 + P3 vs P2 + P4. Winning partners choose who poses next.</p>
-  <p><b>Individual — First to 6:</b> everyone plays for themselves. A normal hand win adds 1 to that player’s score; the selected blocked-tie rule can make the next hand worth 2. Scores carry forward without a bruck reset. The first player to reach 6 wins. The previous hand’s winner poses next.</p>
-  <p><b>End of hand:</b> after a normal win, the remaining dominoes stay hidden.</p><p><b>Blocked:</b> all remaining dominoes are revealed and counted automatically only when the game is blocked. Lowest individual count wins.</p>
-  <p><b>Blocked tie:</b> partner games play the next hand for 2 points. Individual games keep scores unchanged and use the selected version: play for 2 with double-six posing, or play for 1 with the previous hand winner posing.</p>
-  <p><b>Pass:</b> automatic. PASS is shown, then play moves to next player.</p>
-  <p><b>Layout:</b> the first 10 played dominoes form the center straight. The next domino on each side makes that side's corner by itself, including when it is a double. Then the return row starts. The opening double six begins at the center of the table.</p>
-  <button onclick="closeModal()">Back</button>`);
+  const panel=document.getElementById('gameRulesPanel');
+  if(panel)panel.style.display='block';
 }
 
 function toggleResultPopup(){
@@ -4936,41 +4929,45 @@ button.rules-active{
 </script>
 
 
-<div id="gameRulesPanel" style="display:none;position:fixed;z-index:10000;left:50%;top:50%;transform:translate(-50%,-50%);width:min(680px,90vw);max-height:78vh;overflow:auto;background:#082d18;color:white;border:3px solid #ffd92f;border-radius:14px;padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif;">
+<div id="gameRulesPanel" style="display:none;position:fixed;z-index:2147483647;left:50%;top:50%;transform:translate(-50%,-50%);width:min(680px,90vw);max-height:78vh;overflow:auto;background:#082d18;color:white;border:3px solid #ffd92f;border-radius:14px;padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif;">
   <button id="closeGameRules" style="float:right;background:#ffd92f;color:#111;border:0;border-radius:7px;padding:7px 12px;font-weight:900;cursor:pointer;">CLOSE</button>
   <h2 style="color:#ffd92f;margin-top:0;">Jamaican Vibes Domino Rules</h2>
-  <ul style="line-height:1.55;padding-left:22px;">
-    <li>4 players play with 7 dominoes each.</li>
-    <li>Choose Individual or Partner mode. In Partner mode, Player 1 &amp; Player 3 play together against Player 2 &amp; Player 4.</li>
-    <li>A domino must match one of the two open ends of the chain.</li>
-    <li>If your domino can play on either end, you choose which end to play.</li>
-    <li>If you have no legal play, the game automatically passes your turn.</li>
-    <li>The hand ends when a player plays their last domino or when the game becomes blocked.</li>
-    <li>In a blocked game, all remaining pips are counted. The player with the lowest pip total wins.</li>
-    <li>In a partner game, a blocked tie across opposing sides makes the next hand worth 2 points. In an individual game, a tie leaves all scores unchanged. Choose play for 2 with double-six posing, or play for 1 with the previous hand winner posing.</li>
-    <li>Timer: 10 seconds normally; 12 seconds when you have 3 dominoes left; 15 seconds when you have 2 dominoes left.</li>
-    <li>If the human player does not make a legal play before the timer expires, the game automatically plays a legal domino.</li>
-    <li>After a normal win, the remaining players' dominoes stay hidden. All remaining dominoes are revealed only when the game is blocked.</li>
-  
-<li><strong>Bruck &amp; Start (Partner Game):</strong> The first team to <strong>go 6</strong> wins. A team starts by going 1, then 2, 3, and so on. If Team A is on 2 or more and Team B wins a hand, Team B <strong>brucks</strong> the run: the running score is cleared and the next hand starts again playing for 1. Special rule: if Team A goes 1 and Team B wins the next hand, it becomes <strong>one-one</strong>, and the next hand is <strong>ONE-ONE PLAY TWO</strong>. Whoever wins that hand goes 2. Example: A goes 1, B makes it one-one, then the next hand decides which team goes 2.</li>
-<li><strong>Offline play:</strong> The same <strong>Bruck &amp; Start</strong> and <strong>ONE-ONE PLAY TWO</strong> partner rules are used against the computer. Online and offline partner scoring now match.</li>
-<li><strong>Disconnect / Reconnect:</strong> If an online player loses connection during an active game, the game pauses and that player has up to 90 seconds to reconnect to the same seat and hand.</li>
-<li><strong>Leaving / Forfeit:</strong> A player who deliberately leaves an active online match, or fails to reconnect within the allowed reconnect period, is treated as having left the match. The active match ends rather than allowing another person to take over the player's private hand.</li>
-<li><strong>Inactive Player (AFK):</strong> If a player does not make a move before the turn timer expires, the game may automatically make a legal play for that player. Repeated inactivity can be shown as inactive/AFK so the other players know the player is not responding.</li>
-<li><strong>Turn Timer:</strong> A player normally has 10 seconds to play. With 3 dominoes remaining the player has 12 seconds, and with 2 dominoes remaining the player has 15 seconds.</li>
-<li><strong>Automatic Pass:</strong> If a player has no legal domino, the game automatically passes that player's turn and continues to the next player.</li>
-<li><strong>Legal Moves:</strong> The server validates online moves. A domino must match a legal open end; a player cannot play a domino that is not in that player's hand or play on an illegal end.</li>
-<li><strong>Partner Poser:</strong> After a Partner hand is won, the winning team chooses which of its two partners will pose the next hand. The choice can be changed before it is confirmed.</li>
-<li><strong>Individual — First to 6:</strong> every player keeps their own running score. Normal wins add 1 point; choose whether a blocked tie makes the next hand worth 2 with double-six posing, or worth 1 with the previous winner posing. No bruck reset. First to 6 wins.</li>
-<li><strong>Blocked Tie:</strong> no points are awarded for the tie. The next hand is worth 2 in partner mode or 1 in individual mode; the double-six holder poses.</li>
-<li><strong>BRUCK Restart:</strong> After a game is BRUCK, the next hand starts with whoever is dealt double-six (6-6). That player poses the 6-6 automatically.</li>
-<li><strong>Private Hands:</strong> Each player can see only their own hand. Other players' dominoes stay hidden after a normal win and are revealed only when the game is blocked.</li>
-<li><strong>Room / Host:</strong> The room host selects the game mode and available match settings before play. Players must be connected and READY before an online match begins.</li>
-<li><strong>Host Fairness:</strong> A host may manage the room before the match starts, but active-game results and legal moves are controlled by the game server rather than by the host.</li>
-<li><strong>Match History:</strong> Online play keeps a game history showing important events such as plays, passes, hand wins, Brucks, One-One Play Two results, and the final match result.</li>
-<li><strong>Spectators:</strong> Spectators may watch supported online rooms but do not receive players' private hands while a hand is active and cannot make moves.</li>
-<li><strong>Rematch:</strong> After an online match finishes, all four players can vote for a rematch. A rematch resets the match score and starts a new Bruck and Start match.</li>
-</ul>
+  <div data-rulebook-version="2026-10-19">
+  <h3>Playing a hand</h3>
+  <ul>
+    <li>Four players receive seven dominoes each. Player 1 is you, Player 2 is right, Player 3 is opposite, and Player 4 is left.</li>
+    <li>The double-six holder poses 6-6 to open a new match. Match a domino to either open end. If both ends are legal, choose the end you want.</li>
+    <li>If you have no legal move, your turn passes automatically. A hand ends when someone plays their last domino or nobody can play.</li>
+    <li>After a normal win, other hands stay hidden. When blocked, all remaining dominoes are revealed and their pips counted; the lowest individual count wins.</li>
+  </ul>
+  <h3>Individual — play for yourself, first to 6</h3>
+  <ul>
+    <li>No partners and no bruck reset. Each player keeps their own running score across hands. For example, 1, 2, 1, 0 stays on the scoreboard as play continues.</li>
+    <li>A normal hand win earns 1 point. The previous hand winner poses the next hand. The first player to reach 6 wins; scores never pass 6 and the match stops there.</li>
+    <li><strong>Blocked tie:</strong> when two or more players share the lowest pip count, nobody receives points. Select one of these two versions before play:</li>
+    <li><strong>Play for 2 — double-six poses:</strong> the next hand is worth 2 points, and whoever is dealt double-six poses 6-6. Repeated ties keep the next hand worth 2; they do not increase it further.</li>
+    <li><strong>Play for 1 — previous winner poses:</strong> the next hand is worth 1 point, and the last winner before the tied hand poses. If no hand has been won yet, double-six poses for 1.</li>
+    <li>After a winner, the following hand returns to 1 point unless another blocked tie occurs.</li>
+  </ul>
+  <h3>Partners — Bruck &amp; Start, first to 6</h3>
+  <ul>
+    <li>Player 1 and Player 3 are partners against Player 2 and Player 4. The first team to reach 6 wins, with no score above 6.</li>
+    <li><strong>Choose who poses after the deal:</strong> after an ordinary winning hand, shuffle and deal the next hand first. Then the winning partners choose which partner will pose, using those newly dealt hands. Confirming the choice does not reshuffle or redeal.</li>
+    <li><strong>One-one play two:</strong> if one team goes 1 and the other wins the next hand, it is one-one. The next hand plays for 2; the winning team goes 2.</li>
+    <li><strong>BRUCK restart:</strong> if a team has a run of 2 or more and the other team wins, everybody goes back to zero. The next hand plays for 1. Whoever receives double-six automatically poses 6-6; the partners do not choose the poser for this restart.</li>
+    <li><strong>Blocked tie across opposing teams:</strong> no points are awarded. The next hand plays for 2 and double-six poses. A blocked hand is not automatically a bruck.</li>
+    <li>The same partner scoring applies online and against computer players.</li>
+  </ul>
+  <h3>Time, chat and online play</h3>
+  <ul>
+    <li><strong>Turn timer:</strong> 20 seconds with 4–7 dominoes; 30 seconds with 1–3 dominoes. When time expires, a legal domino is played automatically.</li>
+    <li><strong>Computer pace:</strong> computer players pause about 2 seconds before a move. Your turn starts immediately when play returns to you.</li>
+    <li><strong>Live voice:</strong> seated players can tap Join Voice and allow their microphone to talk with the other players. Use Mute or Leave Voice whenever you want.</li>
+    <li>The host selects the mode and tie version before an online match. All four players must be ready. The server validates moves and keeps each player's hand private.</li>
+    <li>After a connection loss during an active match, the game pauses for up to 90 seconds for reconnection to the same seat and hand. Leaving deliberately or failing to reconnect ends the active match.</li>
+    <li>After the match, all four players can vote for a rematch. A rematch starts a new match in the selected mode with scores reset.</li>
+  </ul>
+  </div>
 </div>
 
 <script>
