@@ -3884,7 +3884,7 @@ function humanChoose(i){
     return;
   }
 
-  if(leftLegal && rightLegal){
+  if(leftLegal && rightLegal && L!==R){
     show(`<h2>Choose which end</h2>
       <p>This domino can play on both ends.</p>
       <div class="row">
@@ -4937,7 +4937,7 @@ button.rules-active{
   <h3>Playing a hand</h3>
   <ul>
     <li>Four players receive seven dominoes each. Player 1 is you, Player 2 is right, Player 3 is opposite, and Player 4 is left.</li>
-    <li>The double-six holder poses 6-6 to open a new match. Match a domino to either open end. If both ends are legal, choose the end you want.</li>
+    <li>The double-six holder poses 6-6 to open a new match. Match a domino to either open end. If both open ends show the same number, your domino is placed automatically. If the ends differ and your domino fits both, choose the end you want.</li>
     <li>If you have no legal move, your turn passes automatically. A hand ends when someone plays their last domino or nobody can play.</li>
     <li>After a normal win, other hands stay hidden. When blocked, all remaining dominoes are revealed and their pips counted; the lowest individual count wins.</li>
   </ul>
@@ -5517,7 +5517,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     const leftLegal=(t.a===L||t.b===L);
     const rightLegal=(t.a===R||t.b===R);
     if(!leftLegal&&!rightLegal){ status("That domino can't play."); return; }
-    if(leftLegal&&rightLegal){
+    if(leftLegal&&rightLegal&&L!==R){
       show(`<h2>Choose which end</h2><div class="row">
         <button onclick="closeModal();window.onlinePlaySelected(${Number(t.id)},'left')">⬅️ Left End</button>
         <button onclick="closeModal();window.onlinePlaySelected(${Number(t.id)},'right')">Right End ➡️</button>
