@@ -37,7 +37,7 @@ test('session stops at agreed count, can extend by multiples of five without res
 });
 test('view excludes other hands, deck, choice queue and dealer-pick deck',()=>{const g=fixture([[c(8)],[c(7,'♥')],[c(10)]]),v=g.view(0);assert.equal(v.players[0].hand.length,1);assert.deepEqual(v.players[1].hand,[]);for(const key of ['stock','queue','pickDeck'])assert.equal(v[key],undefined);});
 test('many complete hands preserve cards and apply only specified points',()=>{
- for(let n=2;n<=6;n++){const g=new Game(Array.from({length:n},(_,i)=>'P'+i),5);let actions=0;
+ for(let n=2;n<=4;n++){const g=new Game(Array.from({length:n},(_,i)=>'P'+i),5);let actions=0;
   while(g.phase!=='session-over'&&actions++<5000){
    if(g.phase==='pick'){const seat=g.pickSeats.find(i=>!g.picks[i]);g.pick(seat);}
    else if(g.phase==='deal')g.deal(g.dealer);
@@ -49,3 +49,5 @@ test('many complete hands preserve cards and apply only specified points',()=>{
   assert.equal(g.phase,'session-over');assert.equal(g.completed,5);assert(actions<5000);
  }
 });
+
+test('tables accept four players and reject a fifth',()=>{assert.equal(new Game(['A','B','C','D']).players.length,4);assert.throws(()=>new Game(['A','B','C','D','E']),/2–4/);});

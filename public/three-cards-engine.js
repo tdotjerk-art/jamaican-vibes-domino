@@ -5,7 +5,7 @@
  function deck(random=Math.random){const d=[];for(const suit of ['♠','♥','♦','♣'])for(let rank=2;rank<=14;rank++)d.push({id:suit+rank,rank,suit});for(let i=d.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[d[i],d[j]]=[d[j],d[i]];}return d;}
  class Game{
   constructor(names,total=5,random=Math.random){
-   if(!Array.isArray(names)||names.length<2||names.length>6)throw Error('Choose 2–6 players.');
+   if(!Array.isArray(names)||names.length<2||names.length>4)throw Error('Choose 2–4 players.');
    if(!Number.isInteger(total)||total<5||total%5||total>1000)throw Error('Choose games in multiples of 5, up to 1000.');
    this.players=names.map(name=>({name:String(name).slice(0,20),score:0,hand:[]}));this.total=total;this.completed=0;this.random=random;this.dealer=null;this.history=[];this.beginPicker();
   }

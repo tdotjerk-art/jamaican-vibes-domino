@@ -33,9 +33,9 @@
   const paused=online&&(!socket.connected||remote.seats.some(p=>!p.connected));
   $('progress').textContent=`Game ${Math.min(g.completed+(!['hand-over','session-over'].includes(g.phase)?1:0),g.total)} of ${g.total}`;
   $('modeLabel').textContent=online?'ROOM '+remote.code:'VS COMPUTERS';
-  $('players').replaceChildren();g.players.forEach((p,i)=>{const el=node('article',undefined,'player'+(g.turn===i?' active':''));el.append(node('h3',p.name+(i===seat?' · YOU':'')),node('div',(p.score>0?'+':'')+p.score,'score'),node('p',(g.dealer===i?'Dealer · ':'')+p.count+' cards'));
+  $('players').replaceChildren();g.players.forEach((p,i)=>{const relative=(i-seat+g.players.length)%g.players.length;const position=relative===0?'south':g.players.length===2?'north':g.players.length===3?(relative===1?'east':'west'):['south','east','north','west'][relative];const el=node('article',undefined,'player seat-'+position+(g.turn===i?' active':''));el.append(node('h3',p.name+(i===seat?' · YOU':'')),node('div',(p.score>0?'+':'')+p.score,'score'),node('p',(g.dealer===i?'Dealer · ':'')+p.count+(p.count===1?' card':' cards')));
    if(['pick','deal'].includes(g.phase)){const wrap=node('div',undefined,'cards small');wrap.append(g.picks[i]?card(g.picks[i]):card(null));el.append(wrap);}
-   if(g.phase==='session-over')el.append(node('p',p.score>0?'WINNER':p.score<0?'LOSS':'EVEN'));$('players').append(el);});
+   if(i!==seat&&!['pick','deal'].includes(g.phase)&&p.count){const backs=node('div',undefined,'cards small');for(let n=0;n<p.count;n++)backs.append(card(null));el.append(backs);}if(g.phase==='session-over')el.append(node('p',p.score>0?'WINNER':p.score<0?'LOSS':'EVEN'));$('players').append(el);});
   $('tableCard').replaceChildren(card(g.top));$('remaining').textContent=g.top?g.remaining+' cards in deck'+(g.bonus?' · Dealer bonus +'+g.bonus:''):'';
   $('recent').replaceChildren();(g.recent||[]).slice(0,-1).forEach(c=>$('recent').append(card(c)));
   const hand=g.players[seat].hand;$('yourHand').replaceChildren(node('h3','YOUR HAND'));
@@ -64,7 +64,7 @@
   if(seat===undefined||seat===null)return;
   timer=setTimeout(()=>{if(g!==local)return;if(g.phase==='pick')g.pick(seat);else if(g.phase==='deal')g.deal(seat);else if(g.phase==='draw')g.draw(seat);else{const hand=g.players[seat].hand,m=hand.find(c=>c.rank===g.pile.at(-1).rank),o=hand.find(c=>c!==m);g.play(seat,m.id,o?.id);}render();},1600);
  }
- $('solo').onclick=()=>{try{const names=['You','Andre','Simone','Winston','Keisha','Devon'].slice(0,Number($('count').value));names[0]=$('name').value.trim().slice(0,20)||'You';local=new E.Game(names,total('total'));render();}catch(e){error(e.message);}};
+ $('solo').onclick=()=>{try{const names=['You','Andre','Simone','Winston'].slice(0,Number($('count').value));names[0]=$('name').value.trim().slice(0,20)||'You';local=new E.Game(names,total('total'));render();}catch(e){error(e.message);}};
  for(const type of ['create','join'])$(type).onclick=()=>{try{const name=$('name').value.trim();if(!name)throw Error('Enter your name.');const data={name,total:total('total'),code:$('code').value};remember(null);const s=connect();if(s.connected)s.emit(type,data);else s.once('connect',()=>s.emit(type,data));}catch(e){error(e.message);}};
  $('lobbyTotal').onchange=()=>{try{socket.emit('choice',{total:total('lobbyTotal')});}catch(e){error(e.message);}};
  $('ready').onclick=()=>socket.emit('ready');$('start').onclick=()=>socket.emit('start');

@@ -173,7 +173,7 @@ whole room and stays selected for a rematch.
 
 Open `/three-cards.html`, or choose **Jamaican 3 Cards** on the home menu.
 This is the owner's rank-matching card game, separate from Domino, without betting.
-Use single-player against computers or create an online table for 2–6 players.
+Use single-player against computers or create an online table for 2–4 players.
 Online players must each select the same game count (multiples of five) and ready
 up before the host starts. At the end they must unanimously choose the same
 extension to continue with existing scores.
@@ -199,3 +199,5 @@ hand views and a browser-held reconnect token. Play pauses while any seat is
 disconnected. All card session state is in memory; process restarts lose it.
 Single-player progress lasts for the current page only. Cross-device/iPhone
 Safari play needs actual-device verification.
+
+The card table uses a green oval felt with four seats around the rim. You sit at the bottom; opponents sit to the right, opposite, and left. Both the rules engine and online lobby enforce a maximum of four players.

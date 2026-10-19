@@ -8,6 +8,8 @@ test('online consensus, private hands, turn enforcement, reconnect and session e
  try{
   const a=await client();let identity=wait(a,'assigned'),state=wait(a,'state');a.emit('create',{name:'Host',total:5});const hostId=await identity;await state;
   let b=await client();identity=wait(b,'assigned');state=wait(b,'state');b.emit('join',{code:hostId.code,name:'Guest',total:10});const guestId=await identity;await state;seats=[a,b];
+  const extras=[];for(let n=0;n<2;n++){const extra=await client();extras.push(extra);const joined=wait(extra,'state'),hostJoined=wait(a,'state',v=>v.seats.length===n+3);extra.emit('join',{code:hostId.code,name:'Extra'+n,total:5});await Promise.all([joined,hostJoined]);}assert.equal(a.current.seats.length,4);const fifth=await client();const full=wait(fifth,'card-error');fifth.emit('join',{code:hostId.code,name:'Fifth',total:5});assert.match(await full,/full/);for(const extra of extras){const left=wait(a,'state');extra.emit('leave');await left;}assert.equal(a.current.seats.length,2);
+
   await command(a,'ready');await command(b,'ready');let err=wait(a,'card-error');a.emit('start');assert.match(await err,/same game count/);
   await command(b,'choice',{total:5});assert(a.current.seats.every(p=>!p.ready));await command(a,'ready');await command(b,'ready');await command(a,'start');
   let guard=0;while(a.current.game.phase==='pick'&&guard++<20){const g=a.current.game,seat=g.pickSeats.find(i=>!g.picks[i]);await command(seats[seat],'action',{type:'pick'});}
