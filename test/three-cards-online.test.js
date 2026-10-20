@@ -8,7 +8,7 @@ test('online consensus, private hands, turn enforcement, reconnect and session e
  try{
   const a=await client();let identity=wait(a,'assigned'),state=wait(a,'state');a.emit('create',{name:'Host',total:5});const hostId=await identity;await state;
   let b=await client();identity=wait(b,'assigned');state=wait(b,'state');b.emit('join',{code:hostId.code,name:'Guest',total:10});const guestId=await identity;await state;seats=[a,b];
-  let incomplete=wait(a,'card-error');a.emit('start');assert.match(await incomplete,/Exactly four/);
+  let incomplete=wait(a,'card-error');a.emit('start');assert.match(await incomplete,/Two to four/);
   const extras=[];for(let n=0;n<2;n++){const extra=await client();extras.push(extra);const joined=wait(extra,'state'),hostJoined=wait(a,'state',v=>v.seats.length===n+3);extra.emit('join',{code:hostId.code,name:'Extra'+n,total:5});await Promise.all([joined,hostJoined]);}assert.equal(a.current.seats.length,4);const fifth=await client();const full=wait(fifth,'card-error');fifth.emit('join',{code:hostId.code,name:'Fifth',total:5});assert.match(await full,/full/);seats=[a,b,...extras];
 
   for(const s of seats)await command(s,'ready');let err=wait(a,'card-error');a.emit('start');assert.match(await err,/same game count/);

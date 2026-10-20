@@ -5,7 +5,7 @@ function element(){return {children:[],textContent:'',hidden:false,disabled:fals
 function boot(api=Engine){
  const elements=new Map(),timers=new Map(),handlers={},sent=[];let timerId=0;
  const get=id=>{if(!elements.has(id))elements.set(id,element());return elements.get(id);};
- get('name').value='Junior';
+ get('name').value='Junior';get('count').value='4';
  const socket={connected:true,on:(event,fn)=>handlers[event]=fn,emit:(event,data)=>sent.push({event,data}),disconnect(){this.connected=false;}};
  const context={JVThreeCards:api,document:{getElementById:get,createElement:element,activeElement:null},localStorage:{getItem:()=>null,setItem(){},removeItem(){}},setTimeout:fn=>{timers.set(++timerId,fn);return timerId;},clearTimeout:id=>timers.delete(id),confirm:()=>true,io:()=>socket};
  vm.createContext(context);vm.runInContext(fs.readFileSync('public/three-cards-ui.js','utf8'),context);
@@ -36,4 +36,20 @@ test('online interface emits declaration choices, shows shared results, and paus
  for(let i=0;i<4;i++)g.declare(i,i!==2);
  ui.handlers.state(state());assert.match(ui.get('callResult').textContent,/Junior & Winston share/);assert.match(ui.get('callResult').textContent,/Junior \+3/);
  const paused=state();paused.seats[1].connected=false;ui.handlers.state(paused);assert.equal(ui.get('actions').children.length,0);assert.match(ui.get('message').textContent,/paused/);
+});
+
+test('solo selection creates two, three, or four players and rejects invalid counts',()=>{
+ for(const count of [2,3,4]){
+  let names;const ui=boot({...Engine,Game:class extends Engine.Game{constructor(players,total){names=players;super(players,total);}}});
+  ui.get('count').value=String(count);ui.get('solo').onclick();assert.equal(names.length,count);assert.equal(names[0],'Junior');assert.equal(ui.get('players').children.length,count);
+ }
+ for(const count of ['1','5','2.5']){const ui=boot();ui.get('count').value=count;ui.get('solo').onclick();assert.match(ui.get('error').textContent,/Choose 2, 3, or 4/);}
+});
+test('online host start button permits two to four ready players only',()=>{
+ const ui=boot();ui.get('create').onclick();
+ for(const count of [1,2,3,4,5]){
+  const seats=Array.from({length:count},(_,i)=>({name:'P'+i,connected:true,ready:true,total:5}));
+  ui.handlers.state({code:'ABCDEF',seat:0,seats,game:null});assert.equal(ui.get('start').disabled,count<2||count>4);
+  if(count>=2&&count<=4){seats[1].ready=false;ui.handlers.state({code:'ABCDEF',seat:0,seats,game:null});assert.equal(ui.get('start').disabled,true);}
+ }
 });
