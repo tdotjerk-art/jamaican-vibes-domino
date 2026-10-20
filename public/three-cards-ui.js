@@ -39,7 +39,7 @@
   $('tableCard').replaceChildren(card(g.top));$('remaining').textContent=g.top?g.remaining+' cards in deck'+(g.bonus?' · Dealer bonus +'+g.bonus:''):'';
   $('recent').replaceChildren();(g.recent||[]).slice(0,-1).forEach(c=>$('recent').append(card(c)));
   const hand=g.players[seat].hand;$('yourHand').replaceChildren(node('h3','YOUR HAND'));
-  const cards=node('div',undefined,'cards');const canPlay=g.phase==='offer'&&g.turn===seat&&!paused;
+  const cards=node('div',undefined,'cards');const canPlay=g.phase==='offer'&&g.turn===seat&&!paused;const pairWin=E.pairWin(hand,g.top?.rank);
   hand.forEach(c=>{const click=canPlay?()=>{if(match===c.id){match=null;other=null;}else if(!match){if(c.rank!==g.top.rank){error('Choose a card matching '+E.face(g.top)+' first.');return;}match=c.id;other=null;}else other=other===c.id?null:c.id;render();}:null;cards.append(card(c,click,match===c.id||other===c.id));});$('yourHand').append(cards);
   $('message').textContent=paused?'Play paused. Waiting for every player to reconnect.':g.message;
   $('actions').replaceChildren();$('hint').textContent='Chances and draws move to the right. Match ranks; suits do not matter.';
@@ -49,8 +49,8 @@
    }else if(g.phase==='deal'){button('Shuffle & deal 3 cards',()=>act('deal'),g.dealer!==seat);}
    else if(g.phase==='draw'){button('Draw one card',()=>act('draw'),g.turn!==seat);$('hint').textContent=g.turn===seat?'The card stays on the table. You get first choice to use it.':'Waiting for '+g.players[g.turn].name+' to draw.';}
    else if(g.phase==='offer'&&g.turn===seat){
-    button(hand.length===1?'Play last card & win':'Play selected cards',()=>act('play',{match,other}),!match||(hand.length>1&&!other));button('Decline — let it go around',()=>act('pass'),false,'quiet');
-    $('hint').textContent=hand.length===1?'Tap your matching card, then play it to win.':!match?'Tap your matching '+E.face(g.top).slice(0,-1)+', then choose one other card.':!other?'Now choose another card from your hand.':'Play both selected cards. The second card becomes the rank to match.';
+    button(pairWin?'Play matching card & win':hand.length===1?'Play last card & win':'Play selected cards',()=>act('play',{match,other}),!match||(hand.length>1&&!pairWin&&!other));button('Decline — let it go around',()=>act('pass'),false,'quiet');
+    $('hint').textContent=pairWin?'You have a pair. Tap your other card, then play it to win. The pair stays in your hand.':hand.length===1?'Tap your matching card, then play it to win.':!match?'Tap your matching '+E.face(g.top).slice(0,-1)+', then choose one other card.':!other?'Now choose another card from your hand.':'Play both selected cards. The second card becomes the rank to match.';
    }else if(g.phase==='hand-over'){button('Next game',()=>act('next'));}
   }
   $('extension').hidden=g.phase!=='session-over';$('extensionVotes').replaceChildren();

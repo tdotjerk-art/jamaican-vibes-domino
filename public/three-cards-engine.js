@@ -2,6 +2,7 @@
  'use strict';
  const RANKS={11:'J',12:'Q',13:'K',14:'A'};
  const face=c=>c?(RANKS[c.rank]||String(c.rank))+c.suit:'—';
+ function pairWin(hand,rank){if(hand.length!==3)return false;const matches=hand.filter(c=>c.rank===rank),rest=hand.filter(c=>c.rank!==rank);return matches.length===1&&rest.length===2&&rest[0].rank===rest[1].rank;}
  function deck(random=Math.random){const d=[];for(const suit of ['♠','♥','♦','♣'])for(let rank=2;rank<=14;rank++)d.push({id:suit+rank,rank,suit});for(let i=d.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[d[i],d[j]]=[d[j],d[i]];}return d;}
  class Game{
   constructor(names,total=5,random=Math.random){
@@ -42,6 +43,7 @@
    if(this.phase!=='offer'||seat!==this.turn)return false;
    const hand=this.players[seat].hand,m=hand.find(c=>c.id===matchId),target=this.pile[this.pile.length-1];
    if(!m||m.rank!==target.rank)return false;
+   if(pairWin(hand,target.rank)){this.players[seat].hand=hand.filter(c=>c!==m);this.pile.push(m);this.note(this.players[seat].name+' plays '+face(m)+' and wins with a pair remaining.');this.finish(seat);return true;}
    const other=hand.find(c=>c.id===otherId);
    if(hand.length>1&&(!other||other===m))return false;
    this.players[seat].hand=hand.filter(c=>c!==m&&c!==other);this.pile.push(m);if(hand.length>1)this.pile.push(other);
@@ -59,5 +61,5 @@
   extend(amount){if(this.phase!=='session-over'||!Number.isInteger(amount)||amount<5||amount%5||this.total+amount>1000)return false;this.total+=amount;this.phase='hand-over';return this.next();}
   view(seat){return {players:this.players.map((p,i)=>({name:p.name,score:p.score,count:p.hand.length,hand:i===seat?p.hand:[]})),total:this.total,completed:this.completed,phase:this.phase,turn:this.turn,dealer:this.dealer,picks:this.picks,pickSeats:this.pickSeats,opening:this.opening||null,top:this.pile?.at(-1)||null,recent:this.pile?.slice(-4)||[],remaining:this.stock?.length||0,bonus:this.bonus||0,winner:this.winner,message:this.message,history:this.history.slice(-12)};}
  }
- const api={Game,deck,face};root.JVThreeCards=api;if(typeof module!=='undefined')module.exports=api;
+ const api={Game,deck,face,pairWin};root.JVThreeCards=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);
