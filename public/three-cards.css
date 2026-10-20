@@ -11,3 +11,6 @@
 
 /* One played pile: older faces stay covered beneath the latest card. */
 .played-pile.stacked .card{box-shadow:2px 2px 0 0 #fffaf0,2px 2px 0 1px #b9b39e,4px 4px 0 0 #fffaf0,4px 4px 0 1px #b9b39e,5px 7px 9px #0005}
+
+/* Reveal the successful cards at the player's own seat for the whole table. */
+.player.revealed-winner{border-color:#f6cf5a}.player .victory-label{color:#f6cf5a;font-weight:900;letter-spacing:1px}.player .winning-call-name{font-size:10px;line-height:1.25}.player .winning-cards{gap:2px}.player .winning-cards .card{flex:1 1 0;min-width:0;max-width:32px;height:40px;padding:2px;font-size:14px;border-width:1px}

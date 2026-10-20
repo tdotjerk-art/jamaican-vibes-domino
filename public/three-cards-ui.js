@@ -34,9 +34,13 @@
   $('progress').textContent=`Game ${Math.min(g.completed+(!['hand-over','session-over'].includes(g.phase)?1:0),g.total)} of ${g.total}`;
   $('modeLabel').textContent=online?'ROOM '+remote.code:'VS COMPUTERS';
   $('players').replaceChildren();g.players.forEach((p,i)=>{const relative=(i-seat+g.players.length)%g.players.length;const position=relative===0?'south':g.players.length===2?'north':g.players.length===3?(relative===1?'east':'west'):['south','east','north','west'][relative];const el=node('article',undefined,'player seat-'+position+(g.turn===i?' active':''));el.append(node('h3',p.name+(i===seat?' · YOU':'')),node('div',E.scoreText(p.score),'score'),node('p',(g.dealer===i?'Dealer · ':'')+p.count+(p.count===1?' card':' cards')));
+   const victory=['hand-over','session-over'].includes(g.phase)&&g.winner===i&&g.winningHand?.length;
+   const callHand=g.callSummary?.hands?.find(h=>h.seat===i);
+   const revealed=victory?g.winningHand:!['pick','deal'].includes(g.phase)?callHand?.cards:null;
+   if(revealed?.length){el.classList.add('revealed-winner');el.append(node('p',victory?'VICTORY':g.callSummary.tied?'TIED CALL': 'WINNING CALL','victory-label'));if(!victory)el.append(node('p',g.callSummary.name,'winning-call-name'));const reveal=node('div',undefined,'cards winning-cards');reveal.setAttribute('aria-label',victory?'Winning cards':'Winning call cards');revealed.forEach(c=>reveal.append(card(c)));el.append(reveal);}
    if(g.phase==='declare')el.append(node('p',g.declarations[i]===null?'Choosing call…':'Ready'));
    if(['pick','deal'].includes(g.phase)){const wrap=node('div',undefined,'cards small');wrap.append(g.picks[i]?card(g.picks[i]):card(null));el.append(wrap);}
-   if(i!==seat&&!['pick','deal'].includes(g.phase)&&p.count){const backs=node('div',undefined,'cards small');for(let n=0;n<p.count;n++)backs.append(card(null));el.append(backs);}if(g.phase==='session-over')el.append(node('p',p.score>0?'WINNER':p.score<0?'LOSS':'EVEN'));$('players').append(el);});
+   if(i!==seat&&!revealed?.length&&!['pick','deal'].includes(g.phase)&&p.count){const backs=node('div',undefined,'cards small');for(let n=0;n<p.count;n++)backs.append(card(null));el.append(backs);}if(g.phase==='session-over')el.append(node('p',p.score>0?'WINNER':p.score<0?'LOSS':'EVEN'));$('players').append(el);});
   $('tableCard').replaceChildren(card(g.top));$('remaining').textContent=g.top?g.remaining+' cards in deck'+(g.bonus?' · Dealer bonus +'+g.bonus:''):'';
   $('tableCard').classList.toggle('stacked',(g.recent||[]).length>1);
   const hand=g.players[seat].hand;$('yourHand').replaceChildren(node('h3','YOUR HAND'));
