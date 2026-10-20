@@ -38,7 +38,7 @@
    if(['pick','deal'].includes(g.phase)){const wrap=node('div',undefined,'cards small');wrap.append(g.picks[i]?card(g.picks[i]):card(null));el.append(wrap);}
    if(i!==seat&&!['pick','deal'].includes(g.phase)&&p.count){const backs=node('div',undefined,'cards small');for(let n=0;n<p.count;n++)backs.append(card(null));el.append(backs);}if(g.phase==='session-over')el.append(node('p',p.score>0?'WINNER':p.score<0?'LOSS':'EVEN'));$('players').append(el);});
   $('tableCard').replaceChildren(card(g.top));$('remaining').textContent=g.top?g.remaining+' cards in deck'+(g.bonus?' · Dealer bonus +'+g.bonus:''):'';
-  $('recent').replaceChildren();(g.recent||[]).slice(0,-1).forEach(c=>$('recent').append(card(c)));
+  $('tableCard').classList.toggle('stacked',(g.recent||[]).length>1);
   const hand=g.players[seat].hand;$('yourHand').replaceChildren(node('h3','YOUR HAND'));
   const cards=node('div',undefined,'cards');const canPlay=g.phase==='offer'&&g.turn===seat&&!paused;const pairWin=E.pairWin(hand,g.top?.rank);
   hand.forEach(c=>{const click=canPlay?()=>{if(match===c.id){match=null;other=null;}else if(!match){if(c.rank!==g.top.rank){error('Choose a card matching '+E.face(g.top)+' first.');return;}match=c.id;other=null;}else other=other===c.id?null:c.id;render();}:null;cards.append(card(c,click,match===c.id||other===c.id));});$('yourHand').append(cards);

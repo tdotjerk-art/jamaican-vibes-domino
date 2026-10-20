@@ -8,3 +8,6 @@
 @media(max-width:649px){.seat-south{bottom:140px}.centre{top:143px}.centre .small .card{height:31px}.centre .small{min-height:31px}.your-hand{bottom:20px}}
 .player h3{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.player p{margin:3px 0}
 @media(max-width:649px){.centre{top:151px}}
+
+/* One played pile: older faces stay covered beneath the latest card. */
+.played-pile.stacked .card{box-shadow:2px 2px 0 0 #fffaf0,2px 2px 0 1px #b9b39e,4px 4px 0 0 #fffaf0,4px 4px 0 1px #b9b39e,5px 7px 9px #0005}
