@@ -181,6 +181,28 @@ extension to continue with existing scores.
 The 52-card deck is shuffled for every game. Highest dealer pick wins (Ace high;
 highest ties repick). Deal three cards each; the next face-up card stays on the
 table. Turning up a 6 or Jack awards the dealer one point per seated player.
+Before any matching-card play, every player must declare their strongest qualifying
+call or pass. Only the strongest declared hand earns call points. Calls rank:
+
+1. **Flush, straight and threes (3 points each):** three identical ranks > two
+   Jacks and a six > two sixes and a Jack. Higher threes beat lower threes. This
+   is a special Jamaican category name, not a literal flush plus straight.
+2. **Flush and straight (2 points each):** three consecutive cards of one suit.
+3. **Flush (1 point each):** three cards of one suit.
+4. **Straight (1 point each):** three consecutive ranks.
+
+Same-category ties compare highest, second, then third rank. A-2-3 is the lowest
+straight, Q-K-A the highest, and K-A-2 does not qualify. Suits do not break ties.
+Each non-winning player pays the call value. A sole three-point caller in a
+four-player table gets +9, with each opponent at -3. Exact tied winners divide
+the non-winners' payments equally: two tied three-point winners get +3 each,
+and two losers get -3 each. Shares can be fractional; if all tie, nobody pays.
+The shared engine settles calls once, after everyone declares or passes, then
+matching-card play continues for the separate hand-winning point. The server
+validates online calls; opponents' hands and individual declaration choices
+remain private. The settled call category, winners, and score changes are shown
+on the table. Computers declare qualifying hands automatically.
+
 Starting to the dealer's right, match the face-up rank with your own card and play
 one companion card from your hand. That companion is the new rank to match.
 A player can decline; priority rotates right. A last matching card plays alone
@@ -189,8 +211,8 @@ right draws next. Draws stay face up: the drawer has first choice, then others
 in rotation. Subsequent unused draws advance to the right.
 
 The hand winner gains one and everyone else loses one; the winner deals next.
-Deck exhaustion is a counted draw with no hand points; the dealer keeps any
-bonus and everyone picks again for the next dealer. Positive ending scores are
+Deck exhaustion is a counted draw with no hand points; call points and the dealer
+bonus are kept and everyone picks again for the next dealer. Positive ending scores are
 winners, negative scores are losses, and zero is even. Full rules are available
 inside the card game.
 

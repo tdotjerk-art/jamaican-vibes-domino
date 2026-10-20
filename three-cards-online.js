@@ -17,7 +17,7 @@ function installThreeCards(io){
   s.on('ready',()=>{const [r,i]=locate(s);if(!r||r.game)return;r.seats[i].ready=!r.seats[i].ready;broadcast(r);});
   s.on('start',()=>{const [r,i]=locate(s);if(!r||i!==0||r.game)return;if(r.seats.length!==4||!r.seats.every(p=>p.id&&p.ready&&p.total===r.seats[0].total))return error('Exactly four players must connect, choose the same game count, and tap Ready.');r.game=new Game(r.seats.map(p=>p.name),r.seats[0].total);broadcast(r);});
   s.on('action',(d={})=>{const [r,i]=locate(s);if(!r?.game)return;if(!r.seats.every(p=>p.id))return error('Play is paused until everyone reconnects.');const g=r.game;let ok=false;
-   if(d.type==='pick')ok=g.pick(i);if(d.type==='deal')ok=g.deal(i);if(d.type==='draw')ok=g.draw(i);if(d.type==='pass')ok=g.pass(i);if(d.type==='play')ok=g.play(i,d.match,d.other);if(d.type==='next')ok=g.next();
+   if(d.type==='pick')ok=g.pick(i);if(d.type==='deal')ok=g.deal(i);if(d.type==='declare')ok=g.declare(i,d.claim);if(d.type==='draw')ok=g.draw(i);if(d.type==='pass')ok=g.pass(i);if(d.type==='play')ok=g.play(i,d.match,d.other);if(d.type==='next')ok=g.next();
    if(!ok)return error('That move is not available now.');broadcast(r);
   });
   s.on('extend',(d={})=>{const [r,i]=locate(s);if(!r?.game||r.game.phase!=='session-over'||!valid(d.amount)||r.game.total+d.amount>1000)return;r.seats[i].extension=d.amount;if(r.seats.every(p=>p.id&&p.extension===d.amount)){r.game.extend(d.amount);r.seats.forEach(p=>p.extension=null);}broadcast(r);});

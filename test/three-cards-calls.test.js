@@ -36,9 +36,9 @@ test('only strongest declared hand receives points from each opponent',()=>{
  assert.deepEqual(callResult(hands,[]).deltas,[0,0,0,0]);
  assert.throws(()=>callResult(hands,[1,1]),/Invalid/);
 });
-test('exact ties are returned unresolved rather than awarding by seat or suit',()=>{
+test('exact tied winners share the non-winners payments',()=>{
  const result=callResult([hand([11,11,6]),hand([11,6,11]),hand([2,7,9])],[0,1,2]);
- assert.equal(result.tied,true);assert.deepEqual(result.winners,[0,1]);assert.deepEqual(result.deltas,[0,0,0]);
+ assert.equal(result.tied,true);assert.deepEqual(result.winners,[0,1]);assert.deepEqual(result.deltas,[1.5,1.5,-3]);
 });
 test('all 22100 physical three-card hands classify independent of card order',()=>{
  const cards=deck();let count=0;
@@ -48,4 +48,43 @@ test('all 22100 physical three-card hands classify independent of card order',()
   if(call)assert(call.points>=1&&call.points<=3);count++;
  }
  assert.equal(count,22100);
+});
+
+const {Game,scoreText}=require('../public/three-cards-engine');
+function dealt(hands){const g=new Game(hands.map((_,i)=>'P'+i));g.dealer=0;g.phase='declare';g.players.forEach((p,i)=>p.hand=hands[i]);g.declarations=hands.map(()=>null);g.pile=[{id:'♣13',rank:13,suit:'♣'}];g.stock=[{id:'♣4',rank:4,suit:'♣'}];g.nextDrawer=2;return g;}
+test('declarations block play, validate hands, conceal choices, and score exactly once',()=>{
+ const g=dealt([hand([11,11,6]),hand([6,6,11]),hand([2,5,9]),hand([2,2,2])]);
+ assert.equal(g.play(0,g.players[0].hand[0].id),false);assert.equal(g.draw(0),false);
+ assert.equal(g.declare(2,true),false);assert.equal(g.declare(0,'true'),false);assert.equal(g.declare(-1,true),false);
+ assert(g.declare(0,true));assert.equal(g.declare(0,true),false);
+ assert.deepEqual(g.view(1).declarations,[true,null,null,null]);assert.equal(g.view(1).callSummary,null);
+ assert(g.declare(1,true));assert(g.declare(2,false));assert(g.declare(3,true));
+ assert.deepEqual(g.players.map(p=>p.score),[-3,-3,-3,9]);assert.deepEqual(g.callSummary.winners,[3]);
+ const before=g.players.map(p=>p.score);assert.equal(g.declare(3,true),false);assert.deepEqual(g.players.map(p=>p.score),before);
+ assert.equal(g.completed,0);assert.equal(g.dealer,0);assert.equal(g.phase,'draw');
+ assert(g.draw(2));assert.equal(g.callSummary.name,'Flush, straight and threes');
+});
+test('calls remain separate from ordinary wins, bonuses, exhaustion, and future deals',()=>{
+ const g=dealt([hand([11,11,6]),hand([6,6,11]),hand([2,5,9]),hand([2,2,2])]);
+ g.players[0].score=4;for(let i=0;i<4;i++)g.declare(i,i===0);
+ assert.deepEqual(g.players.map(p=>p.score),[13,-3,-3,-3]);
+ g.finish(1);assert.deepEqual(g.players.map(p=>p.score),[12,-2,-4,-4]);assert.equal(g.dealer,1);
+ g.next();g.deal(1);assert.equal(g.phase,'declare');assert.equal(g.callSummary,null);assert.deepEqual(g.declarations,[null,null,null,null]);
+ const scores=g.players.map(p=>p.score);for(let i=0;i<4;i++)g.declare(i,false);g.finish(null);assert.deepEqual(g.players.map(p=>p.score),scores);
+ g.next();assert.equal(g.callSummary,null);assert.equal(g.declarations,null);
+});
+test('three-way sharing conserves points and fractional display survives ordinary hand scoring',()=>{
+ const hands=[hand([2,3,4]),hand([2,3,4],['♥','♦','♣']),hand([2,3,4],['♦','♣','♠']),hand([6,8,12])];
+ const result=callResult(hands,[0,1,2]);assert.deepEqual(result.deltas,[1/3,1/3,1/3,-1]);
+ assert.equal(scoreText(1/3),'+⅓');assert.equal(scoreText(-4/3),'−1⅓');assert.equal(scoreText(1.5),'+1½');
+ const g=dealt(hands);for(let i=0;i<4;i++)g.declare(i,i<3);g.finish(0);
+ assert.equal(g.players[0].score,4/3);assert.equal(g.players[1].score,-2/3);
+});
+
+test('one- and two-point calls transfer their value per opponent; all-player ties transfer nothing',()=>{
+ const ordinary=[hand([2,5,9]),hand([3,7,12]),hand([4,8,13])];
+ assert.deepEqual(callResult([hand([3,4,5]),...ordinary],[0]).deltas,[3,-1,-1,-1]);
+ assert.deepEqual(callResult([hand([3,4,5],['♠','♠','♠']),...ordinary],[0]).deltas,[6,-2,-2,-2]);
+ const equal=[['♠','♠','♠'],['♥','♥','♥'],['♦','♦','♦'],['♣','♣','♣']].map(suits=>hand([2,7,9],suits));
+ assert.deepEqual(callResult(equal,[0,1,2,3]).deltas,[0,0,0,0]);
 });
