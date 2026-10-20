@@ -8,17 +8,18 @@ test('online consensus, private hands, turn enforcement, reconnect and session e
  try{
   const a=await client();let identity=wait(a,'assigned'),state=wait(a,'state');a.emit('create',{name:'Host',total:5});const hostId=await identity;await state;
   let b=await client();identity=wait(b,'assigned');state=wait(b,'state');b.emit('join',{code:hostId.code,name:'Guest',total:10});const guestId=await identity;await state;seats=[a,b];
-  const extras=[];for(let n=0;n<2;n++){const extra=await client();extras.push(extra);const joined=wait(extra,'state'),hostJoined=wait(a,'state',v=>v.seats.length===n+3);extra.emit('join',{code:hostId.code,name:'Extra'+n,total:5});await Promise.all([joined,hostJoined]);}assert.equal(a.current.seats.length,4);const fifth=await client();const full=wait(fifth,'card-error');fifth.emit('join',{code:hostId.code,name:'Fifth',total:5});assert.match(await full,/full/);for(const extra of extras){const left=wait(a,'state');extra.emit('leave');await left;}assert.equal(a.current.seats.length,2);
+  let incomplete=wait(a,'card-error');a.emit('start');assert.match(await incomplete,/Exactly four/);
+  const extras=[];for(let n=0;n<2;n++){const extra=await client();extras.push(extra);const joined=wait(extra,'state'),hostJoined=wait(a,'state',v=>v.seats.length===n+3);extra.emit('join',{code:hostId.code,name:'Extra'+n,total:5});await Promise.all([joined,hostJoined]);}assert.equal(a.current.seats.length,4);const fifth=await client();const full=wait(fifth,'card-error');fifth.emit('join',{code:hostId.code,name:'Fifth',total:5});assert.match(await full,/full/);seats=[a,b,...extras];
 
-  await command(a,'ready');await command(b,'ready');let err=wait(a,'card-error');a.emit('start');assert.match(await err,/same game count/);
-  await command(b,'choice',{total:5});assert(a.current.seats.every(p=>!p.ready));await command(a,'ready');await command(b,'ready');await command(a,'start');
+  for(const s of seats)await command(s,'ready');let err=wait(a,'card-error');a.emit('start');assert.match(await err,/same game count/);
+  await command(b,'choice',{total:5});assert(a.current.seats.every(p=>!p.ready));for(const s of seats)await command(s,'ready');await command(a,'start');
   let guard=0;while(a.current.game.phase==='pick'&&guard++<20){const g=a.current.game,seat=g.pickSeats.find(i=>!g.picks[i]);await command(seats[seat],'action',{type:'pick'});}
   assert.equal(a.current.game.phase,'deal');const dealer=a.current.game.dealer;
-  err=wait(seats[1-dealer],'card-error');seats[1-dealer].emit('action',{type:'deal'});assert.match(await err,/not available/);
+  err=wait(seats[(dealer+1)%4],'card-error');seats[(dealer+1)%4].emit('action',{type:'deal'});assert.match(await err,/not available/);
   await command(seats[dealer],'action',{type:'deal'});
   assert.equal(a.current.game.players[0].hand.length,3);assert.equal(a.current.game.players[1].hand.length,0);assert.equal(b.current.game.players[1].hand.length,3);assert.equal(b.current.game.players[0].hand.length,0);assert.equal(a.current.game.stock,undefined);
   state=wait(a,'state',s=>!s.seats[1].connected);b.disconnect();await state;err=wait(a,'card-error');a.emit('action',{type:'draw'});assert.match(await err,/paused/);
-  b=await client();identity=wait(b,'assigned');state=wait(b,'state');b.emit('resume',guestId);await identity;await state;seats=[a,b];assert(b.current.game);assert.equal(b.current.seat,1);
+  b=await client();identity=wait(b,'assigned');state=wait(b,'state');b.emit('resume',guestId);await identity;await state;seats[1]=b;assert(b.current.game);assert.equal(b.current.seat,1);
   guard=0;while(a.current.game.phase!=='session-over'&&guard++<2000){const g=a.current.game;let seat,data;
    if(g.phase==='pick'){seat=g.pickSeats.find(i=>!g.picks[i]);data={type:'pick'};}
    else if(g.phase==='deal'){seat=g.dealer;data={type:'deal'};}
@@ -27,6 +28,6 @@ test('online consensus, private hands, turn enforcement, reconnect and session e
    else{seat=0;data={type:'next'};}await command(seats[seat],'action',data);
   }
   assert.equal(a.current.game.completed,5);assert.equal(a.current.game.phase,'session-over');const scores=a.current.game.players.map(p=>p.score);
-  await command(a,'extend',{amount:5});assert.equal(a.current.game.phase,'session-over');await command(b,'extend',{amount:10});assert.equal(a.current.game.phase,'session-over');await command(b,'extend',{amount:5});assert.equal(a.current.game.total,10);assert.deepEqual(a.current.game.players.map(p=>p.score),scores);assert.notEqual(a.current.game.phase,'session-over');
+  await command(a,'extend',{amount:5});for(const s of seats.slice(2))await command(s,'extend',{amount:5});assert.equal(a.current.game.phase,'session-over');await command(b,'extend',{amount:10});assert.equal(a.current.game.phase,'session-over');await command(b,'extend',{amount:5});assert.equal(a.current.game.total,10);assert.deepEqual(a.current.game.players.map(p=>p.score),scores);assert.notEqual(a.current.game.phase,'session-over');
  }finally{all.forEach(s=>s.disconnect());await new Promise(r=>io.close(r));}
 });
