@@ -14,3 +14,6 @@
 
 /* Reveal the successful cards at the player's own seat for the whole table. */
 .player.revealed-winner{border-color:#f6cf5a}.player .victory-label{color:#f6cf5a;font-weight:900;letter-spacing:1px}.player .winning-call-name{font-size:10px;line-height:1.25}.player .winning-cards{gap:2px}.player .winning-cards .card{flex:1 1 0;min-width:0;max-width:32px;height:40px;padding:2px;font-size:14px;border-width:1px}
+
+/* Reduce the complete table to 80% while keeping its internal spacing. */
+.table{zoom:0.8;width:80%;margin-inline:auto}
