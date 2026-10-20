@@ -207,7 +207,7 @@ on the table. Computers declare qualifying hands automatically.
 Starting to the dealer's right, match the face-up rank with your own card and play
 one companion card from your hand. That companion is the new rank to match.
 A player can decline; priority rotates right. A last matching card plays alone
-and wins. With a pair plus a singleton, matching the singleton also wins on that player’s opportunity: play the singleton alone and keep the pair. This applies to opening cards and draws, including cards another player declines. If the opening card goes unused, the second player to the dealer's
+and wins. With a pair plus a singleton, matching the singleton also wins on that player’s opportunity: match the singleton and clear all three cards, including the pair. This applies to opening cards and draws, including cards another player declines. If the opening card goes unused, the second player to the dealer's
 right draws next. Draws stay face up: the drawer has first choice, then others
 in rotation. Subsequent unused draws advance to the right.
 

@@ -94,7 +94,7 @@
    if(this.phase!=='offer'||seat!==this.turn)return false;
    const hand=this.players[seat].hand,m=hand.find(c=>c.id===matchId),target=this.pile[this.pile.length-1];
    if(!m||m.rank!==target.rank)return false;
-   if(pairWin(hand,target.rank)){this.players[seat].hand=hand.filter(c=>c!==m);this.pile.push(m);this.note(this.players[seat].name+' plays '+face(m)+' and wins with a pair remaining.');this.finish(seat);return true;}
+   if(pairWin(hand,target.rank)){this.pile.push(...hand.filter(c=>c!==m),m);this.players[seat].hand=[];this.note(this.players[seat].name+' clears all three cards, matching '+face(m)+' to win with a pair.');this.finish(seat);return true;}
    const other=hand.find(c=>c.id===otherId);
    if(hand.length>1&&(!other||other===m))return false;
    this.players[seat].hand=hand.filter(c=>c!==m&&c!==other);this.pile.push(m);if(hand.length>1)this.pile.push(other);
