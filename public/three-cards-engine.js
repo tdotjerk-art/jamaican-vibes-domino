@@ -2,6 +2,40 @@
  'use strict';
  const RANKS={11:'J',12:'Q',13:'K',14:'A'};
  const face=c=>c?(RANKS[c.rank]||String(c.rank))+c.suit:'—';
+ // Calls are evaluated independently of the rank-matching hand win.
+ // "Flush, straight and threes" is the owner's special category name.
+ function evaluateCall(hand){
+  if(!Array.isArray(hand)||hand.length!==3)return null;
+  const ranks=hand.map(c=>c.rank).sort((a,b)=>b-a);
+  const threes=ranks[0]===ranks[2];
+  const twoJacks=ranks.join(',')==='11,11,6',twoSixes=ranks.join(',')==='11,6,6';
+  if(threes||twoJacks||twoSixes)return {name:'Flush, straight and threes',points:3,key:[4,threes?3:twoJacks?2:1,...ranks]};
+  const flush=hand.every(c=>c.suit===hand[0].suit);
+  // Ace can end Q-K-A or start A-2-3. K-A-2 is not consecutive.
+  const lowAce=ranks.join(',')==='14,3,2';
+  const straight=lowAce||(ranks[0]===ranks[1]+1&&ranks[1]===ranks[2]+1);
+  const category=flush&&straight?3:flush?2:straight?1:0;
+  if(!category)return null;
+  return {name:category===3?'Flush and straight':flush?'Flush':'Straight',points:category===3?2:1,key:[category,...(lowAce&&straight?[3,2,1]:ranks)]};
+ }
+ function compareCalls(a,b){
+  const left=a?.key||[0],right=b?.key||[0];
+  for(let i=0;i<Math.max(left.length,right.length);i++){const difference=(left[i]||0)-(right[i]||0);if(difference)return Math.sign(difference);}
+  return 0;
+ }
+ // Pure result: only non-winners pay; equally ranked winners share the pool.
+ function callResult(hands,declaredSeats){
+  if(!Array.isArray(declaredSeats)||new Set(declaredSeats).size!==declaredSeats.length||declaredSeats.some(i=>!Number.isInteger(i)||i<0||i>=hands.length))throw Error('Invalid call declarations.');
+  let best=null,winners=[];
+  for(const seat of declaredSeats){const call=evaluateCall(hands[seat]);if(!call)continue;const comparison=compareCalls(call,best);if(comparison>0){best=call;winners=[seat];}else if(comparison===0)winners.push(seat);}
+  const deltas=hands.map(()=>0);
+  if(winners.length){deltas.fill(-best.points);const share=best.points*(hands.length-winners.length)/winners.length;for(const seat of winners)deltas[seat]=share;}
+  return {call:best,winners,tied:winners.length>1,deltas};
+ }
+ function scoreText(value){
+  const units=Math.round(Math.abs(value)*6),whole=Math.floor(units/6),part=['','⅙','⅓','½','⅔','⅚'][units%6];
+  return (value<0?'−':value>0?'+':'')+(whole||!part?String(whole):'')+part;
+ }
  function pairWin(hand,rank){if(hand.length!==3)return false;const matches=hand.filter(c=>c.rank===rank),rest=hand.filter(c=>c.rank!==rank);return matches.length===1&&rest.length===2&&rest[0].rank===rest[1].rank;}
  function deck(random=Math.random){const d=[];for(const suit of ['♠','♥','♦','♣'])for(let rank=2;rank<=14;rank++)d.push({id:suit+rank,rank,suit});for(let i=d.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[d[i],d[j]]=[d[j],d[i]];}return d;}
  class Game{
@@ -11,7 +45,7 @@
    this.players=names.map(name=>({name:String(name).slice(0,20),score:0,hand:[]}));this.total=total;this.completed=0;this.random=random;this.dealer=null;this.history=[];this.beginPicker();
   }
   note(text){this.message=text;this.history.push(text);if(this.history.length>80)this.history.shift();}
-  beginPicker(){this.stock=null;this.pile=[];this.players.forEach(p=>p.hand=[]);this.phase='pick';this.pickDeck=deck(this.random);this.picks=Array(this.players.length).fill(null);this.pickSeats=this.players.map((_,i)=>i);this.turn=null;this.note('Everyone picks a card. Highest card deals. Ace is high; tied highest players pick again.');}
+  beginPicker(){this.declarations=null;this.callSummary=null;this.stock=null;this.pile=[];this.players.forEach(p=>p.hand=[]);this.phase='pick';this.pickDeck=deck(this.random);this.picks=Array(this.players.length).fill(null);this.pickSeats=this.players.map((_,i)=>i);this.turn=null;this.note('Everyone picks a card. Highest card deals. Ace is high; tied highest players pick again.');}
   pick(seat){
    if(this.phase!=='pick'||!this.pickSeats.includes(seat)||this.picks[seat])return false;
    const card=this.pickDeck.pop();this.picks[seat]=card;
@@ -29,7 +63,24 @@
    const trump=this.stock.pop();this.opening=trump;this.pile.push(trump);
    if(trump.rank===6||trump.rank===11){this.bonus=this.players.length;this.players[this.dealer].score+=this.bonus;this.note(this.players[this.dealer].name+' turns up '+face(trump)+' and gets '+this.bonus+' bonus points.');}
    else this.note(this.players[this.dealer].name+' turns up '+face(trump)+'.');
-   this.nextDrawer=(this.dealer+2)%this.players.length;this.offer((this.dealer+1)%this.players.length);return true;
+   this.nextDrawer=(this.dealer+2)%this.players.length;this.declarations=this.players.map(()=>null);this.callSummary=null;this.phase='declare';this.turn=null;this.note('Before any card is played, everyone must declare a call or pass.');return true;
+  }
+  declare(seat,claim){
+   if(this.phase!=='declare'||!Number.isInteger(seat)||!this.players[seat]||this.declarations[seat]!==null||typeof claim!=='boolean')return false;
+   const call=evaluateCall(this.players[seat].hand);
+   if(claim&&!call)return false;
+   this.declarations[seat]=claim;
+   // Do not expose a claim's rank or cards while opponents are deciding.
+   this.note(this.players[seat].name+' is ready. Waiting for all declarations.');
+   if(this.declarations.every(value=>value!==null)){
+    const result=callResult(this.players.map(p=>p.hand),this.declarations.flatMap((value,i)=>value?[i]:[]));
+    this.players.forEach((p,i)=>p.score=Math.round((p.score+result.deltas[i])*6)/6);
+    this.callSummary={name:result.call?.name||null,points:result.call?.points||0,winners:result.winners,deltas:result.deltas,tied:result.tied};
+    const names=result.winners.map(i=>this.players[i].name).join(' & ');
+    this.note(result.call?names+(result.tied?' share ':' wins ')+result.call.name+'. '+result.deltas.map((delta,i)=>this.players[i].name+' '+scoreText(delta)).join('; ')+'. Matching-card play continues.':'No calls declared. Matching-card play continues.');
+    this.offer((this.dealer+1)%this.players.length);
+   }
+   return true;
   }
   offer(start){this.phase='offer';this.queue=Array.from({length:this.players.length},(_,i)=>(start+i)%this.players.length);this.seek();}
   seek(){
@@ -54,12 +105,12 @@
   draw(seat){if(this.phase!=='draw'||seat!==this.turn||!this.stock.length)return false;const card=this.stock.pop();this.pile.push(card);this.drawn=true;this.note(this.players[seat].name+' draws '+face(card)+'.');this.nextDrawer=(seat+1)%this.players.length;this.offer(seat);return true;}
   finish(winner){
    this.completed++;this.winner=winner;this.turn=null;this.phase=this.completed===this.total?'session-over':'hand-over';
-   if(winner===null){this.needsPick=true;this.note('Deck finished. No hand points; dealer keeps any bonus. This game counts. Pick again for the next dealer.');}
-   else{this.players.forEach((p,i)=>p.score+=i===winner?1:-1);this.dealer=winner;this.needsPick=false;this.note(this.players[winner].name+' wins: +1 point. Every other player: −1. Winner deals next.');}
+   if(winner===null){this.needsPick=true;this.note('Deck finished. No hand points; call points and dealer bonus are kept. This game counts. Pick again for the next dealer.');}
+   else{this.players.forEach((p,i)=>p.score=Math.round((p.score+(i===winner?1:-1))*6)/6);this.dealer=winner;this.needsPick=false;this.note(this.players[winner].name+' wins: +1 point. Every other player: −1. Winner deals next.');}
   }
   next(){if(this.phase!=='hand-over')return false;if(this.needsPick)this.beginPicker();else{this.phase='deal';this.note(this.players[this.dealer].name+' won and deals next.');}return true;}
   extend(amount){if(this.phase!=='session-over'||!Number.isInteger(amount)||amount<5||amount%5||this.total+amount>1000)return false;this.total+=amount;this.phase='hand-over';return this.next();}
-  view(seat){return {players:this.players.map((p,i)=>({name:p.name,score:p.score,count:p.hand.length,hand:i===seat?p.hand:[]})),total:this.total,completed:this.completed,phase:this.phase,turn:this.turn,dealer:this.dealer,picks:this.picks,pickSeats:this.pickSeats,opening:this.opening||null,top:this.pile?.at(-1)||null,recent:this.pile?.slice(-4)||[],remaining:this.stock?.length||0,bonus:this.bonus||0,winner:this.winner,message:this.message,history:this.history.slice(-12)};}
+  view(seat){return {declarations:this.declarations?.map(value=>value===null?null:true)||null,callSummary:this.callSummary||null,players:this.players.map((p,i)=>({name:p.name,score:p.score,count:p.hand.length,hand:i===seat?p.hand:[]})),total:this.total,completed:this.completed,phase:this.phase,turn:this.turn,dealer:this.dealer,picks:this.picks,pickSeats:this.pickSeats,opening:this.opening||null,top:this.pile?.at(-1)||null,recent:this.pile?.slice(-4)||[],remaining:this.stock?.length||0,bonus:this.bonus||0,winner:this.winner,message:this.message,history:this.history.slice(-12)};}
  }
- const api={Game,deck,face,pairWin};root.JVThreeCards=api;if(typeof module!=='undefined')module.exports=api;
+ const api={Game,deck,face,pairWin,evaluateCall,compareCalls,callResult,scoreText};root.JVThreeCards=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

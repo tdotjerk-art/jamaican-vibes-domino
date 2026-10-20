@@ -41,6 +41,7 @@ test('many complete hands preserve cards and apply only specified points',()=>{
   while(g.phase!=='session-over'&&actions++<5000){
    if(g.phase==='pick'){const seat=g.pickSeats.find(i=>!g.picks[i]);g.pick(seat);}
    else if(g.phase==='deal')g.deal(g.dealer);
+   else if(g.phase==='declare'){const seat=g.declarations.findIndex(value=>value===null);g.declare(seat,false);}
    else if(g.phase==='draw')g.draw(g.turn);
    else if(g.phase==='offer'){const h=g.players[g.turn].hand,m=h.find(c=>c.rank===g.pile.at(-1).rank),o=h.find(c=>c!==m);g.play(g.turn,m.id,o?.id);}
    else if(g.phase==='hand-over')g.next();
