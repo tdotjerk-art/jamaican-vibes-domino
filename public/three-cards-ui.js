@@ -56,8 +56,8 @@
    }
    else if(g.phase==='draw'){button('Draw one card',()=>act('draw'),g.turn!==seat);$('hint').textContent=g.turn===seat?'The card stays on the table. You get first choice to use it.':'Waiting for '+g.players[g.turn].name+' to draw.';}
    else if(g.phase==='offer'&&g.turn===seat){
-    button(pairWin?'Play matching card & win':hand.length===1?'Play last card & win':'Play selected cards',()=>act('play',{match,other}),!match||(hand.length>1&&!pairWin&&!other));button('Decline — let it go around',()=>act('pass'),false,'quiet');
-    $('hint').textContent=pairWin?'You have a pair. Tap your other card, then play it to win. The pair stays in your hand.':hand.length===1?'Tap your matching card, then play it to win.':!match?'Tap your matching '+E.face(g.top).slice(0,-1)+', then choose one other card.':!other?'Now choose another card from your hand.':'Play both selected cards. The second card becomes the rank to match.';
+    button(pairWin?'Clear all three & win':hand.length===1?'Play last card & win':'Play selected cards',()=>act('play',{match,other}),!match||(hand.length>1&&!pairWin&&!other));button('Decline — let it go around',()=>act('pass'),false,'quiet');
+    $('hint').textContent=pairWin?'You have a pair. Tap your other card, then play it to win. All three cards clear when you win.':hand.length===1?'Tap your matching card, then play it to win.':!match?'Tap your matching '+E.face(g.top).slice(0,-1)+', then choose one other card.':!other?'Now choose another card from your hand.':'Play both selected cards. The second card becomes the rank to match.';
    }else if(g.phase==='hand-over'){button('Next game',()=>act('next'));}
   }
   $('callResult').textContent=g.callSummary?(g.callSummary.name?g.callSummary.winners.map(i=>g.players[i].name).join(' & ')+(g.callSummary.tied?' share ':' won ')+g.callSummary.name+' · '+g.callSummary.deltas.map((delta,i)=>g.players[i].name+' '+E.scoreText(delta)).join(' · '):'No calls declared this hand.'):'';

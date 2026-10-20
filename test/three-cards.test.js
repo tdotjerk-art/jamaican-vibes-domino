@@ -55,10 +55,10 @@ test('tables accept four players and reject a fifth',()=>{assert.equal(new Game(
 
 test('two twos and a king win using a king when priority reaches that player',()=>{
  const g=fixture([[c(8)],[c(2),c(2,'♥'),c(13)],[c(9)]],c(13,'♦'));
- assert.equal(g.turn,1);assert(g.play(1,'♠13'));assert.equal(g.winner,1);assert.deepEqual(g.players[1].hand.map(c=>c.rank),[2,2]);assert.deepEqual(g.players.map(p=>p.score),[-1,1,-1]);assert.equal(g.dealer,1);
+ assert.equal(g.turn,1);assert(g.play(1,'♠13'));assert.equal(g.winner,1);assert.deepEqual(g.players[1].hand,[]);assert.deepEqual(g.pile.slice(-3).map(c=>c.rank),[2,2,13]);assert.equal(g.view(0).players[1].count,0);assert.deepEqual(g.players.map(p=>p.score),[-1,1,-1]);assert.equal(g.dealer,1);
 });
 test('pair win works on own draw and after another player declines in rotation',()=>{
- for(const drawer of [0,1]){const g=fixture([[c(2),c(2,'♥'),c(13)],[c(13,'♥'),c(8),c(9)],[c(10)]],c(7),drawer);g.stock=[c(13,'♦')];assert(g.draw(drawer));if(drawer===1){assert.equal(g.play(0,'♠13'),false);assert.equal(g.turn,1);assert(g.pass(1));}assert.equal(g.turn,0);g.players[0].score=3;assert(g.play(0,'♠13'));assert.equal(g.winner,0);assert.equal(g.players[0].score,4);assert.equal(g.players[0].hand.length,2);}
+ for(const drawer of [0,1]){const g=fixture([[c(2),c(2,'♥'),c(13)],[c(13,'♥'),c(8),c(9)],[c(10)]],c(7),drawer);g.stock=[c(13,'♦')];assert(g.draw(drawer));if(drawer===1){assert.equal(g.play(0,'♠13'),false);assert.equal(g.turn,1);assert(g.pass(1));}assert.equal(g.turn,0);g.players[0].score=3;assert(g.play(0,'♠13'));assert.equal(g.winner,0);assert.equal(g.players[0].score,4);assert.equal(g.players[0].hand.length,0);}
 });
 test('a pair rank or three of a kind does not trigger the singleton winning rule',()=>{
  const {pairWin}=require('../public/three-cards-engine');assert.equal(pairWin([c(2),c(2,'♥'),c(13)],2),false);assert.equal(pairWin([c(2),c(2,'♥'),c(2,'♦')],2),false);assert.equal(pairWin([c(2),c(3),c(13)],13),false);
