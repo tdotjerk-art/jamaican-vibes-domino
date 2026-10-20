@@ -44,7 +44,7 @@
   $('tableCard').replaceChildren(card(g.top));$('remaining').textContent=g.top?g.remaining+' cards in deck'+(g.bonus?' · Dealer bonus +'+g.bonus:''):'';
   $('tableCard').classList.toggle('stacked',(g.recent||[]).length>1);
   const hand=g.players[seat].hand;$('yourHand').replaceChildren(node('h3','YOUR HAND'));
-  const cards=node('div',undefined,'cards');const canPlay=g.phase==='offer'&&g.turn===seat&&!paused;const pairWin=E.pairWin(hand,g.top?.rank);
+  const cards=node('div',undefined,'cards');const canPlay=g.phase==='offer'&&g.turn===seat&&!paused;const pairWin=E.pairWin(hand,g.top?.rank);const single=E.pairSingle(hand);const waitingForSingle=single&&['offer','draw'].includes(g.phase)&&!pairWin;
   hand.forEach(c=>{const click=canPlay?()=>{if(match===c.id){match=null;other=null;}else if(!match){if(c.rank!==g.top.rank){error('Choose a card matching '+E.face(g.top)+' first.');return;}match=c.id;other=null;}else other=other===c.id?null:c.id;render();}:null;cards.append(card(c,click,match===c.id||other===c.id));});$('yourHand').append(cards);
   $('message').textContent=paused?'Play paused. Waiting for every player to reconnect.':g.message;
   $('actions').replaceChildren();$('hint').textContent='Chances and draws move to the right. Matching plays use ranks; suits count for flush calls.';
@@ -64,6 +64,7 @@
     $('hint').textContent=pairWin?'You have a pair. Tap your other card, then play it to win. All three cards clear when you win.':hand.length===1?'Tap your matching card, then play it to win.':!match?'Tap your matching '+E.face(g.top).slice(0,-1)+', then choose one other card.':!other?'Now choose another card from your hand.':'Play both selected cards. The second card becomes the rank to match.';
    }else if(g.phase==='hand-over'){button('Next game',()=>act('next'));}
   }
+  if(!paused&&waitingForSingle){const rank=E.face(single).slice(0,-1);$('message').textContent='Waiting for a '+rank+' to win. '+g.message;$('hint').textContent='Keep your pair. When a '+rank+' reaches you in rotation, clear all three cards to win.';}
   $('callResult').textContent=g.callSummary?(g.callSummary.name?g.callSummary.winners.map(i=>g.players[i].name).join(' & ')+(g.callSummary.tied?' share ':' won ')+g.callSummary.name+' · '+g.callSummary.deltas.map((delta,i)=>g.players[i].name+' '+E.scoreText(delta)).join(' · '):'No calls declared this hand.'):'';
   $('extension').hidden=g.phase!=='session-over';$('extensionVotes').replaceChildren();
   if(g.phase==='session-over'&&online)remote.seats.forEach(p=>$('extensionVotes').append(node('p',p.name+': '+(p.extension?'add '+p.extension+' games':'deciding'))));

@@ -36,6 +36,7 @@
   const units=Math.round(Math.abs(value)*6),whole=Math.floor(units/6),part=['','⅙','⅓','½','⅔','⅚'][units%6];
   return (value<0?'−':value>0?'+':'')+(whole||!part?String(whole):'')+part;
  }
+ function pairSingle(hand){if(hand.length!==3)return null;return hand.find(c=>hand.filter(other=>other.rank===c.rank).length===1&&hand.some(other=>other.rank!==c.rank&&hand.filter(p=>p.rank===other.rank).length===2))||null;}
  function pairWin(hand,rank){if(hand.length!==3)return false;const matches=hand.filter(c=>c.rank===rank),rest=hand.filter(c=>c.rank!==rank);return matches.length===1&&rest.length===2&&rest[0].rank===rest[1].rank;}
  function deck(random=Math.random){const d=[];for(const suit of ['♠','♥','♦','♣'])for(let rank=2;rank<=14;rank++)d.push({id:suit+rank,rank,suit});for(let i=d.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[d[i],d[j]]=[d[j],d[i]];}return d;}
  class Game{
@@ -85,7 +86,7 @@
   offer(start){this.phase='offer';this.queue=Array.from({length:this.players.length},(_,i)=>(start+i)%this.players.length);this.seek();}
   seek(){
    const rank=this.pile[this.pile.length-1].rank;
-   while(this.queue.length&&!this.players[this.queue[0]].hand.some(c=>c.rank===rank))this.queue.shift();
+   while(this.queue.length&&(!this.players[this.queue[0]].hand.some(c=>c.rank===rank)||(pairSingle(this.players[this.queue[0]].hand)&&!pairWin(this.players[this.queue[0]].hand,rank))))this.queue.shift();
    if(this.queue.length){this.turn=this.queue[0];this.note(this.players[this.turn].name+' can use '+face(this.pile[this.pile.length-1])+'.');}
    else{this.phase='draw';this.turn=this.nextDrawer;this.note(this.players[this.turn].name+' draws next.');if(!this.stock.length)this.finish(null);}
   }
@@ -93,7 +94,7 @@
   play(seat,matchId,otherId){
    if(this.phase!=='offer'||seat!==this.turn)return false;
    const hand=this.players[seat].hand,m=hand.find(c=>c.id===matchId),target=this.pile[this.pile.length-1];
-   if(!m||m.rank!==target.rank)return false;
+   if(!m||m.rank!==target.rank||(pairSingle(hand)&&!pairWin(hand,target.rank)))return false;
    if(pairWin(hand,target.rank)){this.winningHand=hand.slice();this.pile.push(...hand.filter(c=>c!==m),m);this.players[seat].hand=[];this.note(this.players[seat].name+' clears all three cards, matching '+face(m)+' to win with a pair.');this.finish(seat);return true;}
    const other=hand.find(c=>c.id===otherId);
    if(hand.length>1&&(!other||other===m))return false;
@@ -112,5 +113,5 @@
   extend(amount){if(this.phase!=='session-over'||!Number.isInteger(amount)||amount<5||amount%5||this.total+amount>1000)return false;this.total+=amount;this.phase='hand-over';return this.next();}
   view(seat){return {declarations:this.declarations?.map(value=>value===null?null:true)||null,callSummary:this.callSummary||null,players:this.players.map((p,i)=>({name:p.name,score:p.score,count:p.hand.length,hand:i===seat?p.hand:[]})),total:this.total,completed:this.completed,phase:this.phase,turn:this.turn,dealer:this.dealer,picks:this.picks,pickSeats:this.pickSeats,opening:this.opening||null,top:this.pile?.at(-1)||null,recent:this.pile?.slice(-4)||[],remaining:this.stock?.length||0,bonus:this.bonus||0,winner:this.winner,winningHand:['hand-over','session-over'].includes(this.phase)?this.winningHand.slice():[],message:this.message,history:this.history.slice(-12)};}
  }
- const api={Game,deck,face,pairWin,evaluateCall,compareCalls,callResult,scoreText};root.JVThreeCards=api;if(typeof module!=='undefined')module.exports=api;
+ const api={Game,deck,face,pairSingle,pairWin,evaluateCall,compareCalls,callResult,scoreText};root.JVThreeCards=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

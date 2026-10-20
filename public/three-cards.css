@@ -17,3 +17,6 @@
 
 /* Reduce the complete table to 80% while keeping its internal spacing. */
 .table{zoom:0.8;width:80%;margin-inline:auto}
+
+/* Keep controls scrollable above overlaid phone browser toolbars. */
+@media(max-width:649px){main{padding-bottom:calc(140px + env(safe-area-inset-bottom,0px))}.controls{scroll-margin-bottom:calc(110px + env(safe-area-inset-bottom,0px))}.controls .actions{flex-direction:column;align-items:stretch}.controls .actions button{width:100%;min-height:48px}}
