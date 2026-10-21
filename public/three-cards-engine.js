@@ -64,7 +64,7 @@
    const trump=this.stock.pop();this.opening=trump;this.pile.push(trump);
    if(trump.rank===6||trump.rank===11){this.bonus=this.players.length;this.players[this.dealer].score+=this.bonus;this.note(this.players[this.dealer].name+' turns up '+face(trump)+' and gets '+this.bonus+' bonus points.');}
    else this.note(this.players[this.dealer].name+' turns up '+face(trump)+'.');
-   this.nextDrawer=(this.dealer+2)%this.players.length;this.declarations=this.players.map(()=>null);this.callSummary=null;this.phase='declare';this.turn=null;this.note('Before any card is played, everyone must declare a call or pass.');return true;
+   this.nextDrawer=(this.dealer+2)%this.players.length;this.declarations=this.players.map(()=>null);this.callSummary=null;this.phase='declare';this.turn=null;this.note('The game checks every hand for calls automatically.');this.players.forEach((p,i)=>this.declare(i,!!evaluateCall(p.hand)));return true;
   }
   declare(seat,claim){
    if(this.phase!=='declare'||!Number.isInteger(seat)||!this.players[seat]||this.declarations[seat]!==null||typeof claim!=='boolean')return false;
@@ -76,7 +76,7 @@
    if(this.declarations.every(value=>value!==null)){
     const result=callResult(this.players.map(p=>p.hand),this.declarations.flatMap((value,i)=>value?[i]:[]));
     this.players.forEach((p,i)=>p.score=Math.round((p.score+result.deltas[i])*6)/6);
-    this.callSummary={name:result.call?.name||null,points:result.call?.points||0,winners:result.winners,deltas:result.deltas,tied:result.tied,hands:result.winners.map(seat=>({seat,cards:this.players[seat].hand.slice()}))};
+    this.callSummary={name:result.call?.name||null,points:result.call?.points||0,winners:result.winners,deltas:result.deltas,tied:result.tied,calls:this.players.map(p=>{const c=evaluateCall(p.hand);return c?{name:c.name,points:c.points}:null;}),hands:result.winners.map(seat=>({seat,cards:this.players[seat].hand.slice()}))};
     const names=result.winners.map(i=>this.players[i].name).join(' & ');
     this.note(result.call?names+(result.tied?' share ':' wins ')+result.call.name+'. '+result.deltas.map((delta,i)=>this.players[i].name+' '+scoreText(delta)).join('; ')+'. Matching-card play continues.':'No calls declared. Matching-card play continues.');
     this.offer((this.dealer+1)%this.players.length);
@@ -111,7 +111,7 @@
   }
   next(){if(this.phase!=='hand-over')return false;if(this.needsPick)this.beginPicker();else{this.phase='deal';this.note(this.players[this.dealer].name+' won and deals next.');}return true;}
   extend(amount){if(this.phase!=='session-over'||!Number.isInteger(amount)||amount<5||amount%5||this.total+amount>1000)return false;this.total+=amount;this.phase='hand-over';return this.next();}
-  view(seat){return {declarations:this.declarations?.map(value=>value===null?null:true)||null,callSummary:this.callSummary||null,players:this.players.map((p,i)=>({name:p.name,score:p.score,count:p.hand.length,hand:i===seat?p.hand:[]})),total:this.total,completed:this.completed,phase:this.phase,turn:this.turn,dealer:this.dealer,picks:this.picks,pickSeats:this.pickSeats,opening:this.opening||null,top:this.pile?.at(-1)||null,recent:this.pile?.slice(-4)||[],remaining:this.stock?.length||0,bonus:this.bonus||0,winner:this.winner,winningHand:['hand-over','session-over'].includes(this.phase)?this.winningHand.slice():[],message:this.message,history:this.history.slice(-12)};}
+  view(seat){return {declarations:this.declarations?.map(value=>value===null?null:true)||null,callSummary:this.callSummary?{...this.callSummary,hands:['hand-over','session-over'].includes(this.phase)?this.callSummary.hands.map(h=>({seat:h.seat,cards:h.cards.slice()})):[]}:null,players:this.players.map((p,i)=>({name:p.name,score:p.score,count:p.hand.length,hand:i===seat?p.hand:[]})),total:this.total,completed:this.completed,phase:this.phase,turn:this.turn,dealer:this.dealer,picks:this.picks,pickSeats:this.pickSeats,opening:this.opening||null,top:this.pile?.at(-1)||null,recent:this.pile?.slice(-4)||[],remaining:this.stock?.length||0,bonus:this.bonus||0,winner:this.winner,winningHand:['hand-over','session-over'].includes(this.phase)?this.winningHand.slice():[],message:this.message,history:this.history.slice(-12)};}
  }
  const api={Game,deck,face,pairSingle,pairWin,evaluateCall,compareCalls,callResult,scoreText};root.JVThreeCards=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);
