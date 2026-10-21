@@ -20,3 +20,6 @@
 
 /* Keep controls scrollable above overlaid phone browser toolbars. */
 @media(max-width:649px){main{padding-bottom:calc(140px + env(safe-area-inset-bottom,0px))}.controls{scroll-margin-bottom:calc(110px + env(safe-area-inset-bottom,0px))}.controls .actions{flex-direction:column;align-items:stretch}.controls .actions button{width:100%;min-height:48px}}
+
+/* Played cards remain visible at their owner's seat; hidden cards share the row. */
+.player .played-label{font-size:8px;letter-spacing:.5px;color:#f6cf5a}.player .played-cards{gap:2px}.player .played-cards .card{flex:1 1 0;min-width:0;max-width:32px;height:40px;padding:2px;font-size:14px;border-width:1px}
