@@ -108,7 +108,7 @@
   finish(winner){
    this.completed++;this.winner=winner;this.turn=null;this.phase=this.completed===this.total?'session-over':'hand-over';
    if(winner===null){this.needsPick=true;this.note('Deck finished. No hand points; call points and dealer bonus are kept. This game counts. Pick again for the next dealer.');}
-   else{this.players.forEach((p,i)=>p.score=Math.round((p.score+(i===winner?1:-1))*6)/6);this.dealer=winner;this.needsPick=false;this.note(this.players[winner].name+' wins: +1 point. Every other player: −1. Winner deals next.');}
+   else{this.players.forEach((p,i)=>p.score=Math.round((p.score+(i===winner?this.players.length-1:-1))*6)/6);this.dealer=winner;this.needsPick=false;this.note(this.players[winner].name+' wins: +'+(this.players.length-1)+' ('+'1 point from each opponent). Every other player: −1. Winner deals next.');}
   }
   next(){if(this.phase!=='hand-over')return false;if(this.needsPick)this.beginPicker();else{this.players.forEach(p=>p.played=[]);this.phase='deal';this.note(this.players[this.dealer].name+' won and deals next.');}return true;}
   extend(amount){if(this.phase!=='session-over'||!Number.isInteger(amount)||amount<5||amount%5||this.total+amount>1000)return false;this.total+=amount;this.phase='hand-over';return this.next();}
