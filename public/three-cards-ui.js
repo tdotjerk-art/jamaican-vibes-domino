@@ -37,7 +37,7 @@
    const victory=['hand-over','session-over'].includes(g.phase)&&g.winner===i&&g.winningHand?.length;
    const callHand=g.callSummary?.hands?.find(h=>h.seat===i);
    const complete=['hand-over','session-over'].includes(g.phase);const revealed=victory?(p.played?.length?p.played:g.winningHand):complete?callHand?.cards:null;
-   const detected=g.callSummary?.calls?.[i];if(detected&&!complete&&!['pick','deal'].includes(g.phase))el.append(node('p',detected.name,'winning-call-name'));
+   const detected=g.callSummary?.calls?.[i];if(detected&&!complete&&!['pick','deal'].includes(g.phase))el.append(node('p','CALL: '+detected.name,'winning-call-name'));
    if(revealed?.length){el.classList.add('revealed-winner');el.append(node('p',victory?'VICTORY':g.callSummary.tied?'TIED CALL': 'WINNING CALL','victory-label'));if(!victory)el.append(node('p',g.callSummary.name,'winning-call-name'));const reveal=node('div',undefined,'cards winning-cards');reveal.setAttribute('aria-label',victory?'Winning cards':'Winning call cards');revealed.forEach(c=>reveal.append(card(c)));el.append(reveal);}
    if(g.phase==='declare')el.append(node('p',g.declarations[i]===null?'Choosing call…':'Ready'));
    if(['pick','deal'].includes(g.phase)){const wrap=node('div',undefined,'cards small');wrap.append(g.picks[i]?card(g.picks[i]):card(null));el.append(wrap);}
@@ -61,7 +61,11 @@
    }else if(g.phase==='hand-over'){button('Next game',()=>act('next'));}
   }
   if(!paused&&waitingForSingle){const rank=E.face(single).slice(0,-1);$('message').textContent='Waiting for a '+rank+' to win. '+g.message;$('hint').textContent='Keep your pair. When a '+rank+' reaches you in rotation, clear all three cards to win.';}
-  $('callResult').textContent=g.callSummary?(g.callSummary.name?g.callSummary.winners.map(i=>g.players[i].name).join(' & ')+(g.callSummary.tied?' share ':' won ')+g.callSummary.name+' · '+g.callSummary.deltas.map((delta,i)=>g.players[i].name+' '+E.scoreText(delta)).join(' · '):'No qualifying calls this hand.'):'';
+  const announced=g.callSummary?.calls?.flatMap((call,i)=>call?[g.players[i].name+' calls '+call.name]:[])||[];
+  const callNotice=g.callSummary&&!['pick','deal'].includes(g.phase)?(announced.length?'CALLS: '+announced.join(' · ')+'. '+g.callSummary.winners.map(i=>g.players[i].name).join(' & ')+(g.callSummary.tied?' share the strongest call. ':' has the strongest call. ')+g.callSummary.deltas.map((delta,i)=>g.players[i].name+' '+E.scoreText(delta)).join(' · '):'No qualifying calls this hand.'):'';
+  if($('callResult').textContent!==callNotice)$('callResult').textContent=callNotice;
+  $('callResult').hidden=!callNotice;
+
   $('extension').hidden=g.phase!=='session-over';$('extensionVotes').replaceChildren();
   if(g.phase==='session-over'&&online)remote.seats.forEach(p=>$('extensionVotes').append(node('p',p.name+': '+(p.extension?'add '+p.extension+' games':'deciding'))));
   $('log').replaceChildren();g.history.forEach(text=>$('log').append(node('li',text)));

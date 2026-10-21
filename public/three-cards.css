@@ -23,3 +23,6 @@
 
 /* Played cards remain visible at their owner's seat; hidden cards share the row. */
 .player .played-label{font-size:8px;letter-spacing:.5px;color:#f6cf5a}.player .played-cards{gap:2px}.player .played-cards .card{flex:1 1 0;min-width:0;max-width:32px;height:40px;padding:2px;font-size:14px;border-width:1px}
+
+/* All players see call announcements above the table during the hand. */
+#callResult{padding:12px 14px;margin:12px 0 16px;border:1px solid #f6cf5a;border-radius:12px;background:#253821;color:#fff1bd;font-size:14px;font-weight:700;line-height:1.6;overflow-wrap:anywhere}
