@@ -68,9 +68,9 @@ test('calls remain separate from ordinary wins, bonuses, exhaustion, and future 
  const g=dealt([hand([11,11,6]),hand([6,6,11]),hand([2,5,9]),hand([2,2,2])]);
  g.players[0].score=4;for(let i=0;i<4;i++)g.declare(i,i===0);
  assert.deepEqual(g.players.map(p=>p.score),[13,-3,-3,-3]);
- g.finish(1);assert.deepEqual(g.players.map(p=>p.score),[12,-2,-4,-4]);assert.equal(g.dealer,1);
- g.next();g.deal(1);assert.equal(g.phase,'declare');assert.equal(g.callSummary,null);assert.deepEqual(g.declarations,[null,null,null,null]);
- const scores=g.players.map(p=>p.score);for(let i=0;i<4;i++)g.declare(i,false);g.finish(null);assert.deepEqual(g.players.map(p=>p.score),scores);
+ g.finish(1);assert.deepEqual(g.players.map(p=>p.score),[12,0,-4,-4]);assert.equal(g.dealer,1);
+ g.next();const beforeDeal=g.players.map(p=>p.score);g.deal(1);assert.notEqual(g.phase,'declare');assert(g.callSummary);assert.deepEqual(g.declarations,g.players.map(p=>!!evaluateCall(p.hand)));assert.deepEqual(g.players.map(p=>p.score),beforeDeal.map((score,i)=>score+(i===1?g.bonus:0)+g.callSummary.deltas[i]));
+ const scores=g.players.map(p=>p.score);g.finish(null);assert.deepEqual(g.players.map(p=>p.score),scores);
  g.next();assert.equal(g.callSummary,null);assert.equal(g.declarations,null);
 });
 test('three-way sharing conserves points and fractional display survives ordinary hand scoring',()=>{
@@ -78,7 +78,7 @@ test('three-way sharing conserves points and fractional display survives ordinar
  const result=callResult(hands,[0,1,2]);assert.deepEqual(result.deltas,[1/3,1/3,1/3,-1]);
  assert.equal(scoreText(1/3),'+⅓');assert.equal(scoreText(-4/3),'−1⅓');assert.equal(scoreText(1.5),'+1½');
  const g=dealt(hands);for(let i=0;i<4;i++)g.declare(i,i<3);g.finish(0);
- assert.equal(g.players[0].score,4/3);assert.equal(g.players[1].score,-2/3);
+ assert.equal(g.players[0].score,10/3);assert.equal(g.players[1].score,-2/3);
 });
 
 test('one- and two-point calls transfer their value per opponent; all-player ties transfer nothing',()=>{

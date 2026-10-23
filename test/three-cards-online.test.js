@@ -18,20 +18,21 @@ test('online consensus, private hands, turn enforcement, reconnect and session e
   err=wait(seats[(dealer+1)%4],'card-error');seats[(dealer+1)%4].emit('action',{type:'deal'});assert.match(await err,/not available/);
   await command(seats[dealer],'action',{type:'deal'});
   assert.equal(a.current.game.players[0].hand.length,3);assert.equal(a.current.game.players[1].hand.length,0);assert.equal(b.current.game.players[1].hand.length,3);assert.equal(b.current.game.players[0].hand.length,0);assert.equal(a.current.game.stock,undefined);
-  assert.equal(a.current.game.phase,'declare');
-  err=wait(a,'card-error');a.emit('action',{type:'declare',claim:'true'});assert.match(await err,/not available/);
-  err=wait(a,'card-error');a.emit('action',{type:'draw'});assert.match(await err,/not available/);
-  const callScores=a.current.game.players.map(p=>p.score);
-  for(let i=0;i<4;i++){
-   const {evaluateCall}=require('../public/three-cards-engine');
-   await command(seats[i],'action',{type:'declare',claim:!!evaluateCall(seats[i].current.game.players[i].hand)});
-   if(i===0){assert.equal(a.current.game.declarations[0],true);assert.equal(a.current.game.callSummary,null);err=wait(a,'card-error');a.emit('action',{type:'declare',claim:false});assert.match(await err,/not available/);}
-  }
-  assert.notEqual(a.current.game.phase,'declare');
+  assert(['offer','draw'].includes(a.current.game.phase));
+  const {evaluateCall,callResult}=require('../public/three-cards-engine');
+  const hands=seats.map((client,i)=>client.current.game.players[i].hand);
+  const expected=callResult(hands,hands.flatMap((hand,i)=>evaluateCall(hand)?[i]:[]));
   const summary=a.current.game.callSummary;assert(summary);
-  for(let i=0;i<4;i++)assert.equal(a.current.game.players[i].score,callScores[i]+summary.deltas[i]);
-  assert.deepEqual(b.current.game.callSummary,summary);
+  assert.deepEqual(summary.deltas,expected.deltas);assert.deepEqual(summary.winners,expected.winners);
+  assert.deepEqual(summary.calls,hands.map(evaluateCall).map(call=>call?{name:call.name,points:call.points}:null));
+  for(let i=0;i<4;i++)assert.equal(a.current.game.players[i].score,(i===dealer?a.current.game.bonus:0)+summary.deltas[i]);
+  assert.deepEqual(b.current.game.callSummary,summary);assert.deepEqual(summary.hands,[]);
   assert.deepEqual(a.current.game.players[1].hand,[]);
+  const settled=a.current.game.players.map(p=>p.score);
+  err=wait(a,'card-error');a.emit('action',{type:'declare',claim:true});assert.match(await err,/not available/);
+  assert.deepEqual(a.current.game.players.map(p=>p.score),settled);
+  const wrongSeat=(a.current.game.turn+1)%4;
+  err=wait(seats[wrongSeat],'card-error');seats[wrongSeat].emit('action',{type:'draw'});assert.match(await err,/not available/);
   state=wait(a,'state',s=>!s.seats[1].connected);b.disconnect();await state;err=wait(a,'card-error');a.emit('action',{type:'draw'});assert.match(await err,/paused/);
   b=await client();identity=wait(b,'assigned');state=wait(b,'state');b.emit('resume',guestId);await identity;await state;seats[1]=b;assert(b.current.game);assert.equal(b.current.seat,1);
   guard=0;while(a.current.game.phase!=='session-over'&&guard++<2000){const g=a.current.game;let seat,data;
