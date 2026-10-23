@@ -15,7 +15,7 @@
   socket=io('/three-cards');
   socket.on('assigned',remember);
   socket.on('state',r=>{remote=r;render();});
-  socket.on('card-error',m=>{error(m);if(/no longer available/.test(m))remember(null);});
+  socket.on('card-error',m=>{if(/no longer available/.test(m)){remember(null);remote=null;match=null;other=null;render();}error(m);});
   socket.on('disconnect',()=>{if(remote){error('Connection lost. Reconnecting…');render();}});
   socket.on('connect',()=>{error('');const seat=saved();if(seat)socket.emit('resume',seat);});return socket;
  }

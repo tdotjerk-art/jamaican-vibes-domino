@@ -52,7 +52,7 @@
    const card=this.pickDeck.pop();this.picks[seat]=card;
    if(this.pickSeats.every(i=>this.picks[i])){
     const high=Math.max(...this.pickSeats.map(i=>this.picks[i].rank)),ties=this.pickSeats.filter(i=>this.picks[i].rank===high);
-    if(ties.length>1){this.pickSeats=ties;this.pickDeck=deck(this.random);ties.forEach(i=>this.picks[i]=null);this.note('Highest cards tied. Those players pick again.');}
+    if(ties.length>1){this.pickSeats=ties;this.pickDeck=deck(this.random);this.picks.fill(null);this.note('Highest cards tied. Those players pick again.');}
     else{this.dealer=ties[0];this.phase='deal';this.note(this.players[this.dealer].name+' picked the highest card and deals next.');}
    }
    return true;

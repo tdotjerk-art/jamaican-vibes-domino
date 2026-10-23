@@ -53,7 +53,7 @@ function emitAll(r){
 function actionAllowed(socket){
  const now=Date.now(),a=socket.data.actions||(socket.data.actions=[]);
  while(a.length&&a[0]<now-2000)a.shift();
- if(a.length>30)return false;a.push(now);return true;
+ if(a.length>=30)return false;a.push(now);return true;
 }
 function setEvent(r,type,msg){r.lastEvent=type;r.message=msg||""}
 
@@ -252,7 +252,7 @@ function beginHand(r,poser=null){
    r.turn=(holder+1)%4;
    addHistory(r,`Hand ${r.handNo} started. ${n} has double-six and poses 6-6.`);
    setEvent(r,"double-six-pose",`${n} has double-six and poses 6-6.`);
-   scheduleTurn(r);
+   nextPlayableTurn(r);
    return
  }
 
@@ -310,6 +310,20 @@ function abandonSeat(r,seat){
  r.hands=[[],[],[],[]];r.board=[];r.turn=null;r.phase="waiting";r.revealHands=false;r.message="A seat opened. Waiting for four ready players.";
  r.players.forEach(x=>{if(x)x.ready=false});emitAll(r)
 }
+// A socket owns at most one seated or spectator role at a time.
+function seatedRoom(socket){
+ const r=rooms.get(socket.data.roomCode),p=r?.players[socket.data.seat];
+ return !socket.data.spectator&&p?.connected&&p.id===socket.id?r:null;
+}
+function leaveCurrentRoom(socket){
+ const r=rooms.get(socket.data.roomCode);
+ if(r){
+  if(socket.data.spectator){r.spectators.delete(socket.id);emitAll(r);}
+  else if(r.players[socket.data.seat]?.id===socket.id)abandonSeat(r,socket.data.seat);
+  socket.leave(r.code);
+ }
+ delete socket.data.roomCode;delete socket.data.seat;delete socket.data.spectator;
+}
 function newRoom(name,mode,target,socket,tieRule){
  let code;do code=randCode();while(rooms.has(code));
  const token=randToken(),room={code,mode:mode==="individual"?"individual":"partner",target:clampTarget(target),tieRule:tieRuleOf(tieRule),hostSeat:0,
@@ -325,10 +339,16 @@ require("./voice").installVoice(io,rooms);
 require("./three-cards-online").installThreeCards(io);
 
 io.on("connection",socket=>{
- socket.onAny(()=>{if(!actionAllowed(socket))socket.emit("action-error","Too many actions. Please slow down.")});
+ const payloadEvents=new Set(['create-room','join-room','join-spectator','reconnect-player','set-room-options','play-domino','choose-poser']);
+ socket.use(([event,data],next)=>{
+   if(!actionAllowed(socket)){socket.emit('action-error','Too many actions. Please slow down.');return;}
+   if(payloadEvents.has(event)&&(!data||typeof data!=='object'||Array.isArray(data))){socket.emit('room-error','Invalid room request.');return;}
+   next();
+ });
 
  socket.on("create-room",({name,mode,target,tieRule})=>{
    name=String(name||"").trim().slice(0,20);if(!name)return socket.emit("room-error","A name is required.");
+   leaveCurrentRoom(socket);
    const {room,token}=newRoom(name,mode,target,socket,tieRule); if(room.mode==="partner") room.target=6;socket.data.roomCode=room.code;socket.data.seat=0;socket.join(room.code);
    socket.emit("seat-assigned",{code:room.code,seat:0,token});emitAll(room)
  });
@@ -337,51 +357,52 @@ io.on("connection",socket=>{
    if(!r)return socket.emit("room-error","Room not found.");if(!name)return socket.emit("room-error","A name is required.");
    if(r.phase!=="waiting"&&r.phase!=="paused")return socket.emit("room-error","That game has already started.");
    const seat=r.players.findIndex(p=>!p);if(seat<0)return socket.emit("room-error","That room is full.");
+   leaveCurrentRoom(socket);
    const token=randToken();r.players[seat]={id:socket.id,name,seat,token,connected:true,ready:false,graceTimer:null};
    socket.data.roomCode=code;socket.data.seat=seat;socket.join(code);socket.emit("seat-assigned",{code,seat,token});emitAll(r)
  });
  socket.on("join-spectator",({name,code})=>{
    code=String(code||"").trim().toUpperCase();const r=rooms.get(code);if(!r)return socket.emit("room-error","Room not found.");
-   const n=String(name||"Spectator").trim().slice(0,20)||"Spectator";r.spectators.set(socket.id,{name:n});
+   const n=String(name||"Spectator").trim().slice(0,20)||"Spectator";leaveCurrentRoom(socket);r.spectators.set(socket.id,{name:n});
    socket.data.roomCode=code;socket.data.spectator=true;socket.join(code);socket.emit("spectator-assigned",{code});emitAll(r)
  });
  socket.on("reconnect-player",({roomCode,token})=>{
    const code=String(roomCode||"").trim().toUpperCase(),r=rooms.get(code);if(!r)return socket.emit("room-error","Room no longer exists.");
    const seat=r.players.findIndex(p=>p&&p.token===token);if(seat<0)return socket.emit("room-error","Reconnect seat not found.");
-   const p=r.players[seat];if(p.graceTimer){clearTimeout(p.graceTimer);p.graceTimer=null}p.id=socket.id;p.connected=true;
+   const p=r.players[seat];
+   if(p.connected&&p.id!==socket.id)return socket.emit('room-error','This seat is already connected. Close the other tab first.');
+   if(p.id!==socket.id)leaveCurrentRoom(socket);
+   else delete socket.data.spectator;
+   if(p.graceTimer){clearTimeout(p.graceTimer);p.graceTimer=null}p.id=socket.id;p.connected=true;
    socket.data.roomCode=code;socket.data.seat=seat;socket.join(code);socket.emit("reconnect-ok",{code,seat,token});resumeIfPossible(r);emitAll(r)
  });
  socket.on("set-room-options",({mode,target,tieRule})=>{
-   const r=rooms.get(socket.data.roomCode),seat=socket.data.seat;if(!r||seat!==r.hostSeat||r.phase!=="waiting")return;
+   const r=seatedRoom(socket),seat=socket.data.seat;if(!r||seat!==r.hostSeat||r.phase!=="waiting")return;
    r.mode=mode==="individual"?"individual":"partner";r.target=r.mode==="partner"?6:clampTarget(target);r.tieRule=tieRuleOf(tieRule);emitAll(r)
  });
  socket.on("toggle-ready",()=>{
-   const r=rooms.get(socket.data.roomCode),seat=socket.data.seat;if(!r||!Number.isInteger(seat)||r.phase!=="waiting")return;
+   const r=seatedRoom(socket),seat=socket.data.seat;if(!r)return socket.emit("action-error","Join a player seat first.");if(!Number.isInteger(seat)||r.phase!=="waiting")return;
    const p=r.players[seat];if(!p||!p.connected)return;p.ready=!p.ready;setEvent(r,"ready",`${p.name} is ${p.ready?"ready":"not ready"}.`);startIfReady(r)
  });
  socket.on("play-domino",({tileId,side})=>{
-   const r=rooms.get(socket.data.roomCode),seat=socket.data.seat;if(!r||!Number.isInteger(seat))return;
+   const r=seatedRoom(socket),seat=socket.data.seat;if(!r||!Number.isInteger(seat))return;
    const res=playTile(r,seat,tileId,side,false);if(!res.ok)socket.emit("action-error",res.error)
  });
- socket.on("next-hand",()=>{const r=rooms.get(socket.data.roomCode);if(r&&Number.isInteger(socket.data.seat))nextHand(r)});
+ socket.on("next-hand",()=>{const r=seatedRoom(socket);if(r&&Number.isInteger(socket.data.seat))nextHand(r)});
  socket.on("choose-poser",({seat:chosen})=>{
-   const r=rooms.get(socket.data.roomCode),caller=socket.data.seat;if(!r||r.phase!=="choose-poser")return;
+   const r=seatedRoom(socket),caller=socket.data.seat;if(!r||r.phase!=="choose-poser")return;
    if(!r.poseOptions.includes(caller)||!r.poseOptions.includes(Number(chosen)))return socket.emit("action-error","That poser choice is not allowed.");
    choosePoser(r,Number(chosen))
  });
  socket.on("rematch-vote",()=>{
-   const r=rooms.get(socket.data.roomCode),seat=socket.data.seat;if(!r||r.phase!=="match-over"||!Number.isInteger(seat))return;
+   const r=seatedRoom(socket),seat=socket.data.seat;if(!r||r.phase!=="match-over"||!Number.isInteger(seat))return;
    r.rematchVotes.add(seat);r.message=`Rematch votes: ${r.rematchVotes.size}/4`;emitAll(r);
    if(r.rematchVotes.size===4){
      r.scores=[0,0,0,0];r.teamScores=[0,0];r.bruckStartTeam=null;r.bruckStartCount=0;r.oneOnePlayTwo=false;r.doubleSixPoseAfterBruck=false;r.nextPlayFor=1;r.handNo=0;r.tiedCarry=false;r.lastWinnerTeam=null;r.lastIndividualWinner=null;r.rematchVotes.clear();
      r.history=[];r.players.forEach(p=>{if(p)p.ready=false});r.phase="waiting";r.message="Rematch ready. Press READY.";emitAll(r)
    }
  });
- socket.on("leave-room",()=>{
-   const r=rooms.get(socket.data.roomCode);if(!r)return;
-   if(socket.data.spectator){r.spectators.delete(socket.id);socket.leave(r.code);emitAll(r);return}
-   const seat=socket.data.seat;if(Number.isInteger(seat))abandonSeat(r,seat);socket.leave(r.code)
- });
+ socket.on("leave-room",()=>leaveCurrentRoom(socket));
  socket.on("disconnect",()=>{
    const r=rooms.get(socket.data.roomCode);if(!r)return;
    if(socket.data.spectator){r.spectators.delete(socket.id);emitAll(r);return}
