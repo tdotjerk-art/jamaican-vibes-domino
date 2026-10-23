@@ -250,3 +250,29 @@ black/green/gold theme, piece rings, fixed square sizes and mirrored hummingbird
 are included. The server validates online actions and room revisions. Draff rooms
 use `/api/draff`, independently of Domino and 3 Cards rooms. No extra hosting
 service, account, dependency, or environment variable is required.
+
+## Jamaican Ludo
+
+Choose **JAMAICAN LUDO** on the home menu or open `/ludo/`. The board follows the
+owner's Jamaican reference: black, green and gold, with Kingston, Cornwall,
+Middlesex and Surrey corners and numbered green, black, red and gold pieces.
+Enter a display name, then choose computer play, friends on the same device, or
+an online room for two, three or four players. Two players use opposite corners.
+Names are remembered using the same browser name preference as Draff.
+
+This version uses the rules listed inside the game: six to enter, exact rolls to
+finish, captures, safe starting/star squares, two-piece blockades, bonus rolls
+for a six or capture, and forfeiting the third consecutive six. No legal move
+passes automatically. First to bring all four pieces home wins; there are no
+teams. Computer rolls and moves are separated by deliberate pauses.
+
+Online rooms use `/api/ludo` on the existing Express service. The host chooses
+the player count; every seat must be filled before the host starts. Dice are
+rolled on the server, actions are validated against the current turn and room
+revision, and a secret browser-held token recovers each seat. A room code or a
+display name alone cannot reclaim an occupied seat. Copy the invite link or
+share the code. All players must request a new game before the board resets.
+There are no turn timers: a disconnected player's turn waits for their return.
+Rooms expire after 24 hours and are held in memory; restarting or deploying the
+service ends them. No extra host, dependency or environment variable is required.
+Physical iPhone Safari and real-phone multiplayer need device verification.
