@@ -182,8 +182,9 @@ extension to continue with existing scores.
 The 52-card deck is shuffled for every game. Highest dealer pick wins (Ace high;
 highest ties repick). Deal three cards each; the next face-up card stays on the
 table. Turning up a 6 or Jack awards the dealer one point per seated player.
-Before any matching-card play, every player must declare their strongest qualifying
-call or pass. Only the strongest declared hand earns call points. Calls rank:
+Before matching-card play, the game automatically checks every hand and announces
+every qualifying call. Only the strongest qualifying hand earns call points. No
+manual declaration is required. Calls rank:
 
 1. **Flush, straight and threes (3 points each):** three identical ranks > two
    Jacks and a six > two sixes and a Jack. Higher threes beat lower threes. This
@@ -198,10 +199,9 @@ Each non-winning player pays the call value. A sole three-point caller in a
 four-player table gets +9, with each opponent at -3. Exact tied winners divide
 the non-winners' payments equally: two tied three-point winners get +3 each,
 and two losers get -3 each. Shares can be fractional; if all tie, nobody pays.
-The shared engine settles calls once, after everyone declares or passes, then
-matching-card play continues for the separate hand-winning point. The server
-validates online calls; opponents' hands and individual declaration choices
-remain private. The settled call category, winners, and score changes are shown
+The shared engine settles calls once, after the automatic hand checks, then
+matching-card play continues for the separate hand-winning points. The server
+validates online calls; opponents' unplayed cards remain private until the hand ends. The settled call category, winners, and score changes are shown
 on the table. Computers declare qualifying hands automatically.
 
 Starting to the dealer's right, match the face-up rank with your own card and play
@@ -211,7 +211,8 @@ and wins. With a pair plus a singleton, matching the singleton also wins on that
 right draws next. Draws stay face up: the drawer has first choice, then others
 in rotation. Subsequent unused draws advance to the right.
 
-The hand winner gains one and everyone else loses one; the winner deals next.
+The hand winner gains one point per opponent (+1, +2 or +3 with two, three or
+four players), and every opponent loses one; the winner deals next.
 Deck exhaustion is a counted draw with no hand points; call points and the dealer
 bonus are kept and everyone picks again for the next dealer. Positive ending scores are
 winners, negative scores are losses, and zero is even. Full rules are available
