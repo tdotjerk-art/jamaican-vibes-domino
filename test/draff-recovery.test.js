@@ -1,14 +1,14 @@
 const test=require('node:test'),A=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
 function boot(){
- const nodes={},intervals=new Map(),saved=new Map();let id=0,response,requests=0;
+ const nodes={},intervals=new Map(),saved=new Map();let id=0,response,requests=0,lastRequest;
  const el=()=>({value:'online',children:[],append(x){this.children.push(x)},replaceChildren(){this.children=[]},setAttribute(){},close(){},showModal(){}});
  const get=k=>nodes[k]||(nodes[k]=el());
- const c=vm.createContext({Checkers:require('../public/draff/engine'),document:{getElementById:get,createElement:el,addEventListener(){},hidden:false},localStorage:{getItem:k=>saved.get(k)||null,setItem:(k,v)=>saved.set(k,v),removeItem:k=>saved.delete(k)},location:{href:'https://game.test/draff/',origin:'https://game.test'},URL,setTimeout,clearTimeout,setInterval:fn=>{intervals.set(++id,fn);return id},clearInterval:id=>intervals.delete(id),fetch:async()=>{requests++;return response;}});
+ const c=vm.createContext({DraffProfile:{ready:()=>true,name:()=> 'Junior'},Checkers:require('../public/draff/engine'),document:{getElementById:get,createElement:el,addEventListener(){},hidden:false},localStorage:{getItem:k=>saved.get(k)||null,setItem:(k,v)=>saved.set(k,v),removeItem:k=>saved.delete(k)},location:{href:'https://game.test/draff/',origin:'https://game.test'},URL,setTimeout,clearTimeout,setInterval:fn=>{intervals.set(++id,fn);return id},clearInterval:id=>intervals.delete(id),fetch:async(url,options)=>{requests++;lastRequest=options;return response;}});
  for(const file of ['app.js','online.js'])vm.runInContext(fs.readFileSync('public/draff/'+file,'utf8'),c);
  const run=s=>vm.runInContext(s,c);
  const room={code:'ABCDEFGH',token:'a'.repeat(64),you:1,version:1,state:{b:require('../public/draff/engine').initial(),s:1,chain:-1,last:[],over:'',active:true,rematch:[]}};
  const enter=()=>{c.fixture=room;run('remember(fixture);receive(fixture,fixture.token);startPolling()');};
- return {run,get,enter,intervals,saved,setResponse:r=>response=r,requests:()=>requests};
+ return {run,get,enter,intervals,saved,setResponse:r=>response=r,requests:()=>requests,lastRequest:()=>lastRequest};
 }
 test('Draff clears an expired room and shows creation controls after a restart',async()=>{
  const h=boot();h.enter();h.setResponse({ok:false,status:404,json:async()=>({error:'Room not found or expired. Create a new room.'})});
@@ -27,4 +27,13 @@ test('a late Draff response cannot replace a new local game or save an abandoned
  const pending=h.run('enterRoom("create")');await new Promise(setImmediate);
  h.run('mode.value="local";mode.onchange()');finish({code:'ABCDEFGH',token:'a'.repeat(64),version:0,state:{}});await pending;
  A.equal(h.saved.size,0);A.equal(h.intervals.size,0);A.equal(h.run('netBusy'),false);
+});
+
+test('Draff sends the logged-in name and displays both online players safely',async()=>{
+ const h=boot();h.run('DraffProfile.ready=()=>false');await h.run('enterRoom("create")');A.equal(h.requests(),0);
+ h.run('DraffProfile.ready=()=>true');
+ const room={code:'ABCDEFGH',token:'a'.repeat(64),you:1,version:1,players:{gold:'Junior',black:'<b>Andre</b>'},state:{b:require('../public/draff/engine').initial(),s:1,chain:-1,last:[],over:'',active:true,rematch:[]}};
+ h.setResponse({ok:true,json:async()=>room});await h.run('enterRoom("create")');
+ A.equal(JSON.parse(h.lastRequest().body).name,'Junior');A.equal(h.get('you').textContent,'Junior (you) · Gold');A.equal(h.get('opponent').textContent,'<b>Andre</b> · Black');
+ h.run('mode.value="local";mode.onchange()');
 });

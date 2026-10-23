@@ -233,7 +233,11 @@ scale with the actual player count.
 ## Jamaican Draff
 
 Choose **JAMAICAN DRAFF** on the home menu, or open `/draff/`. Draff runs inside
-this app with computer, same-device, and two-player online modes. Create a room
+this app with computer, same-device, and two-player online modes. Enter your name
+to log in and play for free; no email or password is required. The browser remembers
+your display name on this device. Online tables show both players’ names. Names
+are display labels, not unique accounts; the saved room token still protects seat
+recovery. Create a room
 and share its code/invite link. Use **Return to saved room** on the same browser
 to reclaim your seat. Both players must request a new game to reset an online
 board. Rooms expire after 24 hours and, like the app's other games, are held in
