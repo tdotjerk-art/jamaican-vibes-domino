@@ -2,6 +2,14 @@ const test=require('node:test'),assert=require('node:assert/strict');
 const {Game,deck}=require('../public/three-cards-engine');
 const seeded=seed=>()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/4294967296);
 const c=(rank,suit='♠')=>({id:suit+rank,rank,suit});
+test('a dealer repick clears old picks before showing cards from the reshuffled deck',()=>{
+ const g=new Game(['A','B','C']);g.pickDeck=[c(14,'♥'),c(14),c(2,'♦')];
+ g.pick(0);g.pick(1);g.pick(2);assert.deepEqual(g.pickSeats,[1,2]);
+ // A card from the previous draw may legitimately be drawn from the fresh pack.
+ g.pickDeck=[c(3),c(2,'♦')];g.pick(1);
+ const shown=g.view(0).picks.filter(Boolean);assert.equal(new Set(shown.map(c=>c.id)).size,shown.length);
+ assert.equal(g.picks[0],null);
+});
 function fixture(hands,top=c(7),drawer=2){const g=new Game(hands.map((_,i)=>'P'+i));g.dealer=0;g.players.forEach((p,i)=>p.hand=hands[i]);g.stock=[c(2,'♦'),c(4,'♦')];g.pile=[top];g.nextDrawer=drawer;g.offer(1);return g;}
 test('regular 52-card pack and highest card selects dealer; ties repick',()=>{
  const d=deck();assert.equal(d.length,52);assert.equal(new Set(d.map(c=>c.id)).size,52);

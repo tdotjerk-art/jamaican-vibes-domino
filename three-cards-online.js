@@ -7,7 +7,7 @@ function installThreeCards(io){
  function broadcast(r){for(let i=0;i<r.seats.length;i++){const p=r.seats[i];if(p.id)nsp.to(p.id).emit('state',{code:r.code,seat:i,phase:r.game?'game':'lobby',host:0,seats:r.seats.map(p=>({name:p.name,connected:!!p.id,total:p.total,ready:p.ready,extension:p.extension})),game:r.game?.view(i)||null});}}
  function locate(s){const r=rooms.get(s.data.code),i=s.data.seat;if(!r||!Number.isInteger(i)||r.seats[i]?.id!==s.id)return [];return [r,i];}
  nsp.on('connection',s=>{
-  let count=0,windowStart=Date.now();s.use((packet,next)=>{if(Date.now()-windowStart>1000){count=0;windowStart=Date.now();}if(++count>25)return;next();});
+  let count=0,windowStart=Date.now();s.use((packet,next)=>{if(['create','join','resume','choice','action','extend'].includes(packet[0])&&(!packet[1]||typeof packet[1]!=='object'||Array.isArray(packet[1]))){s.emit('card-error','Invalid table request.');return;}if(Date.now()-windowStart>1000){count=0;windowStart=Date.now();}if(++count>25)return;next();});
   const error=m=>s.emit('card-error',m);
   const assign=(r,i)=>{s.data.code=r.code;s.data.seat=i;s.emit('assigned',{code:r.code,token:r.seats[i].token});broadcast(r);};
   s.on('create',(d={})=>{if(s.data.code)return error('Leave your current table first.');const name=clean(d.name);if(!name)return error('Enter your name.');if(rooms.size>=100)return error('Tables are busy. Please try again later.');let code;do code=crypto.randomBytes(3).toString('hex').toUpperCase();while(rooms.has(code));const r={code,seats:[{name,id:s.id,token:crypto.randomBytes(24).toString('hex'),total:valid(d.total)?d.total:5,ready:false,extension:null}],game:null};rooms.set(code,r);assign(r,0);});

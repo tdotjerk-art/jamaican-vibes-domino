@@ -5771,7 +5771,12 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
       if(window.gameConnectionMode!=='online')return;
       lastState=state; renderSpectatorState(state); renderGameExtras(state);
     });
-    sock.on('room-error',msg=>{$id('jvSetupStatus').textContent=msg;toast(msg)});
+    sock.on('room-error',msg=>{
+      if(/Room no longer exists|Reconnect seat not found/.test(msg)){
+        leave();lastState=null;window.onlineSeat=null;showScreen('jvOnlineSetup');
+      }
+      $id('jvSetupStatus').textContent=msg;toast(msg);
+    });
     sock.on('action-error',msg=>toast(msg));
     sock.on('reconnect-ok',d=>{
       closeModal();

@@ -2,7 +2,7 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const {finishWin,finishBlocked,nextHand}=require('../server');
+const {finishWin,finishBlocked,nextHand,canPlay}=require('../server');
 
 function room(){return {
  code:'BRUCK',mode:'partner',target:6,players:Array.from({length:4},(_,seat)=>({seat,name:`P${seat+1}`,connected:true})),
@@ -25,7 +25,7 @@ function checkRestart(r){
   const holder=r.board[0].player;
   assert.equal(r.hands[holder].length,6);
   assert.equal(r.hands.flat().length,27);
-  assert.equal(r.turn,(holder+1)%4);
+  assert.ok(r.hands[r.turn].some(t=>canPlay(r.board,t)));
   assert.equal(r.doubleSixPoseAfterBruck,false);
   assert.deepEqual(r.teamScores,[0,0]);
   return holder;
@@ -56,4 +56,11 @@ test('local bruck restart poses double-six from every seat without choosing a pa
   assert.equal(ctx.hands[holder].length,6);assert.equal(ctx.turn,(holder+1)%4);
   assert.equal(ctx.handValue,1);assert.equal(ctx.doubleSixPoseAfterBruck,false);assert.equal(ctx.pendingCountdownPoser,null);
  }
+});
+
+test('opening double-six immediately passes a seat without a matching domino',()=>{
+ const r=room();r.phase='hand-over';r.handNo=0;r.lastWinnerTeam=null;r.bruckStartTeam=null;r.bruckStartCount=0;
+ const random=Math.random;Math.random=()=>0.3;
+ try{nextHand(r);assert.equal(r.board[0].player,3);assert.equal(r.turn,1);assert.match(r.history.join(' '),/passed/);assert.ok(r.hands[r.turn].some(t=>canPlay(r.board,t)));}
+ finally{Math.random=random;clearTimeout(r.timer);}
 });

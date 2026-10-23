@@ -56,3 +56,12 @@ test('online host start button permits two to four ready players only',()=>{
   if(count>=2&&count<=4){seats[1].ready=false;ui.handlers.state({code:'ABCDEF',seat:0,seats,game:null});assert.equal(ui.get('start').disabled,true);}
  }
 });
+
+test('a lost online table returns to setup instead of trapping the player in a paused game',()=>{
+ const ui=boot(),g=settle(fixture());ui.get('create').onclick();
+ ui.handlers.state({code:'ABCDEF',seat:0,seats:g.players.map(p=>({name:p.name,connected:true})),game:g.view(0)});
+ assert.equal(ui.get('setup').hidden,true);
+ ui.handlers['card-error']('This table is no longer available. Create a new one.');
+ assert.equal(ui.get('setup').hidden,false);assert.equal(ui.get('game').hidden,true);
+ assert.match(ui.get('error').textContent,/no longer available/);
+});
