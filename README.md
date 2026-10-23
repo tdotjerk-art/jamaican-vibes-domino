@@ -228,3 +228,20 @@ puts the opponent opposite you; a three-player game puts opponents to either
 side; a four-player game uses all four seats. The engine and online lobby allow
 two, three, or four players and reject a fifth. Dealer bonuses and call payments
 scale with the actual player count.
+
+## Jamaican Draff
+
+Choose **JAMAICAN DRAFF** on the home menu, or open `/draff/`. Draff runs inside
+this app with computer, same-device, and two-player online modes. Create a room
+and share its code/invite link. Use **Return to saved room** on the same browser
+to reclaim your seat. Both players must request a new game to reset an online
+board. Rooms expire after 24 hours and, like the app's other games, are held in
+server memory: restarting or deploying the service ends active rooms.
+
+Draff includes the owner's rules: flying kings, backward captures, optional
+captures with opponent-claimed **Huff**, no Undo or suggested moves, capture
+flashes, and slower computer turns with separate multi-jump steps. Its Jamaican
+black/green/gold theme, piece rings, fixed square sizes and mirrored hummingbird
+are included. The server validates online actions and room revisions. Draff rooms
+use `/api/draff`, independently of Domino and 3 Cards rooms. No extra hosting
+service, account, dependency, or environment variable is required.
