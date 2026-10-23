@@ -37,17 +37,17 @@
    svg('rect',{x:edge(c),y:edge(r),width:edge(c+1)-edge(c),height:edge(r+1)-edge(r),fill:color===3?'#d4b92b':color===1?'#1c2b23':'#075c31',stroke:'#ede0ae','stroke-width':1});
    svg('text',{x:middle(c),y:middle(r)+6,'text-anchor':'middle',fill:color===3?'#162719':'#fed100','font-size':15},root,String(step-50));
   }
-  const center=svg('g',{id:'ludo-center',transform:'translate(-150 -150) scale(1.5)'});
-  svg('path',{d:'M240 240H360L300 300Z M240 360H360L300 300Z',fill:'#07813d'},center);
-  svg('path',{d:'M240 240V360L300 300Z M360 240V360L300 300Z',fill:'#101611'},center);
-  svg('path',{d:'M240 240L360 360M360 240L240 360',fill:'none',stroke:'#fed100','stroke-width':5},center);
-  svg('path',{d:'M263 301L270 291L283 292L290 286L304 291L314 288L323 295L337 299L330 307L315 307L307 313L297 308L286 310L279 304Z',fill:'#07160b',stroke:'#e4cd42','stroke-width':1},center);
+  const center=svg('g',{id:'ludo-center','aria-label':'Jamaica Land We Love'});
+  svg('rect',{x:210,y:210,width:180,height:180,fill:'#080e09',stroke:'#fed100','stroke-width':1.5},center);
+  svg('image',{href:'/ludo/assets/hummingbird.png',x:216,y:215,width:168,height:140,preserveAspectRatio:'xMidYMid meet','aria-label':'Jamaican hummingbird'},center);
+  svg('text',{x:300,y:370,fill:'#fed100','font-size':14,'font-weight':850,'letter-spacing':1.7,'text-anchor':'middle'},center,'JAMAICA');
+  svg('text',{x:300,y:384,fill:'#fed100','font-size':10.5,'font-weight':750,'letter-spacing':1,'text-anchor':'middle'},center,'LAND WE LOVE');
   const view=g||E.fresh(E.TEAMS.map(t=>t.name)),allowed=g&&yourTurn(g)?E.legal(g).map(m=>m.piece):[];
   const pieces=[];
   view.players.forEach((p,seat)=>p.tokens.forEach((progress,piece)=>{
    let pos;
    if(progress<0){const [x,y]=corners[p.color];pos=[x+(78+(piece%2)*84)*yardScale,y+(80+Math.floor(piece/2)*70)*yardScale]}
-   else if(progress===E.HOME){const centers=[[255,300],[300,255],[345,300],[300,345]],center=centers[p.color];pos=[center[0]+(piece%2?12:-12),center[1]+(piece<2?-12:12)]}
+   else if(progress===E.HOME){const centers=[[255,300],[300,255],[345,300],[300,330]],center=centers[p.color];pos=[center[0]+(piece%2?12:-12),center[1]+(piece<2?-12:12)]}
    else{const [r,c]=E.coordinate(p,progress);pos=[middle(c),middle(r)]}
    pieces.push({p,seat,piece,progress,pos});
   }));
