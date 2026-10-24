@@ -255,14 +255,17 @@ service, account, dependency, or environment variable is required.
 
 Choose **LUDI** on the home menu or open `/ludo/`. The board follows the
 owner's Jamaican reference: black, green and gold, with Kingston, Cornwall,
-Middlesex and Surrey corners and numbered green, black, red and gold pieces.
+Middlesex and Surrey corners, long continuous stripes, rotated county artwork,
+and single-file rows of green, black, red and gold pieces. The supplied hummingbird
+and JAMAICA LAND WE LOVE remain in the center. The photographed track has 48
+outer spaces with shared corner squares; the movement engine follows those spaces.
 Enter a display name, then choose computer play, friends on the same device, or
 an online room for two, three or four players. Two players use opposite corners.
 Names are remembered using the same browser name preference as Draff.
 
 This version uses the rules listed inside the game: six to enter, exact rolls to
-finish, captures, safe starting/star squares, two-piece blockades, bonus rolls
-for a six or capture, and forfeiting the third consecutive six. No legal move
+finish, captures, safe arrow starting squares and black-octagon spaces, two-piece blockades, bonus rolls
+for a six or capture, and forfeiting the third consecutive six. A roll with no available move
 passes automatically. First to bring all four pieces home wins; there are no
 teams. Computer rolls and moves are separated by deliberate pauses.
 
