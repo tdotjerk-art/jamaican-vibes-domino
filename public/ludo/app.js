@@ -35,12 +35,11 @@
    const [r,c]=E.coordinate({color},step);
    svg('rect',{x:edge(c),y:edge(r),width:edge(c+1)-edge(c),height:edge(r+1)-edge(r),fill:E.TEAMS[color].color,stroke:'#eee7ce','stroke-width':2.2});
   }
-  const center=svg('g',{id:'ludo-center','aria-label':'Hummingbird center'});
+  const center=svg('g',{id:'ludo-center','aria-label':'Four-color center'});
   svg('rect',{x:200,y:200,width:200,height:200,fill:'#080e09',stroke:'#eee7ce','stroke-width':2.2},center);
   for(const [color,points]of [[0,'200,200 300,300 200,400'],[1,'200,200 400,200 300,300'],[2,'400,200 400,400 300,300'],[3,'200,400 300,300 400,400']])svg('polygon',{points,fill:E.TEAMS[color].color,'aria-label':E.TEAMS[color].name+' finish'},center);
   svg('path',{d:'M200 200L400 400M400 200L200 400',fill:'none',stroke:'#080e09','stroke-width':8},center);
   svg('path',{d:'M200 200L400 400M400 200L200 400',fill:'none',stroke:'#fed100','stroke-width':5,'aria-label':'Centered gold X'},center);
-  svg('image',{href:'/ludo/assets/hummingbird.png',x:206,y:206,width:188,height:160,preserveAspectRatio:'xMidYMid meet','aria-label':'Jamaican hummingbird'},center);
   const view=g||E.fresh(E.TEAMS.map(t=>t.name)),allowed=g&&yourTurn(g)?E.legal(g,selectedDie).map(m=>m.piece):[];
   const pieces=[];
   view.players.forEach((p,seat)=>p.tokens.forEach((progress,piece)=>{
