@@ -63,7 +63,7 @@
   if(index!==null){
    for(const other of occupants(g,index))if(other.seat!==seat){g.players[other.seat].tokens[other.piece]=-1;captured.push(other);}
   }
-  p.tokens[move.piece]=move.to;g.remaining=g.remaining.filter(index=>index!==die);if(captured.length){g.bonus=true;g.capturedThisRoll.push(move.piece);}
+  p.tokens[move.piece]=move.to;g.remaining=g.remaining.filter(index=>index!==die);if(captured.length)g.capturedThisRoll.push(move.piece);
   g.last={type:'move',seat,piece:move.piece,die,value:move.value,from:move.from,to:move.to,captured};
   note(g,p.name+' used die '+(die+1)+' ('+move.value+') to move piece '+(move.piece+1)+(move.to===HOME?' home':move.from<0?' onto the board':' '+move.value+' spaces')+(captured.length?' and captured '+captured.length+' piece'+(captured.length===1?'':'s'):'')+'.');
   if(p.tokens.every(n=>n===HOME)){g.phase='over';g.winner=seat;g.remaining=[];note(g,p.name+' wins! All four pieces are home.');return g;}
