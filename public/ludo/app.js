@@ -129,7 +129,7 @@
  $('setupForm').onsubmit=e=>{e.preventDefault();if($('mode').value==='online')enter('create');else try{startLocal();$('error').textContent=''}catch(error){$('error').textContent=error.message}};
  $('mode').onchange=()=>{message='';$('error').textContent='';render()};$('join').onclick=()=>enter('join');$('resume').onclick=resume;
  $('startOnline').onclick=()=>send({type:'start'});$('roll').onclick=$('quickRoll').onclick=()=>action({type:'roll'});
- $('newGame').onclick=()=>{if(room)send({type:'rematch'});else if(confirm('Start a new Ludo game? The current board will be cleared.'))startLocal()};
+ $('newGame').onclick=()=>{if(room)send({type:'rematch'});else if(confirm('Start a new LUDI game? The current board will be cleared.'))startLocal()};
  $('leave').onclick=()=>{if(!confirm('Leave this table? Online players can return using this browser’s saved room.'))return;epoch++;clearTimeout(aiTimer);clearInterval(poll);local=null;room=null;token=null;version=-1;busy=false;message='';$('error').textContent='';render()};
  $('copy').onclick=async()=>{if(!room)return;const link=new URL('/ludo/',location.origin);link.searchParams.set('room',room.code);try{await navigator.clipboard.writeText(link.href);message='Invite link copied.'}catch{message='Share room code: '+room.code}render()};
  try{$('name').value=E.cleanName(localStorage.getItem(nameKey))}catch{}

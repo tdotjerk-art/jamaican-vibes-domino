@@ -251,9 +251,9 @@ are included. The server validates online actions and room revisions. Draff room
 use `/api/draff`, independently of Domino and 3 Cards rooms. No extra hosting
 service, account, dependency, or environment variable is required.
 
-## Jamaican Ludo
+## LUDI
 
-Choose **JAMAICAN LUDO** on the home menu or open `/ludo/`. The board follows the
+Choose **LUDI** on the home menu or open `/ludo/`. The board follows the
 owner's Jamaican reference: black, green and gold, with Kingston, Cornwall,
 Middlesex and Surrey corners and numbered green, black, red and gold pieces.
 Enter a display name, then choose computer play, friends on the same device, or
