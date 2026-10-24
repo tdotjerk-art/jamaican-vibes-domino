@@ -265,7 +265,7 @@ Names are remembered using the same browser name preference as Draff.
 
 This version uses the rules listed inside the game: six to enter, exact rolls to
 finish, captures on every shared track square (no safe zones, including starting squares), a capturing piece stops for the rest of the roll (the remaining die must move another piece), two-piece blockades that block passing but can be captured by landing on them, bonus rolls
-for a six or capture after both dice are used, and forfeiting the third consecutive
+only for a six after both dice are used (no extra roll for capturing or bringing a piece home), and forfeiting the third consecutive
 roll containing a six. A roll with no available move
 passes automatically. First to bring all four pieces home wins; there are no
 teams. Two dice visibly tumble on the table. Tap an unused die, then a piece;
