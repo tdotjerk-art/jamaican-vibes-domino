@@ -47,6 +47,13 @@
   if(g.remaining.length>1){
    const complete=choices.filter(move=>{const trial=structuredClone(g);place(trial,move);return trial.players[trial.turn].tokens.every(n=>n===HOME)||ordered(trial).length>0;});
    if(complete.length)choices=complete;
+   else choices=choices.filter(move=>{
+    const trial=structuredClone(g),captured=place(trial,move);
+    if(!captured.length)return true;
+    // A capture lock cannot be used as a reason to discard a playable die.
+    trial.capturedThisRoll=trial.capturedThisRoll.filter(piece=>piece!==move.piece);
+    return rawLegal(trial).length===0;
+   });
   }
   return choices.filter(move=>dieIndex===undefined||move.die===dieIndex);
  }
@@ -64,7 +71,7 @@
    note(g,p.name+' rolled '+dice[0]+' and '+dice[1]+'.');
    if(g.sixes===3){note(g,'Three rolls containing a six: '+p.name+' loses this turn.');next(g);return g;}
    g.phase='move';
-   if(!legal(g).length){note(g,p.name+' has no available move with either die. Turn passes.');next(g);}
+   if(!legal(g).length){note(g,rawLegal(g).length?'No legal bigger-die move can preserve the other die. Turn passes without capturing.':p.name+' has no available move with either die. Turn passes.');next(g);}
    return g;
   }
   if(action.type!=='move'||g.phase!=='move')throw Error('Roll the dice first.');

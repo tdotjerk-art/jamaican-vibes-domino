@@ -137,3 +137,18 @@ test('a blocked or overshooting bigger die permits the smaller die',()=>{
  let g=fresh();g.players[0].tokens=[0,E.HOME,E.HOME,E.HOME];g.players[1].tokens=[38,38,-1,-1];g=roll(g,3,1);A.equal(E.legal(g,0).length,0);A.ok(E.legal(g,1).length);g=move(g,0,1);A.equal(g.players[0].tokens[0],1);A.equal(g.turn,1);
  g=fresh();g.players[0].tokens=[E.HOME-2,E.HOME,E.HOME,E.HOME];g=move(roll(g,6,2),0,1);A.equal(g.phase,'over');
 });
+
+test('capture-only fallback cannot discard the other die just because the capturer must stop',()=>{
+ for(const pair of [[2,1],[1,2],[2,2]]){
+  const original=fresh();original.players[0].tokens=[0,E.HOME,E.HOME,E.HOME];original.players[1].tokens[0]=38;
+  const pending=structuredClone(original);pending.phase='move';pending.dice=pair;pending.remaining=[0,1];pending.rollNo=1;
+  const before=structuredClone(pending),high=pair.indexOf(2);A.equal(E.legal(pending).length,0);A.throws(()=>move(pending,0,high),/Use both dice/);A.deepEqual(pending,before);
+  const result=roll(original,...pair);A.equal(result.turn,1);A.equal(result.players[0].tokens[0],0);A.equal(result.players[1].tokens[0],38);A.match(result.history.at(-1),/without capturing/);
+ }
+});
+test('entry capture cannot waste the five, but a real barrier still permits a blocked second move',()=>{
+ for(const pair of [[6,5],[5,6]]){
+  let g=fresh();g.players[0].tokens=[-1,E.HOME,E.HOME,E.HOME];g.players[1].tokens[0]=36;g=roll(g,...pair);A.equal(g.turn,1);A.equal(g.players[0].tokens[0],-1);A.equal(g.players[1].tokens[0],36);
+ }
+ let g=fresh();g.players[0].tokens=[0,E.HOME,E.HOME,E.HOME];g.players[1].tokens[0]=38;g.players[2].tokens=[27,27,-1,-1];g=move(roll(g,2,1),0,0);A.equal(g.players[1].tokens[0],-1);A.equal(g.players[0].tokens[0],2);A.equal(g.turn,1);
+});
