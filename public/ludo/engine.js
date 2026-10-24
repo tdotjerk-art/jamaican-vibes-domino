@@ -7,7 +7,7 @@
  function fresh(names){
   if(!Array.isArray(names)||names.length<2||names.length>4||names.some(n=>!cleanName(n)))throw Error('Enter names for 2, 3, or 4 players.');
   const colors=names.length===2?[0,2]:names.map((_,i)=>i);
-  return {players:names.map((name,i)=>({name:cleanName(name),color:colors[i],tokens:[-1,-1,-1,-1]})),turn:0,phase:'roll',dice:[null,null],remaining:[],capturedThisRoll:[],rollNo:0,bonus:false,sixes:0,winner:null,last:null,history:['Roll a six to bring a piece out.']};
+  return {players:names.map((name,i)=>({name:cleanName(name),color:colors[i],tokens:[-1,-1,-1,-1]})),turn:0,phase:'roll',dice:[null,null],remaining:[],capturedThisRoll:[],rollNo:0,bonus:false,winner:null,last:null,history:['Roll a six to bring a piece out.']};
  }
  function ring(player,progress){return progress>=0&&progress<=OUTER_LAST?(TEAMS[player.color].start+progress)%TRACK.length:null;}
  function coordinate(player,progress){
@@ -58,7 +58,7 @@
   return choices.filter(move=>dieIndex===undefined||move.die===dieIndex);
  }
  function note(g,message){g.history.push(message);g.history=g.history.slice(-40);}
- function next(g){g.turn=(g.turn+1)%g.players.length;g.phase='roll';g.sixes=0;g.remaining=[];g.capturedThisRoll=[];g.bonus=false;}
+ function next(g){g.turn=(g.turn+1)%g.players.length;g.phase='roll';g.remaining=[];g.capturedThisRoll=[];g.bonus=false;}
  function act(state,seat,action,rollDie=()=>Math.floor(Math.random()*6)+1){
   if(!action||typeof action!=='object')throw Error('Invalid action.');
   if(state.phase==='over')throw Error('This game is finished. Start a new game.');
@@ -67,9 +67,8 @@
   if(action.type==='roll'){
    if(g.phase!=='roll')throw Error('Use the remaining dice before rolling again.');
    const dice=[rollDie(),rollDie()];if(dice.some(die=>!Number.isInteger(die)||die<1||die>6))throw Error('Invalid dice result.');
-   g.dice=dice;g.remaining=[0,1];g.capturedThisRoll=[];g.rollNo++;g.bonus=dice.includes(6);g.sixes=g.bonus?g.sixes+1:0;g.last={type:'roll',seat,dice:dice.slice()};
+   g.dice=dice;g.remaining=[0,1];g.capturedThisRoll=[];g.rollNo++;g.bonus=dice.includes(6);g.last={type:'roll',seat,dice:dice.slice()};
    note(g,p.name+' rolled '+dice[0]+' and '+dice[1]+'.');
-   if(g.sixes===3){note(g,'Three rolls containing a six: '+p.name+' loses this turn.');next(g);return g;}
    g.phase='move';
    if(!legal(g).length){note(g,rawLegal(g).length?'No legal bigger-die move can preserve the other die. Turn passes without capturing.':p.name+' has no available move with either die. Turn passes.');next(g);}
    return g;

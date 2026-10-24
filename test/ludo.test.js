@@ -101,10 +101,15 @@ test('unusable dice are skipped, but a die that becomes usable after entry is re
  let g=fresh();g.players[0].tokens=[E.HOME-2,E.HOME,E.HOME,E.HOME];g=move(roll(g,1,6),0,0);A.equal(g.phase,'roll');A.deepEqual(g.remaining,[]);A.equal(g.turn,0);
  g=fresh();g=roll(g,2,6);A.equal(E.legal(g,0).length,0);g=move(g,0,1);A.equal(E.legal(g,0).length,1);A.equal(g.phase,'move');g=move(g,0,0);A.equal(g.players[0].tokens[0],2);
 });
-test('three consecutive rolls containing a six forfeit the third pair before moving',()=>{
- let g=fresh();for(let n=0;n<2;n++)g=move(move(roll(g,6,1),0,0),0,1);
- const tokens=g.players[0].tokens.slice();g=roll(g,1,6);A.equal(g.turn,1);A.equal(g.phase,'roll');A.equal(g.sixes,0);A.deepEqual(g.remaining,[]);A.deepEqual(g.players[0].tokens,tokens);
- g=fresh();g.players[0].tokens=[0,20,-1,-1];g.players[1].tokens[0]=37;g.sixes=2;g=move(move(roll(g,1,2),1,1),0,0);A.equal(g.sixes,0);A.equal(g.turn,1);
+test('consecutive rolls containing sixes never forfeit playable moves, including double six',()=>{
+ for(const sequence of [[[6,1],[1,6],[6,6],[6,2],[2,6],[6,6]],Array.from({length:5},()=>[6,6])]){
+  let g=fresh();
+  for(const pair of sequence){
+   g=roll(g,...pair);A.equal(g.turn,0);A.equal(g.phase,'move');A.deepEqual(g.remaining,[0,1]);
+   let moved=0;while(g.phase==='move'){const m=E.legal(g)[0];A.ok(m);g=move(g,m.piece,m.die);moved++;}
+   A.equal(moved,2);A.equal(g.turn,0);A.equal(g.phase,'roll');A.ok(!g.history.some(line=>/loses this turn/.test(line)));
+  }
+ }
 });
 test('both dice are independently validated and every possible pair has consistent legal choices',()=>{
  for(let first=1;first<=6;first++)for(let second=1;second<=6;second++){
