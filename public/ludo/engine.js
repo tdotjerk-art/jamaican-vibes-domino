@@ -23,10 +23,8 @@
    const to=from<0?0:from+die;if(to>HOME)return [];
    for(let step=from<0?0:from+1;step<=Math.min(to,OUTER_LAST);step++){
     const index=ring(player,step),on=occupants(g,index);
-    if(step<to&&g.players.some((_,seat)=>seat!==g.turn&&on.filter(t=>t.seat===seat).length>=2))return [];
+    if(g.players.some((_,seat)=>seat!==g.turn&&on.filter(t=>t.seat===seat).length>=2))return [];
    }
-   const target=ring(player,to);
-   if(target!==null&&occupants(g,target).filter(t=>t.seat===g.turn).length>=2)return [];
    return [{piece,from,to}];
   });
  }
