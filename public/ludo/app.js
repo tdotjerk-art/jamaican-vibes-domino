@@ -13,16 +13,8 @@
  function yourTurn(g){return !!g&&!busy&&!rolling&&(local?($('mode').value==='local'||g.turn===0):room.you===g.turn)}
  const {edge,middle}=L;
  function polygon(cx,cy,radius,sides=8,inner=radius){return Array.from({length:sides},(_,i)=>{const angle=-Math.PI/2+i*Math.PI*2/sides,r=i%2?inner:radius;return (cx+Math.cos(angle)*r)+','+(cy+Math.sin(angle)*r)}).join(' ')}
- function countyArt(root){
-  const outline='M-62 -5L-53 -9L-49 -16L-41 -18L-35 -16L-25 -18L-20 -12L-13 -12L-10 -7L2 -10L11 -6L16 -11L22 -8L27 -3L34 -5L40 1L49 3L56 10L63 11L58 17L43 17L31 19L20 17L9 15L1 18L-13 14L-25 12L-34 8L-46 8L-49 1L-58 2Z';
+ function pieceGradients(){
   const defs=svg('defs',{});
-  svg('polygon',{points:polygon(102,83,23,10,10),fill:'#f4cf22'});
-  for(const [id,transform,from,width]of [['cornwall','translate(516 91) rotate(180) scale(.85)',-70,53],['surrey','translate(83 511) scale(.9)',20,50],['middlesex','translate(518 521) rotate(-80) scale(.85)',-20,50]]){
-   const clip=svg('clipPath',{id:'county-'+id,clipPathUnits:'userSpaceOnUse'},defs);svg('path',{d:outline},clip);
-   const group=svg('g',{transform});svg('path',{d:outline,fill:'#070a07',stroke:'#316f48','stroke-width':2},group);
-   svg('rect',{x:from,y:-25,width,height:50,fill:'#f4cf22','clip-path':'url(#county-'+id+')'},group);
-   svg('path',{d:outline,fill:'none',stroke:'#316f48','stroke-width':2},group);
-  }
   for(let color=0;color<4;color++){
    const gradient=svg('radialGradient',{id:'ludi-gem-'+color,cx:'36%',cy:'28%',r:'72%'},defs),stops=[['#65c957','#087032','#023e1c'],['#687067','#22271f','#060907'],['#ff6969','#c92128','#74090d'],['#ffe779','#d6ae19','#8c6a08']][color];
    for(let i=0;i<3;i++)svg('stop',{offset:[0,.55,1][i],'stop-color':stops[i]},gradient);
@@ -34,7 +26,7 @@
   for(const [color,x,y]of [[0,0,0],[1,edge(8),0],[2,edge(8),edge(8)],[3,0,edge(8)]]){
    svg('rect',{x,y,width:edge(5),height:edge(5),fill:E.TEAMS[color].color,stroke:'#eee7ce','stroke-width':1.3,'aria-label':E.TEAMS[color].name+' home'});
   }
-  countyArt(root);
+  pieceGradients();
   E.TRACK.forEach(([r,c],i)=>{
    svg('rect',{x:edge(c),y:edge(r),width:edge(c+1)-edge(c),height:edge(r+1)-edge(r),fill:L.paint(r,c),stroke:'#eee7ce','stroke-width':1.3});
    const start=E.TEAMS.findIndex(t=>t.start===i);
