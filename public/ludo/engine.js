@@ -7,7 +7,7 @@
  function fresh(names){
   if(!Array.isArray(names)||names.length<2||names.length>4||names.some(n=>!cleanName(n)))throw Error('Enter names for 2, 3, or 4 players.');
   const colors=names.length===2?[0,2]:names.map((_,i)=>i);
-  return {players:names.map((name,i)=>({name:cleanName(name),color:colors[i],tokens:[-1,-1,-1,-1]})),turn:0,phase:'roll',dice:[null,null],remaining:[],rollNo:0,bonus:false,sixes:0,winner:null,last:null,history:['Roll a six to bring a piece out.']};
+  return {players:names.map((name,i)=>({name:cleanName(name),color:colors[i],tokens:[-1,-1,-1,-1]})),turn:0,phase:'roll',dice:[null,null],remaining:[],capturedThisRoll:[],rollNo:0,bonus:false,sixes:0,winner:null,last:null,history:['Roll a six to bring a piece out.']};
  }
  function ring(player,progress){return progress>=0&&progress<=OUTER_LAST?(TEAMS[player.color].start+progress)%TRACK.length:null;}
  function coordinate(player,progress){
@@ -19,7 +19,7 @@
  function movesFor(g,die){
   const player=g.players[g.turn];
   return player.tokens.flatMap((from,piece)=>{
-   if(from===HOME||from<0&&die!==6)return [];
+   if((g.capturedThisRoll||[]).includes(piece)||from===HOME||from<0&&die!==6)return [];
    const to=from<0?0:from+die;if(to>HOME)return [];
    for(let step=from<0?0:from+1;step<=Math.min(to,OUTER_LAST);step++){
     const index=ring(player,step),on=occupants(g,index);
@@ -35,7 +35,7 @@
   return g.remaining.filter(index=>dieIndex===undefined||index===dieIndex).flatMap(index=>movesFor(g,g.dice[index]).map(move=>({...move,die:index,value:g.dice[index]})));
  }
  function note(g,message){g.history.push(message);g.history=g.history.slice(-40);}
- function next(g){g.turn=(g.turn+1)%g.players.length;g.phase='roll';g.sixes=0;g.remaining=[];g.bonus=false;}
+ function next(g){g.turn=(g.turn+1)%g.players.length;g.phase='roll';g.sixes=0;g.remaining=[];g.capturedThisRoll=[];g.bonus=false;}
  function act(state,seat,action,rollDie=()=>Math.floor(Math.random()*6)+1){
   if(!action||typeof action!=='object')throw Error('Invalid action.');
   if(state.phase==='over')throw Error('This game is finished. Start a new game.');
@@ -44,7 +44,7 @@
   if(action.type==='roll'){
    if(g.phase!=='roll')throw Error('Use the remaining dice before rolling again.');
    const dice=[rollDie(),rollDie()];if(dice.some(die=>!Number.isInteger(die)||die<1||die>6))throw Error('Invalid dice result.');
-   g.dice=dice;g.remaining=[0,1];g.rollNo++;g.bonus=dice.includes(6);g.sixes=g.bonus?g.sixes+1:0;g.last={type:'roll',seat,dice:dice.slice()};
+   g.dice=dice;g.remaining=[0,1];g.capturedThisRoll=[];g.rollNo++;g.bonus=dice.includes(6);g.sixes=g.bonus?g.sixes+1:0;g.last={type:'roll',seat,dice:dice.slice()};
    note(g,p.name+' rolled '+dice[0]+' and '+dice[1]+'.');
    if(g.sixes===3){note(g,'Three rolls containing a six: '+p.name+' loses this turn.');next(g);return g;}
    g.phase='move';
@@ -63,7 +63,7 @@
   if(index!==null){
    for(const other of occupants(g,index))if(other.seat!==seat){g.players[other.seat].tokens[other.piece]=-1;captured.push(other);}
   }
-  p.tokens[move.piece]=move.to;g.remaining=g.remaining.filter(index=>index!==die);if(captured.length)g.bonus=true;
+  p.tokens[move.piece]=move.to;g.remaining=g.remaining.filter(index=>index!==die);if(captured.length){g.bonus=true;g.capturedThisRoll.push(move.piece);}
   g.last={type:'move',seat,piece:move.piece,die,value:move.value,from:move.from,to:move.to,captured};
   note(g,p.name+' used die '+(die+1)+' ('+move.value+') to move piece '+(move.piece+1)+(move.to===HOME?' home':move.from<0?' onto the board':' '+move.value+' spaces')+(captured.length?' and captured '+captured.length+' piece'+(captured.length===1?'':'s'):'')+'.');
   if(p.tokens.every(n=>n===HOME)){g.phase='over';g.winner=seat;g.remaining=[];note(g,p.name+' wins! All four pieces are home.');return g;}
