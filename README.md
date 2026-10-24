@@ -264,7 +264,7 @@ an online room for two, three or four players. Two players use opposite corners.
 Names are remembered using the same browser name preference as Draff.
 
 This version uses the rules listed inside the game: six to enter, exact rolls to
-finish, captures, safe arrow starting squares and black-octagon spaces, two-piece blockades, bonus rolls
+finish, captures on every shared track square (no safe zones, including starting squares), two-piece blockades that block passing but can be captured by landing on them, bonus rolls
 for a six or capture after both dice are used, and forfeiting the third consecutive
 roll containing a six. A roll with no available move
 passes automatically. First to bring all four pieces home wins; there are no

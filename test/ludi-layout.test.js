@@ -12,7 +12,6 @@ test('reference board has continuous long lanes, one cell per corner, and no ove
  }
  // Each of the six long bars follows the photographed green/gold/black sequence.
  A.deepEqual(Array.from({length:6},(_,r)=>L.paint(r,6)),['#08753c','#f4cf22','#080b08','#08753c','#f4cf22','#080b08']);
- A.deepEqual(E.SAFE.filter(i=>!E.TEAMS.some(t=>t.start===i)).map(i=>E.TRACK[i]),[[0,6],[6,12],[12,6],[6,0]]);
 });
 test('all four yards arrange pieces in the single-file rows shown in the photo',()=>{
  for(let color=0;color<4;color++){
