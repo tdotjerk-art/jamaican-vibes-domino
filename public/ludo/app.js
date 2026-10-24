@@ -24,21 +24,21 @@
   const root=$('board');root.replaceChildren();
   svg('rect',{x:0,y:0,width:600,height:600,fill:'#070a07'});
   for(const [color,x,y]of [[0,0,0],[1,edge(8),0],[2,edge(8),edge(8)],[3,0,edge(8)]]){
-   svg('rect',{x,y,width:edge(5),height:edge(5),fill:E.TEAMS[color].color,stroke:'#eee7ce','stroke-width':1.3,'aria-label':E.TEAMS[color].name+' home'});
+   svg('rect',{x,y,width:edge(5),height:edge(5),fill:E.TEAMS[color].color,stroke:'#eee7ce','stroke-width':2.2,'aria-label':E.TEAMS[color].name+' home'});
   }
   pieceGradients();
   E.TRACK.forEach(([r,c],i)=>{
-   svg('rect',{x:edge(c),y:edge(r),width:edge(c+1)-edge(c),height:edge(r+1)-edge(r),fill:L.paint(r,c),stroke:'#eee7ce','stroke-width':1.3});
+   svg('rect',{x:edge(c),y:edge(r),width:edge(c+1)-edge(c),height:edge(r+1)-edge(r),fill:L.paint(r,c),stroke:'#eee7ce','stroke-width':2.2});
    const start=E.TEAMS.findIndex(t=>t.start===i);
    if(start>=0)svg('text',{x:middle(c),y:middle(r)+7,'text-anchor':'middle',fill:'#287a42','font-size':24,'font-weight':900,transform:`rotate(${[0,90,180,-90][start]} ${middle(c)} ${middle(r)})`},root,'➜');
    else if(E.SAFE.includes(i))svg('polygon',{points:polygon(middle(c),middle(r),8),fill:'#080b08','aria-label':'Safe square'});
   });
   for(let color=0;color<4;color++)for(let step=E.OUTER_LAST+1;step<E.HOME;step++){
    const [r,c]=E.coordinate({color},step);
-   svg('rect',{x:edge(c),y:edge(r),width:edge(c+1)-edge(c),height:edge(r+1)-edge(r),fill:E.TEAMS[color].color,stroke:'#eee7ce','stroke-width':1.3});
+   svg('rect',{x:edge(c),y:edge(r),width:edge(c+1)-edge(c),height:edge(r+1)-edge(r),fill:E.TEAMS[color].color,stroke:'#eee7ce','stroke-width':2.2});
   }
   const center=svg('g',{id:'ludo-center','aria-label':'Jamaica Land We Love'});
-  svg('rect',{x:200,y:200,width:200,height:200,fill:'#080e09',stroke:'#eee7ce','stroke-width':1.3},center);
+  svg('rect',{x:200,y:200,width:200,height:200,fill:'#080e09',stroke:'#eee7ce','stroke-width':2.2},center);
   for(const [color,points]of [[0,'200,200 300,300 200,400'],[1,'200,200 400,200 300,300'],[2,'400,200 400,400 300,300'],[3,'200,400 300,300 400,400']])svg('polygon',{points,fill:E.TEAMS[color].color,'aria-label':E.TEAMS[color].name+' finish'},center);
   svg('path',{d:'M200 200L400 400M400 200L200 400',fill:'none',stroke:'#080e09','stroke-width':8},center);
   svg('path',{d:'M200 200L400 400M400 200L200 400',fill:'none',stroke:'#fed100','stroke-width':5,'aria-label':'Centered gold X'},center);
