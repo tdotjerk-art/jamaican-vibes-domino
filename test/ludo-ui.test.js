@@ -44,3 +44,14 @@ test('online Ludo sends the name and count, waits for players, and recovers from
  ui.setResponse({ok:false,status:404,json:async()=>({error:'Room not found or expired. Create a new room.'})});await [...ui.intervals.values()][0]();
  A.equal(ui.get('setup').hidden,false);A.equal(ui.storage.has('jv-ludo-room-v1'),false);A.equal(ui.intervals.size,0);A.match(ui.get('error').textContent,/not found/);
 });
+
+test('both dice match all four players and keep the actual roller color until the animation finishes',()=>{
+ const ui=boot([1,1]);ui.get('mode').value='local';ui.get('count').value='4';ui.start();
+ for(let seat=0;seat<4;seat++){
+  for(let die=0;die<2;die++)A.equal(ui.get('tableDie'+die).style.background,E.TEAMS[seat].color);
+  ui.get('tableRoll').onclick();
+  for(let die=0;die<2;die++)A.equal(ui.get('tableDie'+die).style.background,E.TEAMS[seat].color);
+  ui.tick();
+  for(let die=0;die<2;die++){const button=ui.get('tableDie'+die),next=(seat+1)%4;A.equal(button.style.background,E.TEAMS[next].color);A.equal(button.style.color,next===3?'#102519':'#fff4d0');}
+ }
+});

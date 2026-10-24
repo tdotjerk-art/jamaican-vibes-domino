@@ -77,9 +77,11 @@
  }
  function drawDice(g){
   $('tableDice').hidden=!g;$('tableDice').className='table-dice'+(rolling?' rolling':'');
+  const seat=g?(rolling?(g.last?.seat??g.turn):g.turn):0,color=g?.players[seat]?.color??0,ink=color===3?'#102519':'#fff4d0';
   const pips=[[],[4],[0,8],[0,4,8],[0,2,6,8],[0,2,4,6,8],[0,2,3,5,6,8]];
   for(let die=0;die<2;die++){
    const button=$('tableDie'+die),value=g?.dice?.[die],used=!!value&&!g.remaining.includes(die),selectable=!!g&&yourTurn(g)&&E.legal(g,die).length>0;
+   button.style.background=E.TEAMS[color].color;button.style.color=ink;button.style.borderColor=ink;
    button.replaceChildren();button.className='table-die'+(used?' used':'')+(g?.phase==='move'&&selectedDie===die?' chosen':'');
    button.disabled=!selectable;button.setAttribute('aria-pressed',String(g?.phase==='move'&&selectedDie===die));
    button.setAttribute('aria-label','Die '+(die+1)+(value?': '+value:' not rolled')+(used?', used':''));
