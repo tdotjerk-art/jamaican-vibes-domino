@@ -10,3 +10,5 @@
 .board-viewport{width:min(100%,calc(100svh - 210px));max-width:100%;margin-inline:auto}.board-viewport .board-frame{width:100%}.table-panel{min-width:0}@media(max-width:850px){.layout{display:flex;flex-direction:column;max-width:none;padding:0 6px}.table-panel,aside{width:100%}}@media(max-width:650px){.board-viewport{width:min(100%,calc(100svh - 180px))}}
 
 #board{transform:rotate(-90deg);transform-origin:center}
+
+.table-die.higher{box-shadow:0 0 0 2px #fff4d0,0 0 16px 3px #fed10099,0 4px 0 #8f805e}.table-die.higher .pip.on{box-shadow:0 0 3px currentColor,inset 0 1px 2px #0007}
