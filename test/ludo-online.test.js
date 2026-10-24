@@ -1,7 +1,7 @@
 const test=require('node:test'),A=require('node:assert/strict'),express=require('express');
 const {createLudoRouter}=require('../ludo-online');
 test('Ludo online rooms validate seats, server dice, revisions, reconnects and unanimous rematches',async()=>{
- const app=express();app.use('/api/ludo',createLudoRouter({rollDie:()=>6}));const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const origin='http://127.0.0.1:'+server.address().port;
+ let rolled=0;const app=express();app.use('/api/ludo',createLudoRouter({rollDie:()=>[6,3][rolled++%2]}));const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const origin='http://127.0.0.1:'+server.address().port;
  const call=async(a,seat)=>{const response=await fetch(origin+'/api/ludo'+(a?'':'?code='+seat.code),{method:a?'POST':'GET',headers:{Origin:origin,'Content-Type':'application/json',...(seat?{Authorization:'Bearer '+seat.token}:{})},...(a?{body:JSON.stringify({...a,...(seat?{code:seat.code,version:seat.version}:{})})}:{})});return {status:response.status,data:await response.json()}};
  try{
   A.equal((await call({type:'create',total:2})).status,400);A.equal((await call({type:'create',name:'P',total:5})).status,400);
@@ -14,9 +14,9 @@ test('Ludo online rooms validate seats, server dice, revisions, reconnects and u
    A.equal((await call({type:'start'},seats.at(-1))).status,400);
    Object.assign(host,(await call(null,host)).data);Object.assign(host,(await call({type:'start'},host)).data);A.equal(host.state.players.length,total);
    const rolled=await Promise.all([call({type:'roll',die:1},host),call({type:'roll',die:5},host)]);A.deepEqual(rolled.map(r=>r.status).sort(),[200,409]);
-   Object.assign(host,(await call(null,host)).data);A.equal(host.state.die,6);A.equal(host.state.phase,'move');
+   Object.assign(host,(await call(null,host)).data);A.deepEqual(host.state.dice,[6,3]);A.deepEqual(host.state.remaining,[0,1]);A.equal(host.state.phase,'move');
    Object.assign(seats[1],(await call(null,seats[1])).data);A.equal((await call({type:'move',piece:0},seats[1])).status,400);
-   Object.assign(host,(await call({type:'move',piece:0},host)).data);A.equal(host.state.players[0].tokens[0],0);
+   Object.assign(host,(await call({type:'move',piece:0,die:0},host)).data);A.equal(host.state.players[0].tokens[0],0);A.deepEqual(host.state.remaining,[1]);A.equal((await call({type:'move',piece:0,die:0},host)).status,400);
    const recovered=(await call(null,host)).data;A.equal(recovered.you,0);A.equal(recovered.state.players[0].name,'Junior');A.equal(recovered.token,undefined);
    for(let i=0;i<total;i++){Object.assign(seats[i],(await call(null,seats[i])).data);const r=await call({type:'rematch'},seats[i]);A.equal(r.status,200);if(i<total-1)A.equal(r.data.state.players[0].tokens[0],0);else{A.deepEqual(r.data.state.players[0].tokens,[-1,-1,-1,-1]);A.deepEqual(r.data.votes,[]);}}
   }
