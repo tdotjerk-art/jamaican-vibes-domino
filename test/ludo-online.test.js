@@ -28,7 +28,7 @@ test('the existing app serves Ludo, its assets and the home-menu link',async()=>
  try{
   const home=await(await fetch(origin+'/')).text();A.match(home,/href="\/ludo\/"[^>]*>LUDI/);
   for(const route of ['/ludo/','/ludo/engine.js','/ludo/layout.js','/ludo/app.js','/ludo/style.css'])A.equal((await fetch(origin+route)).status,200);
-  const page=await(await fetch(origin+'/ludo/')).text();for(const text of ['Kingston','Cornwall','Middlesex','Surrey','How to play','Roll dice'])A.ok(page.includes(text));
+  const page=await(await fetch(origin+'/ludo/')).text();for(const text of ['How to play','Roll dice','LUDI'])A.ok(page.includes(text));
   const result=await fetch(origin+'/api/ludo',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({type:'create',name:'Junior',total:2})});A.equal(result.status,200);
  }finally{server.closeAllConnections();await new Promise(r=>io.close(r))}
 });

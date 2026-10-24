@@ -17,15 +17,6 @@
   const outline='M-62 -5L-53 -9L-49 -16L-41 -18L-35 -16L-25 -18L-20 -12L-13 -12L-10 -7L2 -10L11 -6L16 -11L22 -8L27 -3L34 -5L40 1L49 3L56 10L63 11L58 17L43 17L31 19L20 17L9 15L1 18L-13 14L-25 12L-34 8L-46 8L-49 1L-58 2Z';
   const defs=svg('defs',{});
   svg('polygon',{points:polygon(102,83,23,10,10),fill:'#f4cf22'});
-  const kingston=svg('g',{'aria-label':'Kingston'}),letters='Kingston';
-  for(let i=0;i<letters.length;i++){
-   const t=.08+i*.84/(letters.length-1),x=(1-t)*(1-t)*112+2*(1-t)*t*181+t*t*112,y=(1-t)*(1-t)*20+2*(1-t)*t*82+t*t*151;
-   const angle=Math.atan2(2*(1-t)*62+2*t*69,2*(1-t)*69-2*t*69)*180/Math.PI;
-   svg('text',{x,y,fill:'#2c7945','font-size':23,'font-weight':900,'font-family':'Georgia,serif','text-anchor':'middle','dominant-baseline':'central',transform:`rotate(${angle} ${x} ${y})`,'aria-hidden':true},kingston,letters[i]);
-  }
-  svg('text',{x:516,y:136,fill:'#f4cf22','font-size':23,'font-family':'Georgia,serif','font-weight':900,'text-anchor':'middle',transform:'rotate(180 516 136)'},root,'Cornwall');
-  svg('text',{x:83,y:467,fill:'#f4cf22','font-size':23,'font-family':'Georgia,serif','font-weight':900,'letter-spacing':1,'text-anchor':'middle',transform:'rotate(8 83 467)'},root,'SURREY');
-  svg('text',{x:476,y:516,fill:'#f4cf22','font-size':21,'font-family':'Georgia,serif','font-weight':900,'letter-spacing':1,'text-anchor':'middle',transform:'rotate(-66 476 516)'},root,'MIDDLESEX');
   for(const [id,transform,from,width]of [['cornwall','translate(516 91) rotate(180) scale(.85)',-70,53],['surrey','translate(83 511) scale(.9)',20,50],['middlesex','translate(518 521) rotate(-80) scale(.85)',-20,50]]){
    const clip=svg('clipPath',{id:'county-'+id,clipPathUnits:'userSpaceOnUse'},defs);svg('path',{d:outline},clip);
    const group=svg('g',{transform});svg('path',{d:outline,fill:'#070a07',stroke:'#316f48','stroke-width':2},group);
@@ -40,6 +31,9 @@
  function board(g){
   const root=$('board');root.replaceChildren();
   svg('rect',{x:0,y:0,width:600,height:600,fill:'#070a07'});
+  for(const [color,x,y]of [[0,0,0],[1,edge(8),0],[2,edge(8),edge(8)],[3,0,edge(8)]]){
+   svg('rect',{x,y,width:edge(5),height:edge(5),fill:E.TEAMS[color].color,stroke:'#eee7ce','stroke-width':1.3,'aria-label':E.TEAMS[color].name+' home'});
+  }
   countyArt(root);
   E.TRACK.forEach(([r,c],i)=>{
    svg('rect',{x:edge(c),y:edge(r),width:edge(c+1)-edge(c),height:edge(r+1)-edge(r),fill:L.paint(r,c),stroke:'#eee7ce','stroke-width':1.3});
@@ -49,11 +43,15 @@
   });
   for(let color=0;color<4;color++)for(let step=E.OUTER_LAST+1;step<E.HOME;step++){
    const [r,c]=E.coordinate({color},step);
-   svg('rect',{x:edge(c),y:edge(r),width:edge(c+1)-edge(c),height:edge(r+1)-edge(r),fill:L.paint(r,c),stroke:'#eee7ce','stroke-width':1.3});
+   svg('rect',{x:edge(c),y:edge(r),width:edge(c+1)-edge(c),height:edge(r+1)-edge(r),fill:E.TEAMS[color].color,stroke:'#eee7ce','stroke-width':1.3});
   }
   const center=svg('g',{id:'ludo-center','aria-label':'Jamaica Land We Love'});
   svg('rect',{x:200,y:200,width:200,height:200,fill:'#080e09',stroke:'#eee7ce','stroke-width':1.3},center);
+  for(const [color,points]of [[0,'200,200 300,300 200,400'],[1,'200,200 400,200 300,300'],[2,'400,200 400,400 300,300'],[3,'200,400 300,300 400,400']])svg('polygon',{points,fill:E.TEAMS[color].color,'aria-label':E.TEAMS[color].name+' finish'},center);
+  svg('path',{d:'M200 200L400 400M400 200L200 400',fill:'none',stroke:'#080e09','stroke-width':8},center);
+  svg('path',{d:'M200 200L400 400M400 200L200 400',fill:'none',stroke:'#fed100','stroke-width':5,'aria-label':'Centered gold X'},center);
   svg('image',{href:'/ludo/assets/hummingbird.png',x:206,y:206,width:188,height:160,preserveAspectRatio:'xMidYMid meet','aria-label':'Jamaican hummingbird'},center);
+  svg('rect',{x:230,y:366,width:140,height:32,rx:3,fill:'#080e09',opacity:.92},center);
   svg('text',{x:300,y:379,fill:'#fed100','font-size':14,'font-weight':850,'letter-spacing':1.7,'text-anchor':'middle'},center,'JAMAICA');
   svg('text',{x:300,y:393,fill:'#fed100','font-size':10.5,'font-weight':750,'letter-spacing':1,'text-anchor':'middle'},center,'LAND WE LOVE');
   const view=g||E.fresh(E.TEAMS.map(t=>t.name)),allowed=g&&yourTurn(g)?E.legal(g,selectedDie).map(m=>m.piece):[];
@@ -72,7 +70,7 @@
    const playable=!!g&&g.turn===piece.seat&&allowed.includes(piece.piece),team=E.TEAMS[piece.p.color];
    const tokenNode=svg('g',{class:'ludo-token'+(playable?' playable':''),role:'button',tabindex:playable?0:-1,'aria-disabled':!playable,'aria-label':piece.p.name+', piece '+(piece.piece+1)+(piece.progress<0?', in yard':piece.progress===E.HOME?', home':', on board')});
    svg('circle',{cx:x,cy:y+2,r:radius,fill:'#0008'},tokenNode);
-   svg('circle',{cx:x,cy:y,r:radius,fill:'url(#ludi-gem-'+piece.p.color+')',stroke:['#1c642c','#2c3329','#92121a','#b9951e'][piece.p.color],'stroke-width':1},tokenNode);
+   svg('circle',{cx:x,cy:y,r:radius,fill:'url(#ludi-gem-'+piece.p.color+')',stroke:'#eee7ce','stroke-width':1},tokenNode);
    for(let facet=0;facet<8;facet++){
     const a=facet*Math.PI/4+.2*(piece.piece+1),b=a+Math.PI/4;
     svg('path',{d:`M${x} ${y}L${x+Math.cos(a)*radius} ${y+Math.sin(a)*radius}L${x+Math.cos(b)*radius} ${y+Math.sin(b)*radius}Z`,fill:facet%2?'#000':'#fff',opacity:facet%2?.16:.1},tokenNode);
