@@ -265,9 +265,13 @@ Names are remembered using the same browser name preference as Draff.
 
 This version uses the rules listed inside the game: six to enter, exact rolls to
 finish, captures, safe arrow starting squares and black-octagon spaces, two-piece blockades, bonus rolls
-for a six or capture, and forfeiting the third consecutive six. A roll with no available move
+for a six or capture after both dice are used, and forfeiting the third consecutive
+roll containing a six. A roll with no available move
 passes automatically. First to bring all four pieces home wins; there are no
-teams. Computer rolls and moves are separated by deliberate pauses.
+teams. Two dice visibly tumble on the table. Tap an unused die, then a piece;
+use each die once, on one piece or split between pieces, in either order. A six
+can bring a piece out and the other die can move it. Unusable remaining dice are
+skipped. Computer rolls and moves are separated by deliberate pauses.
 
 Online rooms use `/api/ludo` on the existing Express service. The host chooses
 the player count; every seat must be filled before the host starts. Dice are

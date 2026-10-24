@@ -2,7 +2,7 @@
  'use strict';
  const E=JVLudo,L=JVLudiLayout,$=id=>document.getElementById(id),svgNS='http://www.w3.org/2000/svg';
  const seatKey='jv-ludo-room-v1',nameKey='jv-draff-player-name-v1';
- let local=null,room=null,token=null,version=-1,busy=false,epoch=0,poll=null,aiTimer=null,message='';
+ let local=null,room=null,token=null,version=-1,busy=false,epoch=0,poll=null,aiTimer=null,message='',selectedDie=null,rolling=false,rollTimer=null,shownRollNo=0;
  function saved(){try{const r=JSON.parse(localStorage.getItem(seatKey)||'null');return r&&/^[A-F0-9]{8}$/.test(r.code)&&/^[a-f0-9]{64}$/.test(r.token)?r:null}catch{return null}}
  function save(r){try{if(r)localStorage.setItem(seatKey,JSON.stringify({code:r.code,token:r.token}));else localStorage.removeItem(seatKey)}catch{}}
  function name(){const n=E.cleanName($('name').value);if(!n)throw Error('Enter your name to play.');try{localStorage.setItem(nameKey,n)}catch{}return n}
@@ -10,7 +10,7 @@
  function node(tag,text,cls){const el=document.createElement(tag);if(text!==undefined)el.textContent=text;if(cls)el.className=cls;return el}
  function svg(tag,attrs,parent=$('board'),text){const el=document.createElementNS(svgNS,tag);for(const [k,v]of Object.entries(attrs))el.setAttribute(k,String(v));if(text!==undefined)el.textContent=text;parent.append(el);return el}
  function snapshot(){return local||room?.state||null}
- function yourTurn(g){return !!g&&!busy&&(local?($('mode').value==='local'||g.turn===0):room.you===g.turn)}
+ function yourTurn(g){return !!g&&!busy&&!rolling&&(local?($('mode').value==='local'||g.turn===0):room.you===g.turn)}
  const {edge,middle}=L;
  function polygon(cx,cy,radius,sides=8,inner=radius){return Array.from({length:sides},(_,i)=>{const angle=-Math.PI/2+i*Math.PI*2/sides,r=i%2?inner:radius;return (cx+Math.cos(angle)*r)+','+(cy+Math.sin(angle)*r)}).join(' ')}
  function countyArt(root){
@@ -56,7 +56,7 @@
   svg('image',{href:'/ludo/assets/hummingbird.png',x:206,y:206,width:188,height:160,preserveAspectRatio:'xMidYMid meet','aria-label':'Jamaican hummingbird'},center);
   svg('text',{x:300,y:379,fill:'#fed100','font-size':14,'font-weight':850,'letter-spacing':1.7,'text-anchor':'middle'},center,'JAMAICA');
   svg('text',{x:300,y:393,fill:'#fed100','font-size':10.5,'font-weight':750,'letter-spacing':1,'text-anchor':'middle'},center,'LAND WE LOVE');
-  const view=g||E.fresh(E.TEAMS.map(t=>t.name)),allowed=g&&yourTurn(g)?E.legal(g).map(m=>m.piece):[];
+  const view=g||E.fresh(E.TEAMS.map(t=>t.name)),allowed=g&&yourTurn(g)?E.legal(g,selectedDie).map(m=>m.piece):[];
   const pieces=[];
   view.players.forEach((p,seat)=>p.tokens.forEach((progress,piece)=>{
    let pos;
@@ -78,15 +78,35 @@
     svg('path',{d:`M${x} ${y}L${x+Math.cos(a)*radius} ${y+Math.sin(a)*radius}L${x+Math.cos(b)*radius} ${y+Math.sin(b)*radius}Z`,fill:facet%2?'#000':'#fff',opacity:facet%2?.16:.1},tokenNode);
    }
    svg('circle',{cx:x-radius*.2,cy:y-radius*.25,r:radius*.35,fill:'#fff',opacity:.07},tokenNode);
-   if(playable){tokenNode.onclick=()=>action({type:'move',piece:piece.piece});tokenNode.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();action({type:'move',piece:piece.piece})}}}
+   if(playable){tokenNode.onclick=()=>action({type:'move',piece:piece.piece,die:selectedDie});tokenNode.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();action({type:'move',piece:piece.piece,die:selectedDie})}}}
   }
  }
  function moveButtons(parent,g){
   parent.replaceChildren();if(!g||!yourTurn(g))return;
-  for(const m of E.legal(g)){const button=node('button','Piece '+(m.piece+1)+(m.to===E.HOME?' · home':m.from<0?' · enter':''));button.onclick=()=>action({type:'move',piece:m.piece});parent.append(button)}
+  for(const m of E.legal(g,selectedDie)){const button=node('button','Piece '+(m.piece+1)+' · '+m.value+(m.to===E.HOME?' · home':m.from<0?' · enter':''));button.onclick=()=>action({type:'move',piece:m.piece,die:m.die});parent.append(button)}
+ }
+ function syncRoll(g){
+  if(!g||!g.rollNo){clearTimeout(rollTimer);rolling=false;shownRollNo=0;return;}
+  if(g.rollNo===shownRollNo)return;
+  shownRollNo=g.rollNo;rolling=true;clearTimeout(rollTimer);
+  rollTimer=setTimeout(()=>{rolling=false;render()},950);
+ }
+ function drawDice(g){
+  $('tableDice').hidden=!g;$('tableDice').className='table-dice'+(rolling?' rolling':'');
+  const pips=[[],[4],[0,8],[0,4,8],[0,2,6,8],[0,2,4,6,8],[0,2,3,5,6,8]];
+  for(let die=0;die<2;die++){
+   const button=$('tableDie'+die),value=g?.dice?.[die],used=!!value&&!g.remaining.includes(die),selectable=!!g&&yourTurn(g)&&E.legal(g,die).length>0;
+   button.replaceChildren();button.className='table-die'+(used?' used':'')+(g?.phase==='move'&&selectedDie===die?' chosen':'');
+   button.disabled=!selectable;button.setAttribute('aria-pressed',String(g?.phase==='move'&&selectedDie===die));
+   button.setAttribute('aria-label','Die '+(die+1)+(value?': '+value:' not rolled')+(used?', used':''));
+   const face=node('span',undefined,'die-face');face.setAttribute('aria-hidden','true');
+   for(let dot=0;dot<9;dot++)face.append(node('i',undefined,'pip'+((pips[value||0]||[]).includes(dot)?' on':'')));
+   if(!value)face.append(node('span','?','unrolled'));button.append(face);
+  }
+  $('tableRoll').disabled=!g||!yourTurn(g)||g.phase!=='roll';$('tableRoll').textContent=rolling?'Rolling…':'Roll dice';
  }
  function render(){
-  clearTimeout(aiTimer);const g=snapshot(),active=!!(local||room);document.body.classList.toggle('in-game',!!g);
+  clearTimeout(aiTimer);const g=snapshot(),active=!!(local||room);syncRoll(g);const choices=g?E.legal(g):[];if(!choices.some(m=>m.die===selectedDie))selectedDie=choices[0]?.die??null;document.body.classList.toggle('in-game',!!g);
   $('setup').hidden=active;$('gamePanel').hidden=!active;$('joinControls').hidden=$('mode').value!=='online';$('begin').textContent=$('mode').value==='online'?'Create online room':'Start game ↗';$('resume').hidden=!saved();
   $('begin').disabled=busy;$('join').disabled=busy;$('resume').disabled=busy;$('leave').disabled=busy;
   $('roomInfo').hidden=!room;$('roomCode').textContent=room?.code||'';$('modeLabel').textContent=room?'ONLINE TABLE':$('mode').value==='local'?'SAME DEVICE':'VS COMPUTERS';
@@ -94,31 +114,31 @@
   $('startOnline').hidden=!room||!!g||room.you!==0;$('startOnline').disabled=busy||!room||room.players.length!==room.total;
   $('newGame').hidden=!g;$('newGame').disabled=busy;$('newGame').textContent=room?'Request new game':'New game';
   $('playControls').hidden=!g;$('quickControls').hidden=!g;
-  $('turnBanner').textContent=!active?'Welcome to the table.':!g?'Waiting for players…':g.phase==='over'?g.players[g.winner].name+' wins!':g.players[g.turn].name+($('mode').value==='ai'&&g.turn!==0?' is thinking…':g.phase==='move'?' · choose a piece':' · roll the dice');
+  $('turnBanner').textContent=!active?'Welcome to the table.':!g?'Waiting for players…':g.phase==='over'?g.players[g.winner].name+' wins!':g.players[rolling?(g.last?.seat??g.turn):g.turn].name+(rolling?' · rolling two dice…':$('mode').value==='ai'&&g.turn!==0?' is thinking…':g.phase==='move'?' · choose a piece':' · roll the dice');
   $('seats').replaceChildren();
   const seats=g?g.players:room?.players.map((name,i)=>({name,color:room.total===2?i*2:i,tokens:[]}))||[];
   seats.forEach((p,i)=>{const el=node('div',undefined,'seat'+(g&&g.phase!=='over'&&g.turn===i?' active':'')),label=node('span',undefined,'seat-name'),dot=node('i');dot.style.background=E.TEAMS[p.color].color;label.append(dot,node('span',p.name+(room?.you===i?' (you)':'')));el.append(label,node('small',g?p.tokens.filter(n=>n===E.HOME).length+'/4 home':E.TEAMS[p.color].name));$('seats').append(el)});
   const canRoll=!!g&&yourTurn(g)&&g.phase==='roll';$('roll').disabled=!canRoll;$('quickRoll').disabled=!canRoll;
-  $('dice').textContent=g?.die?['','⚀','⚁','⚂','⚃','⚄','⚅'][g.die]:'⚄';$('dice').setAttribute('aria-label',g?.die?'Last roll: '+g.die:'Dice not rolled');
-  $('diceLabel').textContent=g?.die?'Last roll · '+g.die:'Roll to begin.';$('quickRoll').textContent=g?.die?'Roll dice · '+g.die:'Roll dice';
-  $('hint').textContent=!g?'':g.phase==='over'?'All four pieces are home. Start another game.':g.phase==='move'?(yourTurn(g)?'Tap a numbered piece or choose one below.':'Waiting for '+g.players[g.turn].name+' to move.'):'Roll a six to enter. Black octagons mark safe squares.';
-  moveButtons($('moves'),g);moveButtons($('quickMoves'),g);
+  const values=g?.dice?.every(Number.isInteger)?g.dice.join(' + '):'';
+  $('diceLabel').textContent=values?'Last roll · '+values:'Roll both dice on the table.';$('quickRoll').textContent=rolling?'Rolling…':'Roll two dice';
+  $('hint').textContent=!g?'':rolling?'Both dice are rolling on the table.':g.phase==='over'?'All four pieces are home. Start another game.':g.phase==='move'?(yourTurn(g)?'Using die '+(selectedDie+1)+' ('+g.dice[selectedDie]+'). Tap the other unused die to change, then choose a piece.':'Waiting for '+g.players[g.turn].name+' to move.'):'Roll a six on either die to enter. Use each die once.';
+  drawDice(g);moveButtons($('moves'),g);moveButtons($('quickMoves'),g);
   $('history').replaceChildren();(g?.history||[]).slice(-5).reverse().forEach(text=>$('history').append(node('p',text)));
   board(g);scheduleComputer();
  }
  function scheduleComputer(){
-  const g=local;if(!g||$('mode').value!=='ai'||g.turn===0||g.phase==='over')return;
+  const g=local;if(!g||rolling||$('mode').value!=='ai'||g.turn===0||g.phase==='over')return;
   aiTimer=setTimeout(()=>{
    if(g!==local)return;
    if(g.phase==='roll')local=E.act(g,g.turn,{type:'roll'});
    else{
-    const choices=E.legal(g).map(m=>{const next=E.act(g,g.turn,{type:'move',piece:m.piece});return {m,score:(m.to===E.HOME?1000:0)+(next.last.captured.length*200)+(m.from<0?45:m.to)+Math.random()}}).sort((a,b)=>b.score-a.score);
-    if(choices.length)local=E.act(g,g.turn,{type:'move',piece:choices[0].m.piece});
+    const choices=E.legal(g).map(m=>{const next=E.act(g,g.turn,{type:'move',piece:m.piece,die:m.die});return {m,score:(m.to===E.HOME?1000:0)+(next.last.captured.length*200)+(m.from<0?45:m.to)+Math.random()}}).sort((a,b)=>b.score-a.score);
+    if(choices.length)local=E.act(g,g.turn,{type:'move',piece:choices[0].m.piece,die:choices[0].m.die});
    }
    render();
   },g.phase==='roll'?1400:1100);
  }
- function action(a){const g=snapshot();if(!g||!yourTurn(g))return;if(local){try{local=E.act(local,local.turn,a);$('error').textContent='';render()}catch(e){$('error').textContent=e.message}}else send(a)}
+ function action(a){const g=snapshot();if(!g||!yourTurn(g))return;if(local){try{local=E.act(local,local.turn,a);$('error').textContent='';render()}catch(e){$('error').textContent=e.message}}else return send(a)}
  async function request(a,credentials=room?{code:room.code,token}:null){
   const response=await fetch('/api/ludo'+(a?'':'?code='+encodeURIComponent(credentials.code)),{method:a?'POST':'GET',headers:{'Content-Type':'application/json',...(credentials?.token?{Authorization:'Bearer '+credentials.token}:{})},...(a?{body:JSON.stringify({...a,...(credentials?{code:credentials.code,version}:{})})}:{})});
   const r=await response.json();if(!response.ok){const e=Error(r.error||'Unable to connect.');e.status=response.status;throw e}return r;
@@ -143,12 +163,13 @@
   try{const r=await request(null,credentials);if(generation!==epoch)return;$('mode').value='online';token=credentials.token;version=-1;message='';receive(r,credentials.token);polling()}
   catch(e){if(generation===epoch&&!terminal(e))$('error').textContent=e.message}finally{if(generation===epoch){busy=false;render()}}
  }
- function startLocal(){const n=count(),player=name();local=E.fresh(Array.from({length:n},(_,i)=>i===0?player:$('mode').value==='ai'?E.TEAMS[n===2?2:i].name+' · Computer':'Player '+(i+1)));render()}
+ function startLocal(){const n=count(),player=name();shownRollNo=0;local=E.fresh(Array.from({length:n},(_,i)=>i===0?player:$('mode').value==='ai'?E.TEAMS[n===2?2:i].name+' · Computer':'Player '+(i+1)));render()}
  $('setupForm').onsubmit=e=>{e.preventDefault();if($('mode').value==='online')enter('create');else try{startLocal();$('error').textContent=''}catch(error){$('error').textContent=error.message}};
  $('mode').onchange=()=>{message='';$('error').textContent='';render()};$('join').onclick=()=>enter('join');$('resume').onclick=resume;
- $('startOnline').onclick=()=>send({type:'start'});$('roll').onclick=$('quickRoll').onclick=()=>action({type:'roll'});
+ $('startOnline').onclick=()=>send({type:'start'});$('roll').onclick=$('quickRoll').onclick=$('tableRoll').onclick=()=>action({type:'roll'});
+ for(let die=0;die<2;die++)$('tableDie'+die).onclick=()=>{const g=snapshot();if(g&&yourTurn(g)&&E.legal(g,die).length){selectedDie=die;render()}};
  $('newGame').onclick=()=>{if(room)send({type:'rematch'});else if(confirm('Start a new LUDI game? The current board will be cleared.'))startLocal()};
- $('leave').onclick=()=>{if(!confirm('Leave this table? Online players can return using this browser’s saved room.'))return;epoch++;clearTimeout(aiTimer);clearInterval(poll);local=null;room=null;token=null;version=-1;busy=false;message='';$('error').textContent='';render()};
+ $('leave').onclick=()=>{if(!confirm('Leave this table? Online players can return using this browser’s saved room.'))return;epoch++;clearTimeout(aiTimer);clearTimeout(rollTimer);rolling=false;clearInterval(poll);local=null;room=null;token=null;version=-1;busy=false;message='';$('error').textContent='';render()};
  $('copy').onclick=async()=>{if(!room)return;const link=new URL('/ludo/',location.origin);link.searchParams.set('room',room.code);try{await navigator.clipboard.writeText(link.href);message='Invite link copied.'}catch{message='Share room code: '+room.code}render()};
  try{$('name').value=E.cleanName(localStorage.getItem(nameKey))}catch{}
  const invite=new URL(location.href).searchParams.get('room');if(invite){$('mode').value='online';$('code').value=invite.toUpperCase()}
