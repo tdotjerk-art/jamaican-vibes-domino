@@ -1,6 +1,6 @@
 (()=>{
  'use strict';
- const E=JVLudo,$=id=>document.getElementById(id),svgNS='http://www.w3.org/2000/svg';
+ const E=JVLudo,L=JVLudiLayout,$=id=>document.getElementById(id),svgNS='http://www.w3.org/2000/svg';
  const seatKey='jv-ludo-room-v1',nameKey='jv-draff-player-name-v1';
  let local=null,room=null,token=null,version=-1,busy=false,epoch=0,poll=null,aiTimer=null,message='';
  function saved(){try{const r=JSON.parse(localStorage.getItem(seatKey)||'null');return r&&/^[A-F0-9]{8}$/.test(r.code)&&/^[a-f0-9]{64}$/.test(r.token)?r:null}catch{return null}}
@@ -11,55 +11,73 @@
  function svg(tag,attrs,parent=$('board'),text){const el=document.createElementNS(svgNS,tag);for(const [k,v]of Object.entries(attrs))el.setAttribute(k,String(v));if(text!==undefined)el.textContent=text;parent.append(el);return el}
  function snapshot(){return local||room?.state||null}
  function yourTurn(g){return !!g&&!busy&&(local?($('mode').value==='local'||g.turn===0):room.you===g.turn)}
- // Keep the board at 600 units: six 35-unit cells, a 180-unit centre,
- // then six more 35-unit cells. The centre was previously 120 units wide.
- const edge=n=>n<=6?n*35:n<=9?210+(n-6)*60:390+(n-9)*35;
- const middle=n=>(edge(n)+edge(n+1))/2;
+ const {edge,middle}=L;
+ function polygon(cx,cy,radius,sides=8,inner=radius){return Array.from({length:sides},(_,i)=>{const angle=-Math.PI/2+i*Math.PI*2/sides,r=i%2?inner:radius;return (cx+Math.cos(angle)*r)+','+(cy+Math.sin(angle)*r)}).join(' ')}
+ function countyArt(root){
+  const outline='M-62 -5L-53 -9L-49 -16L-41 -18L-35 -16L-25 -18L-20 -12L-13 -12L-10 -7L2 -10L11 -6L16 -11L22 -8L27 -3L34 -5L40 1L49 3L56 10L63 11L58 17L43 17L31 19L20 17L9 15L1 18L-13 14L-25 12L-34 8L-46 8L-49 1L-58 2Z';
+  const defs=svg('defs',{});
+  svg('polygon',{points:polygon(102,83,23,10,10),fill:'#f4cf22'});
+  const kingston=svg('g',{'aria-label':'Kingston'}),letters='Kingston';
+  for(let i=0;i<letters.length;i++){
+   const t=.08+i*.84/(letters.length-1),x=(1-t)*(1-t)*112+2*(1-t)*t*181+t*t*112,y=(1-t)*(1-t)*20+2*(1-t)*t*82+t*t*151;
+   const angle=Math.atan2(2*(1-t)*62+2*t*69,2*(1-t)*69-2*t*69)*180/Math.PI;
+   svg('text',{x,y,fill:'#2c7945','font-size':23,'font-weight':900,'font-family':'Georgia,serif','text-anchor':'middle','dominant-baseline':'central',transform:`rotate(${angle} ${x} ${y})`,'aria-hidden':true},kingston,letters[i]);
+  }
+  svg('text',{x:516,y:136,fill:'#f4cf22','font-size':23,'font-family':'Georgia,serif','font-weight':900,'text-anchor':'middle',transform:'rotate(180 516 136)'},root,'Cornwall');
+  svg('text',{x:83,y:467,fill:'#f4cf22','font-size':23,'font-family':'Georgia,serif','font-weight':900,'letter-spacing':1,'text-anchor':'middle',transform:'rotate(8 83 467)'},root,'SURREY');
+  svg('text',{x:476,y:516,fill:'#f4cf22','font-size':21,'font-family':'Georgia,serif','font-weight':900,'letter-spacing':1,'text-anchor':'middle',transform:'rotate(-66 476 516)'},root,'MIDDLESEX');
+  for(const [id,transform,from,width]of [['cornwall','translate(516 91) rotate(180) scale(.85)',-70,53],['surrey','translate(83 511) scale(.9)',20,50],['middlesex','translate(518 521) rotate(-80) scale(.85)',-20,50]]){
+   const clip=svg('clipPath',{id:'county-'+id,clipPathUnits:'userSpaceOnUse'},defs);svg('path',{d:outline},clip);
+   const group=svg('g',{transform});svg('path',{d:outline,fill:'#070a07',stroke:'#316f48','stroke-width':2},group);
+   svg('rect',{x:from,y:-25,width,height:50,fill:'#f4cf22','clip-path':'url(#county-'+id+')'},group);
+   svg('path',{d:outline,fill:'none',stroke:'#316f48','stroke-width':2},group);
+  }
+  for(let color=0;color<4;color++){
+   const gradient=svg('radialGradient',{id:'ludi-gem-'+color,cx:'36%',cy:'28%',r:'72%'},defs),stops=[['#65c957','#087032','#023e1c'],['#687067','#22271f','#060907'],['#ff6969','#c92128','#74090d'],['#ffe779','#d6ae19','#8c6a08']][color];
+   for(let i=0;i<3;i++)svg('stop',{offset:[0,.55,1][i],'stop-color':stops[i]},gradient);
+  }
+ }
  function board(g){
   const root=$('board');root.replaceChildren();
-  svg('rect',{x:0,y:0,width:600,height:600,fill:'#101611'});
-  const corners=[[0,0],[390,0],[390,390],[0,390]],yardScale=0.875;
-  for(let c=0;c<4;c++){
-   const [x,y]=corners[c],team=E.TEAMS[c];
-   svg('rect',{x:x+9,y:y+9,width:192,height:192,rx:9,fill:'#101b14',stroke:c===1?'#9c995d':team.color,'stroke-width':2});
-   svg('text',{x:x+105,y:y+(c<2?34:193),fill:'#fed100','font-size':18,'font-weight':850,'text-anchor':'middle','letter-spacing':1.5},root,team.name.toUpperCase());
-   svg('text',{x:x+105,y:y+136,fill:team.color,opacity:.16,'font-size':96,'text-anchor':'middle'},root,'★');
-   for(let p=0;p<4;p++)svg('circle',{cx:x+(78+(p%2)*84)*yardScale,cy:y+(80+Math.floor(p/2)*70)*yardScale,r:22,fill:'#080d09',stroke:'#48664c','stroke-width':1.5});
-  }
+  svg('rect',{x:0,y:0,width:600,height:600,fill:'#070a07'});
+  countyArt(root);
   E.TRACK.forEach(([r,c],i)=>{
-   const start=E.TEAMS.findIndex(t=>t.start===i),safe=E.SAFE.includes(i);
-   svg('rect',{x:edge(c),y:edge(r),width:edge(c+1)-edge(c),height:edge(r+1)-edge(r),fill:['#067436','#101611','#e9c628'][i%3],stroke:'#eee1b6','stroke-width':1});
-   if(safe)svg('text',{x:middle(c),y:middle(r)+7,'text-anchor':'middle',fill:i%3===2?'#142b1c':'#fed100','font-size':23},root,start<0?'★':'');
-   if(start>=0){svg('circle',{cx:middle(c),cy:middle(r),r:15,fill:'none',stroke:'#fed100','stroke-width':2.5});svg('text',{x:middle(c),y:middle(r)+7,'text-anchor':'middle',fill:'#fff5c9','font-size':22,transform:`rotate(${[0,90,180,-90][start]} ${middle(c)} ${middle(r)})`},root,'➜');}
+   svg('rect',{x:edge(c),y:edge(r),width:edge(c+1)-edge(c),height:edge(r+1)-edge(r),fill:L.paint(r,c),stroke:'#eee7ce','stroke-width':1.3});
+   const start=E.TEAMS.findIndex(t=>t.start===i);
+   if(start>=0)svg('text',{x:middle(c),y:middle(r)+7,'text-anchor':'middle',fill:'#287a42','font-size':24,'font-weight':900,transform:`rotate(${[0,90,180,-90][start]} ${middle(c)} ${middle(r)})`},root,'➜');
+   else if(E.SAFE.includes(i))svg('polygon',{points:polygon(middle(c),middle(r),8),fill:'#080b08','aria-label':'Safe square'});
   });
-  for(let color=0;color<4;color++)for(let step=51;step<56;step++){
-   const [r,c]=E.coordinate({color},step),team=E.TEAMS[color];
-   svg('rect',{x:edge(c),y:edge(r),width:edge(c+1)-edge(c),height:edge(r+1)-edge(r),fill:color===3?'#d4b92b':color===1?'#1c2b23':'#075c31',stroke:'#ede0ae','stroke-width':1});
-   svg('text',{x:middle(c),y:middle(r)+6,'text-anchor':'middle',fill:color===3?'#162719':'#fed100','font-size':15},root,String(step-50));
+  for(let color=0;color<4;color++)for(let step=E.OUTER_LAST+1;step<E.HOME;step++){
+   const [r,c]=E.coordinate({color},step);
+   svg('rect',{x:edge(c),y:edge(r),width:edge(c+1)-edge(c),height:edge(r+1)-edge(r),fill:L.paint(r,c),stroke:'#eee7ce','stroke-width':1.3});
   }
   const center=svg('g',{id:'ludo-center','aria-label':'Jamaica Land We Love'});
-  svg('rect',{x:210,y:210,width:180,height:180,fill:'#080e09',stroke:'#fed100','stroke-width':1.5},center);
-  svg('image',{href:'/ludo/assets/hummingbird.png',x:216,y:215,width:168,height:140,preserveAspectRatio:'xMidYMid meet','aria-label':'Jamaican hummingbird'},center);
-  svg('text',{x:300,y:370,fill:'#fed100','font-size':14,'font-weight':850,'letter-spacing':1.7,'text-anchor':'middle'},center,'JAMAICA');
-  svg('text',{x:300,y:384,fill:'#fed100','font-size':10.5,'font-weight':750,'letter-spacing':1,'text-anchor':'middle'},center,'LAND WE LOVE');
+  svg('rect',{x:200,y:200,width:200,height:200,fill:'#080e09',stroke:'#eee7ce','stroke-width':1.3},center);
+  svg('image',{href:'/ludo/assets/hummingbird.png',x:206,y:206,width:188,height:160,preserveAspectRatio:'xMidYMid meet','aria-label':'Jamaican hummingbird'},center);
+  svg('text',{x:300,y:379,fill:'#fed100','font-size':14,'font-weight':850,'letter-spacing':1.7,'text-anchor':'middle'},center,'JAMAICA');
+  svg('text',{x:300,y:393,fill:'#fed100','font-size':10.5,'font-weight':750,'letter-spacing':1,'text-anchor':'middle'},center,'LAND WE LOVE');
   const view=g||E.fresh(E.TEAMS.map(t=>t.name)),allowed=g&&yourTurn(g)?E.legal(g).map(m=>m.piece):[];
   const pieces=[];
   view.players.forEach((p,seat)=>p.tokens.forEach((progress,piece)=>{
    let pos;
-   if(progress<0){const [x,y]=corners[p.color];pos=[x+(78+(piece%2)*84)*yardScale,y+(80+Math.floor(piece/2)*70)*yardScale]}
-   else if(progress===E.HOME){const centers=[[255,300],[300,255],[345,300],[300,330]],center=centers[p.color];pos=[center[0]+(piece%2?12:-12),center[1]+(piece<2?-12:12)]}
+   if(progress<0)pos=L.yard(p.color,piece);
+   else if(progress===E.HOME)pos=L.finished(p.color,piece);
    else{const [r,c]=E.coordinate(p,progress);pos=[middle(c),middle(r)]}
    pieces.push({p,seat,piece,progress,pos});
   }));
   for(const piece of pieces){
    let [x,y]=piece.pos;const group=pieces.filter(other=>other.pos[0]===x&&other.pos[1]===y),n=group.length,index=group.indexOf(piece);
-   let radius=piece.progress<0?18:piece.progress===E.HOME?12:14;
+   let radius=piece.progress<0?(piece.p.color===0||piece.p.color===3?15.4:14.5):piece.progress===E.HOME?9:13;
    if(n>1){const cols=n===2?2:Math.ceil(Math.sqrt(n)),rows=Math.ceil(n/cols);const gap=n>4?10:12;x+=(index%cols-(cols-1)/2)*gap;y+=(Math.floor(index/cols)-(rows-1)/2)*gap;radius=n>4?5:n>2?7:10}
    const playable=!!g&&g.turn===piece.seat&&allowed.includes(piece.piece),team=E.TEAMS[piece.p.color];
    const tokenNode=svg('g',{class:'ludo-token'+(playable?' playable':''),role:'button',tabindex:playable?0:-1,'aria-disabled':!playable,'aria-label':piece.p.name+', piece '+(piece.piece+1)+(piece.progress<0?', in yard':piece.progress===E.HOME?', home':', on board')});
    svg('circle',{cx:x,cy:y+2,r:radius,fill:'#0008'},tokenNode);
-   svg('circle',{cx:x,cy:y,r:radius,fill:team.color,stroke:piece.p.color===3?'#111c14':'#edcf58','stroke-width':2},tokenNode);
-   svg('text',{x,y:y+radius*.36,'text-anchor':'middle',fill:piece.p.color===3?'#122719':'#fff4d2','font-size':radius*1.05,'font-weight':800},tokenNode,String(piece.piece+1));
+   svg('circle',{cx:x,cy:y,r:radius,fill:'url(#ludi-gem-'+piece.p.color+')',stroke:['#1c642c','#2c3329','#92121a','#b9951e'][piece.p.color],'stroke-width':1},tokenNode);
+   for(let facet=0;facet<8;facet++){
+    const a=facet*Math.PI/4+.2*(piece.piece+1),b=a+Math.PI/4;
+    svg('path',{d:`M${x} ${y}L${x+Math.cos(a)*radius} ${y+Math.sin(a)*radius}L${x+Math.cos(b)*radius} ${y+Math.sin(b)*radius}Z`,fill:facet%2?'#000':'#fff',opacity:facet%2?.16:.1},tokenNode);
+   }
+   svg('circle',{cx:x-radius*.2,cy:y-radius*.25,r:radius*.35,fill:'#fff',opacity:.07},tokenNode);
    if(playable){tokenNode.onclick=()=>action({type:'move',piece:piece.piece});tokenNode.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();action({type:'move',piece:piece.piece})}}}
   }
  }
@@ -83,7 +101,7 @@
   const canRoll=!!g&&yourTurn(g)&&g.phase==='roll';$('roll').disabled=!canRoll;$('quickRoll').disabled=!canRoll;
   $('dice').textContent=g?.die?['','⚀','⚁','⚂','⚃','⚄','⚅'][g.die]:'⚄';$('dice').setAttribute('aria-label',g?.die?'Last roll: '+g.die:'Dice not rolled');
   $('diceLabel').textContent=g?.die?'Last roll · '+g.die:'Roll to begin.';$('quickRoll').textContent=g?.die?'Roll dice · '+g.die:'Roll dice';
-  $('hint').textContent=!g?'':g.phase==='over'?'All four pieces are home. Start another game.':g.phase==='move'?(yourTurn(g)?'Tap a numbered piece or choose one below.':'Waiting for '+g.players[g.turn].name+' to move.'):'Roll a six to enter. Safe squares are marked ★.';
+  $('hint').textContent=!g?'':g.phase==='over'?'All four pieces are home. Start another game.':g.phase==='move'?(yourTurn(g)?'Tap a numbered piece or choose one below.':'Waiting for '+g.players[g.turn].name+' to move.'):'Roll a six to enter. Black octagons mark safe squares.';
   moveButtons($('moves'),g);moveButtons($('quickMoves'),g);
   $('history').replaceChildren();(g?.history||[]).slice(-5).reverse().forEach(text=>$('history').append(node('p',text)));
   board(g);scheduleComputer();

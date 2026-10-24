@@ -1,19 +1,19 @@
 (function(root){
  'use strict';
- const TEAMS=[{name:'Kingston',color:'#10964b',start:1},{name:'Cornwall',color:'#202924',start:14},{name:'Middlesex',color:'#e84444',start:27},{name:'Surrey',color:'#fed100',start:40}];
- const TRACK=[[6,0],[6,1],[6,2],[6,3],[6,4],[6,5],[5,6],[4,6],[3,6],[2,6],[1,6],[0,6],[0,7],[0,8],[1,8],[2,8],[3,8],[4,8],[5,8],[6,9],[6,10],[6,11],[6,12],[6,13],[6,14],[7,14],[8,14],[8,13],[8,12],[8,11],[8,10],[8,9],[9,8],[10,8],[11,8],[12,8],[13,8],[14,8],[14,7],[14,6],[13,6],[12,6],[11,6],[10,6],[9,6],[8,5],[8,4],[8,3],[8,2],[8,1],[8,0],[7,0]];
- const SAFE=[1,9,14,22,27,35,40,48],HOME=56;
+ const TEAMS=[{name:'Kingston',color:'#10964b',start:1},{name:'Cornwall',color:'#202924',start:13},{name:'Middlesex',color:'#e84444',start:25},{name:'Surrey',color:'#fed100',start:37}];
+ const TRACK=[[5,0],[5,1],[5,2],[5,3],[5,4],[5,5],[4,5],[3,5],[2,5],[1,5],[0,5],[0,6],[0,7],[1,7],[2,7],[3,7],[4,7],[5,7],[5,8],[5,9],[5,10],[5,11],[5,12],[6,12],[7,12],[7,11],[7,10],[7,9],[7,8],[7,7],[8,7],[9,7],[10,7],[11,7],[12,7],[12,6],[12,5],[11,5],[10,5],[9,5],[8,5],[7,5],[7,4],[7,3],[7,2],[7,1],[7,0],[6,0]];
+ const SAFE=[1,11,13,23,25,35,37,47],HOME=52,OUTER_LAST=46;
  const cleanName=value=>typeof value==='string'?value.replace(/[\u0000-\u001f\u007f-\u009f]/g,'').replace(/\s+/g,' ').trim().slice(0,24):'';
  function fresh(names){
   if(!Array.isArray(names)||names.length<2||names.length>4||names.some(n=>!cleanName(n)))throw Error('Enter names for 2, 3, or 4 players.');
   const colors=names.length===2?[0,2]:names.map((_,i)=>i);
   return {players:names.map((name,i)=>({name:cleanName(name),color:colors[i],tokens:[-1,-1,-1,-1]})),turn:0,phase:'roll',die:null,sixes:0,winner:null,last:null,history:['Roll a six to bring a piece out.']};
  }
- function ring(player,progress){return progress>=0&&progress<=50?(TEAMS[player.color].start+progress)%52:null;}
+ function ring(player,progress){return progress>=0&&progress<=OUTER_LAST?(TEAMS[player.color].start+progress)%TRACK.length:null;}
  function coordinate(player,progress){
-  if(progress<0)return null;if(progress===HOME)return [7,7];
-  if(progress<=50)return TRACK[ring(player,progress)];
-  const n=progress-50;return player.color===0?[7,n]:player.color===1?[n,7]:player.color===2?[7,14-n]:[14-n,7];
+  if(progress<0)return null;if(progress===HOME)return [6,6];
+  if(progress<=OUTER_LAST)return TRACK[ring(player,progress)];
+  const n=progress-OUTER_LAST;return player.color===0?[6,n]:player.color===1?[n,6]:player.color===2?[6,12-n]:[12-n,6];
  }
  function occupants(g,index){return g.players.flatMap((p,seat)=>p.tokens.flatMap((progress,piece)=>ring(p,progress)===index?[{seat,piece}]:[]));}
  function legal(g){
@@ -22,7 +22,7 @@
   return player.tokens.flatMap((from,piece)=>{
    if(from===HOME||from<0&&die!==6)return [];
    const to=from<0?0:from+die;if(to>HOME)return [];
-   for(let step=from<0?0:from+1;step<=Math.min(to,50);step++){
+   for(let step=from<0?0:from+1;step<=Math.min(to,OUTER_LAST);step++){
     const index=ring(player,step),on=occupants(g,index);
     if(g.players.some((_,seat)=>seat!==g.turn&&on.filter(t=>t.seat===seat).length>=2))return [];
    }
@@ -61,6 +61,6 @@
   else next(g);
   return g;
  }
- const api={TEAMS,TRACK,SAFE,HOME,cleanName,fresh,ring,coordinate,legal,act};
+ const api={TEAMS,TRACK,SAFE,HOME,OUTER_LAST,cleanName,fresh,ring,coordinate,legal,act};
  if(typeof module!=='undefined')module.exports=api;else root.JVLudo=api;
 })(globalThis);
