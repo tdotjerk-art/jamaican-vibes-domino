@@ -35,15 +35,12 @@
    const [r,c]=E.coordinate({color},step);
    svg('rect',{x:edge(c),y:edge(r),width:edge(c+1)-edge(c),height:edge(r+1)-edge(r),fill:E.TEAMS[color].color,stroke:'#eee7ce','stroke-width':2.2});
   }
-  const center=svg('g',{id:'ludo-center','aria-label':'Jamaica Land We Love'});
+  const center=svg('g',{id:'ludo-center','aria-label':'Hummingbird center'});
   svg('rect',{x:200,y:200,width:200,height:200,fill:'#080e09',stroke:'#eee7ce','stroke-width':2.2},center);
   for(const [color,points]of [[0,'200,200 300,300 200,400'],[1,'200,200 400,200 300,300'],[2,'400,200 400,400 300,300'],[3,'200,400 300,300 400,400']])svg('polygon',{points,fill:E.TEAMS[color].color,'aria-label':E.TEAMS[color].name+' finish'},center);
   svg('path',{d:'M200 200L400 400M400 200L200 400',fill:'none',stroke:'#080e09','stroke-width':8},center);
   svg('path',{d:'M200 200L400 400M400 200L200 400',fill:'none',stroke:'#fed100','stroke-width':5,'aria-label':'Centered gold X'},center);
   svg('image',{href:'/ludo/assets/hummingbird.png',x:206,y:206,width:188,height:160,preserveAspectRatio:'xMidYMid meet','aria-label':'Jamaican hummingbird'},center);
-  svg('rect',{x:230,y:366,width:140,height:32,rx:3,fill:'#080e09',opacity:.92},center);
-  svg('text',{x:300,y:379,fill:'#fed100','font-size':14,'font-weight':850,'letter-spacing':1.7,'text-anchor':'middle'},center,'JAMAICA');
-  svg('text',{x:300,y:393,fill:'#fed100','font-size':10.5,'font-weight':750,'letter-spacing':1,'text-anchor':'middle'},center,'LAND WE LOVE');
   const view=g||E.fresh(E.TEAMS.map(t=>t.name)),allowed=g&&yourTurn(g)?E.legal(g,selectedDie).map(m=>m.piece):[];
   const pieces=[];
   view.players.forEach((p,seat)=>p.tokens.forEach((progress,piece)=>{
