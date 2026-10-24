@@ -25,11 +25,18 @@ test('dice can be used in either order, on one piece or split, and neither can b
  g=fresh();g=move(move(roll(g,6,6),0,0),1,1);A.deepEqual(g.players[0].tokens,[0,0,-1,-1]);A.equal(g.turn,0);A.equal(g.phase,'roll');
 });
 test('captures return opponents to the yard and give a bonus only after the other die is used',()=>{
- let g=fresh();g.players[0].tokens[0]=0;g.players[1].tokens[0]=37;
+ let g=fresh();g.players[0].tokens=[0,20,-1,-1];g.players[1].tokens[0]=37;
  g=move(roll(g,1,2),0,0);A.equal(g.players[1].tokens[0],-1);A.equal(g.last.captured.length,1);A.equal(g.phase,'move');A.equal(g.turn,0);
- g=move(g,0,1);A.equal(g.phase,'roll');A.equal(g.turn,0);
- g=fresh();g.players[0].tokens[0]=9;g.players[1].tokens[0]=46;
- g=move(roll(g,1,1),0,0);A.equal(g.players[1].tokens[0],-1);A.equal(g.last.captured.length,1);g=move(g,0,1);A.equal(g.turn,0);
+ A.throws(()=>move(g,0,1),/unused die/);g=move(g,1,1);A.equal(g.phase,'roll');A.equal(g.turn,0);
+ g=fresh();g.players[0].tokens=[9,20,-1,-1];g.players[1].tokens[0]=46;
+ g=move(roll(g,1,1),0,0);A.equal(g.players[1].tokens[0],-1);A.equal(g.last.captured.length,1);g=move(g,1,1);A.equal(g.turn,0);
+});
+test('capture locks that piece for this roll and skips a die when no different piece can move',()=>{
+ let g=fresh();g.players[0].tokens[0]=0;g.players[1].tokens[0]=37;
+ g=move(roll(g,1,2),0,0);A.equal(g.players[0].tokens[0],1);A.equal(g.players[1].tokens[0],-1);A.deepEqual(g.remaining,[]);A.equal(g.phase,'roll');A.equal(g.turn,0);
+ g=roll(g,1,2);A.ok(E.legal(g,0).some(m=>m.piece===0));g=move(g,0,0);A.equal(g.players[0].tokens[0],2);
+ // Entry captures must also stop the entering piece, but a second six can enter another.
+ g=fresh();g.players[1].tokens[0]=36;g=move(roll(g,6,6),0,0);A.equal(g.players[1].tokens[0],-1);A.deepEqual(g.capturedThisRoll,[0]);A.ok(E.legal(g).every(m=>m.piece!==0));A.throws(()=>move(g,0,1),/unused die/);g=move(g,1,1);A.deepEqual(g.players[0].tokens,[0,0,-1,-1]);
 });
 test('all 48 shared squares allow capture, including entry on every starting arrow',()=>{
  for(let target=0;target<E.TRACK.length;target++){
@@ -60,7 +67,7 @@ test('unusable dice are skipped, but a die that becomes usable after entry is re
 test('three consecutive rolls containing a six forfeit the third pair before moving',()=>{
  let g=fresh();for(let n=0;n<2;n++)g=move(move(roll(g,6,1),0,0),0,1);
  const tokens=g.players[0].tokens.slice();g=roll(g,1,6);A.equal(g.turn,1);A.equal(g.phase,'roll');A.equal(g.sixes,0);A.deepEqual(g.remaining,[]);A.deepEqual(g.players[0].tokens,tokens);
- g=fresh();g.players[0].tokens[0]=0;g.players[1].tokens[0]=37;g.sixes=2;g=move(move(roll(g,1,2),0,0),0,1);A.equal(g.sixes,0);A.equal(g.turn,0);
+ g=fresh();g.players[0].tokens=[0,20,-1,-1];g.players[1].tokens[0]=37;g.sixes=2;g=move(move(roll(g,1,2),0,0),1,1);A.equal(g.sixes,0);A.equal(g.turn,0);
 });
 test('both dice are independently validated and every possible pair has consistent legal choices',()=>{
  for(let first=1;first<=6;first++)for(let second=1;second<=6;second++){
