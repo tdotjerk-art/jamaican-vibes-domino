@@ -3,19 +3,19 @@ function element(){return {children:[],style:{},value:'',hidden:false,disabled:f
 function boot(die=[6,1]){
  const nodes={},timeouts=new Map(),intervals=new Map(),storage=new Map([['jv-draff-player-name-v1','Junior']]);let next=0,response,lastBody;
  const get=id=>nodes[id]||(nodes[id]=element());get('mode').value='ai';get('count').value='2';get('name').value='Junior';
- const context=vm.createContext({JVLudiLayout:require('../public/ludo/layout'),JVLudo:{...E,act:(g,seat,a)=>{let next=0;return E.act(g,seat,a,()=>Array.isArray(die)?die[next++]:die)}},document:{getElementById:get,createElement:element,createElementNS:element,body:element(),addEventListener(){},hidden:false},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},setTimeout:(fn,ms)=>{timeouts.set(++next,{fn,ms});return next},clearTimeout:id=>timeouts.delete(id),setInterval:fn=>{intervals.set(++next,fn);return next},clearInterval:id=>intervals.delete(id),location:{origin:'https://game.test',href:'https://game.test/ludo/'},URL,navigator:{clipboard:{writeText:async()=>{}}},confirm:()=>true,fetch:async(url,options)=>{lastBody=options.body?JSON.parse(options.body):null;return response}});
+ const context=vm.createContext({JVLudiLayout:require('../public/ludo/layout'),JVLudo:{...E,act:(g,seat,a)=>{let next=0;const pair=typeof die==='function'?die(g,seat,a):die;return E.act(g,seat,a,()=>Array.isArray(pair)?pair[next++]:pair)}},document:{getElementById:get,createElement:element,createElementNS:element,body:element(),addEventListener(){},hidden:false},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},setTimeout:(fn,ms)=>{timeouts.set(++next,{fn,ms});return next},clearTimeout:id=>timeouts.delete(id),setInterval:fn=>{intervals.set(++next,fn);return next},clearInterval:id=>intervals.delete(id),location:{origin:'https://game.test',href:'https://game.test/ludo/'},URL,navigator:{clipboard:{writeText:async()=>{}}},confirm:()=>true,fetch:async(url,options)=>{lastBody=options.body?JSON.parse(options.body):null;return response}});
  vm.runInContext(fs.readFileSync('public/ludo/app.js','utf8'),context);
  return {get,timeouts,intervals,storage,setResponse:r=>response=r,lastBody:()=>lastBody,start:()=>get('setupForm').onsubmit({preventDefault(){}}),tick(){const [id,job]=timeouts.entries().next().value;timeouts.delete(id);job.fn();return job.ms;}};
 }
 test('two dice tumble on the table before moves unlock; computer rolls and moves pause separately',()=>{
- const ui=boot();ui.get('name').value=' ';ui.start();A.match(ui.get('error').textContent,/name/);A.equal(ui.get('gamePanel').hidden,true);
+ const ui=boot((g,seat)=>seat===0&&g.rollNo===3?[1,1]:[6,1]);ui.get('name').value=' ';ui.start();A.match(ui.get('error').textContent,/name/);A.equal(ui.get('gamePanel').hidden,true);
  ui.get('name').value='Junior';ui.start();A.equal(ui.get('gamePanel').hidden,false);A.equal(ui.get('tableDice').hidden,false);A.equal(ui.get('tableRoll').disabled,false);
- for(let turn=0;turn<2;turn++){
+ for(let turn=0;turn<3;turn++){
   ui.get('tableRoll').onclick();A.match(ui.get('tableDice').className,/rolling/);A.equal(ui.get('roll').disabled,true);A.equal(ui.get('moves').children.length,0);A.equal([...ui.timeouts.values()][0].ms,950);
   ui.tick();A.equal(ui.get('moves').children.length,4);A.equal(ui.get('tableDie0').attributes['aria-label'],'Die 1: 6');A.equal(ui.get('tableDie1').attributes['aria-label'],'Die 2: 1');
   ui.get('moves').children[0].onclick();A.match(ui.get('tableDie0').className,/used/);A.equal(ui.get('tableDie1').attributes['aria-pressed'],'true');ui.get('moves').children[0].onclick();
  }
- ui.get('tableRoll').onclick();A.equal(ui.tick(),950);A.match(ui.get('turnBanner').textContent,/thinking/);A.equal(ui.get('tableRoll').disabled,true);A.equal([...ui.timeouts.values()][0].ms,1400);
+ ui.get('tableRoll').onclick();A.equal(ui.tick(),950);ui.get('moves').children[0].onclick();ui.get('moves').children[0].onclick();A.match(ui.get('turnBanner').textContent,/thinking/);A.equal(ui.get('tableRoll').disabled,true);A.equal([...ui.timeouts.values()][0].ms,1400);
  ui.tick();A.equal([...ui.timeouts.values()][0].ms,950);ui.tick();A.equal([...ui.timeouts.values()][0].ms,1100);ui.tick();A.equal([...ui.timeouts.values()][0].ms,1100);
  ui.get('leave').onclick();A.equal(ui.timeouts.size,0);A.equal(ui.get('setup').hidden,false);A.equal(ui.get('tableDice').hidden,true);
 });

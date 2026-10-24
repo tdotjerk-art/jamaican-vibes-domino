@@ -265,8 +265,7 @@ Names are remembered using the same browser name preference as Draff.
 
 This version uses the rules listed inside the game: six to enter, exact rolls to
 finish, captures of lone opponents on every shared track square (no safe zones, including starting squares), a capturing piece stops for the rest of the roll (the remaining die must move another piece), protected barriers of two, three, or four pieces that opponents cannot land on or pass, bonus rolls
-only for a six after both dice are used (no extra roll for capturing or bringing a piece home), and forfeiting the third consecutive
-roll containing a six. A roll with no available move
+only for a six after both dice are used (no extra roll for capturing or bringing a piece home). Consecutive sixes have no limit and never forfeit the turn. A roll with no available move
 passes automatically. First to bring all four pieces home wins; there are no
 teams. Two dice visibly tumble on the table. Tap an unused die, then a piece;
 play the bigger die first, then the smaller die, on one piece or split between pieces. Equal dice allow either order; an unplayable bigger die allows the smaller die. Use both whenever the required order permits it. A capture cannot discard an otherwise playable smaller die just because the capturing piece must stop; another piece must use it unless the remaining move is genuinely blocked. A six
