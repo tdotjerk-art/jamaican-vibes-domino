@@ -55,3 +55,11 @@ test('both dice match all four players and keep the actual roller color until th
   for(let die=0;die<2;die++){const button=ui.get('tableDie'+die),next=(seat+1)%4;A.equal(button.style.background,E.TEAMS[next].color);A.equal(button.style.color,next===3?'#102519':'#fff4d0');}
  }
 });
+
+test('a 5 and 6 select and highlight the six first, then unlock and highlight the five',()=>{
+ const ui=boot([5,6]);ui.get('mode').value='local';ui.start();ui.get('tableRoll').onclick();ui.tick();
+ A.equal(ui.get('tableDie0').disabled,true);A.equal(ui.get('tableDie1').attributes['aria-pressed'],'true');A.match(ui.get('tableDie1').className,/higher/);A.doesNotMatch(ui.get('tableDie0').className,/higher/);
+ ui.get('tableDie0').onclick();A.equal(ui.get('tableDie1').attributes['aria-pressed'],'true');ui.get('moves').children[0].onclick();
+ A.equal(ui.get('tableDie0').disabled,false);A.equal(ui.get('tableDie0').attributes['aria-pressed'],'true');A.match(ui.get('tableDie0').className,/higher/);A.doesNotMatch(ui.get('tableDie1').className,/higher/);
+ ui.get('moves').children[0].onclick();A.equal(ui.get('tableRoll').disabled,false);
+});
