@@ -1,8 +1,8 @@
 (function(root){
  'use strict';
- // The reference has a six-unit center, narrow outer squares, and five-unit yards.
- const UNIT=600/18;
- const edge=n=>n<=6?n*UNIT:400+(n-7)*UNIT;
+ // Larger track squares and inset homes keep every part within the 600-unit board.
+ const UNIT=38,CENTER=600-12*UNIT;
+ const edge=n=>n<=6?n*UNIT:6*UNIT+CENTER+(n-7)*UNIT;
  const middle=n=>(edge(n)+edge(n+1))/2;
  const palettes={B:'#080b08',G:'#08753c',Y:'#f4cf22'};
  function paint(r,c){
@@ -21,7 +21,8 @@
   else if(c===6&&r>=7)code='BYGBYG'[r-7];
   return palettes[code||'B'];
  }
- function yard(color,piece){return color===0?[46,28+32*piece]:color===1?[460+32*piece,44]:color===2?[562,460+32*piece]:[28+32*piece,562];}
- function finished(color,piece){const centers=[[224,298],[300,224],[376,298],[300,350]],p=centers[color];return [p[0]+(piece%2?9:-9),p[1]+(piece<2?-9:9)];}
- const api={UNIT,edge,middle,paint,yard,finished};if(typeof module!=='undefined')module.exports=api;else root.JVLudiLayout=api;
+ function home(color){const [x,y]=[[0,0],[edge(8),0],[edge(8),edge(8)],[0,edge(8)]][color];return {x:x+25,y:y+25,width:edge(5)-50,height:edge(5)-50};}
+ function yard(color,piece){const h=home(color),along=20+34*piece;return color===0?[h.x+30,h.y+along]:color===1?[h.x+along,h.y+30]:color===2?[h.x+h.width-20,h.y+along]:[h.x+along,h.y+h.height-20];}
+ function finished(color,piece){const near=edge(6)+12,far=edge(7)-12,along=264+24*piece;return color===0?[near,along]:color===1?[along,near]:color===2?[far,along]:[along,far];}
+ const api={UNIT,edge,middle,paint,home,yard,finished};if(typeof module!=='undefined')module.exports=api;else root.JVLudiLayout=api;
 })(globalThis);
