@@ -15,7 +15,7 @@
  function pieceGradients(){
   const defs=svg('defs',{});
   for(let color=0;color<4;color++){
-   const gradient=svg('radialGradient',{id:'ludi-gem-'+color,cx:'36%',cy:'28%',r:'72%'},defs),stops=[['#65c957','#087032','#023e1c'],['#687067','#22271f','#060907'],['#ff6969','#c92128','#74090d'],['#ffe779','#d6ae19','#8c6a08']][color];
+   const gradient=svg('radialGradient',{id:'ludi-gem-'+color,cx:'36%',cy:'28%',r:'72%'},defs),stops=[['#65c957','#087032','#023e1c'],['#ff6969','#c92128','#74090d'],['#687067','#22271f','#060907'],['#ffe779','#d6ae19','#8c6a08']][color];
    for(let i=0;i<3;i++)svg('stop',{offset:[0,.55,1][i],'stop-color':stops[i]},gradient);
   }
  }
