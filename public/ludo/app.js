@@ -12,7 +12,6 @@
  function snapshot(){return local||room?.state||null}
  function yourTurn(g){return !!g&&!busy&&!rolling&&(local?($('mode').value==='local'||g.turn===0):room.you===g.turn)}
  const {edge,middle}=L;
- function polygon(cx,cy,radius,sides=8,inner=radius){return Array.from({length:sides},(_,i)=>{const angle=-Math.PI/2+i*Math.PI*2/sides,r=i%2?inner:radius;return (cx+Math.cos(angle)*r)+','+(cy+Math.sin(angle)*r)}).join(' ')}
  function pieceGradients(){
   const defs=svg('defs',{});
   for(let color=0;color<4;color++){
@@ -31,7 +30,6 @@
    svg('rect',{x:edge(c),y:edge(r),width:edge(c+1)-edge(c),height:edge(r+1)-edge(r),fill:L.paint(r,c),stroke:'#eee7ce','stroke-width':2.2});
    const start=E.TEAMS.findIndex(t=>t.start===i);
    if(start>=0)svg('text',{x:middle(c),y:middle(r)+7,'text-anchor':'middle',fill:'#287a42','font-size':24,'font-weight':900,transform:`rotate(${[0,90,180,-90][start]} ${middle(c)} ${middle(r)})`},root,'➜');
-   else if(E.SAFE.includes(i))svg('polygon',{points:polygon(middle(c),middle(r),8),fill:'#080b08','aria-label':'Safe square'});
   });
   for(let color=0;color<4;color++)for(let step=E.OUTER_LAST+1;step<E.HOME;step++){
    const [r,c]=E.coordinate({color},step);

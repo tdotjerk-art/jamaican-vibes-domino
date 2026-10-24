@@ -2,7 +2,7 @@
  'use strict';
  const TEAMS=[{name:'Kingston',color:'#10964b',start:1},{name:'Cornwall',color:'#202924',start:13},{name:'Middlesex',color:'#e84444',start:25},{name:'Surrey',color:'#fed100',start:37}];
  const TRACK=[[5,0],[5,1],[5,2],[5,3],[5,4],[5,5],[4,5],[3,5],[2,5],[1,5],[0,5],[0,6],[0,7],[1,7],[2,7],[3,7],[4,7],[5,7],[5,8],[5,9],[5,10],[5,11],[5,12],[6,12],[7,12],[7,11],[7,10],[7,9],[7,8],[7,7],[8,7],[9,7],[10,7],[11,7],[12,7],[12,6],[12,5],[11,5],[10,5],[9,5],[8,5],[7,5],[7,4],[7,3],[7,2],[7,1],[7,0],[6,0]];
- const SAFE=[1,11,13,23,25,35,37,47],HOME=52,OUTER_LAST=46;
+ const HOME=52,OUTER_LAST=46;
  const cleanName=value=>typeof value==='string'?value.replace(/[\u0000-\u001f\u007f-\u009f]/g,'').replace(/\s+/g,' ').trim().slice(0,24):'';
  function fresh(names){
   if(!Array.isArray(names)||names.length<2||names.length>4||names.some(n=>!cleanName(n)))throw Error('Enter names for 2, 3, or 4 players.');
@@ -23,7 +23,7 @@
    const to=from<0?0:from+die;if(to>HOME)return [];
    for(let step=from<0?0:from+1;step<=Math.min(to,OUTER_LAST);step++){
     const index=ring(player,step),on=occupants(g,index);
-    if(g.players.some((_,seat)=>seat!==g.turn&&on.filter(t=>t.seat===seat).length>=2))return [];
+    if(step<to&&g.players.some((_,seat)=>seat!==g.turn&&on.filter(t=>t.seat===seat).length>=2))return [];
    }
    const target=ring(player,to);
    if(target!==null&&occupants(g,target).filter(t=>t.seat===g.turn).length>=2)return [];
@@ -60,7 +60,7 @@
   }
   const move=legal(g,die).find(m=>m.piece===action.piece&&m.die===die);if(!move)throw Error('Choose an available piece and an unused die.');
   const index=ring(p,move.to),captured=[];
-  if(index!==null&&!SAFE.includes(index)){
+  if(index!==null){
    for(const other of occupants(g,index))if(other.seat!==seat){g.players[other.seat].tokens[other.piece]=-1;captured.push(other);}
   }
   p.tokens[move.piece]=move.to;g.remaining=g.remaining.filter(index=>index!==die);if(captured.length)g.bonus=true;
@@ -74,6 +74,6 @@
   else next(g);
   return g;
  }
- const api={TEAMS,TRACK,SAFE,HOME,OUTER_LAST,cleanName,fresh,ring,coordinate,legal,act};
+ const api={TEAMS,TRACK,HOME,OUTER_LAST,cleanName,fresh,ring,coordinate,legal,act};
  if(typeof module!=='undefined')module.exports=api;else root.JVLudo=api;
 })(globalThis);

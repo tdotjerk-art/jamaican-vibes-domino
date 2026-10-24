@@ -29,10 +29,20 @@ test('captures return opponents to the yard and give a bonus only after the othe
  g=move(roll(g,1,2),0,0);A.equal(g.players[1].tokens[0],-1);A.equal(g.last.captured.length,1);A.equal(g.phase,'move');A.equal(g.turn,0);
  g=move(g,0,1);A.equal(g.phase,'roll');A.equal(g.turn,0);
  g=fresh();g.players[0].tokens[0]=9;g.players[1].tokens[0]=46;
- g=move(roll(g,1,1),0,0);A.equal(g.players[1].tokens[0],46);A.equal(g.last.captured.length,0);g=move(g,0,1);A.equal(g.turn,1);
+ g=move(roll(g,1,1),0,0);A.equal(g.players[1].tokens[0],-1);A.equal(g.last.captured.length,1);g=move(g,0,1);A.equal(g.turn,0);
 });
-test('enemy blockades cannot be crossed or landed on; a third own piece cannot stack',()=>{
- for(const die of [1,2,6]){let g=fresh();g.players[0].tokens[0]=0;g.players[1].tokens=[37,37,-1,-1];g=roll(g,die,die);A.ok(!E.legal(g).some(m=>m.piece===0));}
+test('all 48 shared squares allow capture, including entry on every starting arrow',()=>{
+ for(let target=0;target<E.TRACK.length;target++){
+  const g=fresh(),progress=color=>(target-E.TEAMS[color].start+48)%48;
+  const attacker=g.players.findIndex(p=>progress(p.color)<=E.OUTER_LAST),victim=g.players.findIndex((p,seat)=>seat!==attacker&&progress(p.color)<=E.OUTER_LAST);
+  g.turn=attacker;const to=progress(g.players[attacker].color);g.players[attacker].tokens[0]=to===0?-1:to-1;g.players[victim].tokens[0]=progress(g.players[victim].color);
+  const result=move(roll(g,to===0?6:1,2),0,0);
+  A.equal(result.players[victim].tokens[0],-1,'capture on square '+target);A.equal(result.last.captured.length,1);A.equal(E.ring(result.players[attacker],result.players[attacker].tokens[0]),target);
+ }
+});
+test('enemy blockades block passing but landing captures both; a third own piece cannot stack',()=>{
+ for(const die of [2,6]){let g=fresh();g.players[0].tokens[0]=0;g.players[1].tokens=[37,37,-1,-1];g=roll(g,die,die);A.ok(!E.legal(g).some(m=>m.piece===0));}
+ let landed=fresh();landed.players[0].tokens[0]=0;landed.players[1].tokens=[37,37,-1,-1];landed=move(roll(landed,1,2),0,0);A.deepEqual(landed.players[1].tokens,[-1,-1,-1,-1]);A.equal(landed.last.captured.length,2);
  let g=fresh();g.players[0].tokens=[0,1,1,-1];g=roll(g,1,1);A.ok(!E.legal(g).some(m=>m.piece===0));A.ok(E.legal(g).some(m=>m.piece===1));
  g=fresh();g.players[0].tokens=[0,1,1,-1];g=move(roll(g,2,2),0,0);A.equal(g.players[0].tokens[0],2);
 });
