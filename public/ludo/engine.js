@@ -28,9 +28,23 @@
    return [{piece,from,to}];
   });
  }
- function legal(g,dieIndex){
+ function rawLegal(g,dieIndex){
   if(g.phase!=='move')return [];
   return g.remaining.filter(index=>dieIndex===undefined||index===dieIndex).flatMap(index=>movesFor(g,g.dice[index]).map(move=>({...move,die:index,value:g.dice[index]})));
+ }
+ function place(g,move){
+  const p=g.players[g.turn],index=ring(p,move.to),captured=[];
+  if(index!==null)for(const other of occupants(g,index))if(other.seat!==g.turn){g.players[other.seat].tokens[other.piece]=-1;captured.push(other);}
+  p.tokens[move.piece]=move.to;g.remaining=g.remaining.filter(index=>index!==move.die);if(captured.length)g.capturedThisRoll.push(move.piece);
+  return captured;
+ }
+ function legal(g,dieIndex){
+  let choices=rawLegal(g);
+  if(g.remaining.length>1){
+   const complete=choices.filter(move=>{const trial=structuredClone(g);place(trial,move);return trial.players[trial.turn].tokens.every(n=>n===HOME)||rawLegal(trial).length>0;});
+   if(complete.length)choices=complete;
+  }
+  return choices.filter(move=>dieIndex===undefined||move.die===dieIndex);
  }
  function note(g,message){g.history.push(message);g.history=g.history.slice(-40);}
  function next(g){g.turn=(g.turn+1)%g.players.length;g.phase='roll';g.sixes=0;g.remaining=[];g.capturedThisRoll=[];g.bonus=false;}
@@ -56,12 +70,12 @@
    if(new Set(choices.map(move=>move.value)).size>1)throw Error('Choose which die to use.');
    die=choices[0]?.die;
   }
-  const move=legal(g,die).find(m=>m.piece===action.piece&&m.die===die);if(!move)throw Error('Choose an available piece and an unused die.');
-  const index=ring(p,move.to),captured=[];
-  if(index!==null){
-   for(const other of occupants(g,index))if(other.seat!==seat){g.players[other.seat].tokens[other.piece]=-1;captured.push(other);}
+  const move=legal(g,die).find(m=>m.piece===action.piece&&m.die===die);
+  if(!move){
+   if(rawLegal(g,die).some(m=>m.piece===action.piece&&m.die===die))throw Error('Use both dice when possible. Choose a move that keeps the other die playable.');
+   throw Error('Choose an available piece and an unused die.');
   }
-  p.tokens[move.piece]=move.to;g.remaining=g.remaining.filter(index=>index!==die);if(captured.length)g.capturedThisRoll.push(move.piece);
+  const captured=place(g,move);
   g.last={type:'move',seat,piece:move.piece,die,value:move.value,from:move.from,to:move.to,captured};
   note(g,p.name+' used die '+(die+1)+' ('+move.value+') to move piece '+(move.piece+1)+(move.to===HOME?' home':move.from<0?' onto the board':' '+move.value+' spaces')+(captured.length?' and captured '+captured.length+' piece'+(captured.length===1?'':'s'):'')+'.');
   if(p.tokens.every(n=>n===HOME)){g.phase='over';g.winner=seat;g.remaining=[];note(g,p.name+' wins! All four pieces are home.');return g;}

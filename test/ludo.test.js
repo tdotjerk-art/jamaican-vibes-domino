@@ -31,12 +31,24 @@ test('captures return opponents to the yard without giving an extra roll',()=>{
  g=fresh();g.players[0].tokens=[9,20,-1,-1];g.players[1].tokens[0]=46;
  g=move(roll(g,1,1),0,0);A.equal(g.players[1].tokens[0],-1);A.equal(g.last.captured.length,1);g=move(g,1,1);A.equal(g.turn,1);
 });
-test('capture locks that piece for this roll and skips a die when no different piece can move',()=>{
- let g=fresh();g.players[0].tokens[0]=0;g.players[1].tokens[0]=37;
+test('capture locks that piece and skips the other die only when a barrier prevents using both',()=>{
+ let g=fresh();g.players[0].tokens[0]=0;g.players[1].tokens[0]=37;g.players[2].tokens=[26,26,-1,-1];
  g=move(roll(g,1,2),0,0);A.equal(g.players[0].tokens[0],1);A.equal(g.players[1].tokens[0],-1);A.deepEqual(g.remaining,[]);A.equal(g.phase,'roll');A.equal(g.turn,1);
- while(g.turn!==0)g=roll(g,1,1);g=roll(g,1,2);A.ok(E.legal(g,0).some(m=>m.piece===0));g=move(g,0,0);A.equal(g.players[0].tokens[0],2);
+ g.players[2].tokens=[-1,-1,-1,-1];while(g.turn!==0)g=roll(g,1,1);g=roll(g,1,2);A.ok(E.legal(g,0).some(m=>m.piece===0));g=move(g,0,0);A.equal(g.players[0].tokens[0],2);
  // Entry captures must also stop the entering piece, but a second six can enter another.
  g=fresh();g.players[1].tokens[0]=36;g=move(roll(g,6,6),0,0);A.equal(g.players[1].tokens[0],-1);A.deepEqual(g.capturedThisRoll,[0]);A.ok(E.legal(g).every(m=>m.piece!==0));A.throws(()=>move(g,0,1),/unused die/);g=move(g,1,1);A.deepEqual(g.players[0].tokens,[0,0,-1,-1]);
+});
+test('a capture cannot waste the other die when another move order uses both',()=>{
+ let g=fresh();g.players[0].tokens[0]=0;g.players[1].tokens[0]=37;g=roll(g,1,2);
+ const before=structuredClone(g);A.ok(!E.legal(g,0).some(m=>m.piece===0));A.ok(E.legal(g,1).some(m=>m.piece===0));A.throws(()=>move(g,0,0),/Use both dice/);A.deepEqual(g,before);
+ g=move(move(g,0,1),0,0);A.equal(g.players[0].tokens[0],3);A.equal(g.turn,1);
+ // A capture may come last, after both moves have been spent.
+ g=fresh();g.players[0].tokens[0]=0;g.players[1].tokens[0]=39;g=move(move(roll(g,1,2),0,1),0,0);A.equal(g.players[1].tokens[0],-1);A.equal(g.last.captured.length,1);A.deepEqual(g.remaining,[]);
+});
+test('another piece can spend the second die after a capture and both dice can finish a game',()=>{
+ let g=fresh();g.players[0].tokens=[0,10,-1,-1];g.players[1].tokens[0]=37;g=move(roll(g,1,2),0,0);A.deepEqual(g.remaining,[1]);A.ok(E.legal(g).every(m=>m.piece!==0));g=move(g,1,1);A.equal(g.players[0].tokens[1],12);A.equal(g.turn,1);
+ g=fresh();g.players[0].tokens=[E.HOME-3,E.HOME,E.HOME,E.HOME];g=roll(g,3,1);A.ok(E.legal(g,0).some(m=>m.piece===0));g=move(g,0,0);A.equal(g.phase,'over');
+ g=fresh();g.players[0].tokens=[E.HOME-3,E.HOME-1,E.HOME,E.HOME];g=roll(g,3,1);A.ok(E.legal(g,0).some(m=>m.piece===0));g=move(move(g,0,0),1,1);A.equal(g.phase,'over');
 });
 test('finishing a piece earns no extra roll, and only a six retains a bonus after finishing or capturing',()=>{
  for(let seat=0;seat<4;seat++)for(const otherDie of [2,6]){
@@ -53,7 +65,7 @@ test('all 48 shared squares allow capture, including entry on every starting arr
  for(let target=0;target<E.TRACK.length;target++){
   const g=fresh(),progress=color=>(target-E.TEAMS[color].start+48)%48;
   const attacker=g.players.findIndex(p=>progress(p.color)<=E.OUTER_LAST),victim=g.players.findIndex((p,seat)=>seat!==attacker&&progress(p.color)<=E.OUTER_LAST);
-  g.turn=attacker;const to=progress(g.players[attacker].color);g.players[attacker].tokens[0]=to===0?-1:to-1;g.players[victim].tokens[0]=progress(g.players[victim].color);
+  g.turn=attacker;const to=progress(g.players[attacker].color);g.players[attacker].tokens[0]=to===0?-1:to-1;g.players[attacker].tokens[1]=47;g.players[victim].tokens[0]=progress(g.players[victim].color);
   const result=move(roll(g,to===0?6:1,2),0,0);
   A.equal(result.players[victim].tokens[0],-1,'capture on square '+target);A.equal(result.last.captured.length,1);A.equal(E.ring(result.players[attacker],result.players[attacker].tokens[0]),target);
  }
@@ -76,7 +88,7 @@ test('all four pieces may join one barrier, pass it, and leave individually',()=
  let g=fresh();g.players[0].tokens=[1,1,1,0];g=move(roll(g,1,2),3,0);A.deepEqual(g.players[0].tokens,[1,1,1,1]);g=move(g,0,1);A.deepEqual(g.players[0].tokens,[3,1,1,1]);
  g=fresh();g.players[0].tokens=[0,1,1,1];g=move(roll(g,2,2),0,0);A.equal(g.players[0].tokens[0],2);
  // Once only one piece remains, it loses barrier protection.
- g=fresh();g.players[0].tokens=[1,1,-1,-1];g.players[1].tokens[0]=36;g=move(move(roll(g,1,1),0,0),0,1);A.equal(g.turn,1);g=move(roll(g,1,2),0,0);A.equal(g.players[0].tokens[1],-1);A.equal(g.last.captured.length,1);
+ g=fresh();g.players[0].tokens=[1,1,-1,-1];g.players[1].tokens[0]=35;g=move(move(roll(g,1,1),0,0),0,1);A.equal(g.turn,1);g=move(move(roll(g,1,1),0,0),0,1);A.equal(g.players[0].tokens[1],-1);A.equal(g.last.captured.length,1);
 });
 test('every home lane requires exact rolls and finishing the fourth piece discards the other die',()=>{
  for(let color=0;color<4;color++){
