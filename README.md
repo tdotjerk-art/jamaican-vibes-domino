@@ -269,7 +269,7 @@ only for a six after both dice are used (no extra roll for capturing or bringing
 roll containing a six. A roll with no available move
 passes automatically. First to bring all four pieces home wins; there are no
 teams. Two dice visibly tumble on the table. Tap an unused die, then a piece;
-use both dice whenever a legal two-move sequence exists, on one piece or split between pieces, in either order. A capture cannot waste the other die when a different sequence uses both. A six
+play the bigger die first, then the smaller die, on one piece or split between pieces. Equal dice allow either order; an unplayable bigger die allows the smaller die. Use both whenever the required order permits it, and avoid a capture that wastes the smaller die when another bigger-die move uses both. A six
 can bring a piece out and the other die can move it. Unusable remaining dice are
 skipped. Computer rolls and moves are separated by deliberate pauses.
 

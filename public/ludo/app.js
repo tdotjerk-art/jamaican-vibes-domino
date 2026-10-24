@@ -80,11 +80,11 @@
   const seat=g?(rolling?(g.last?.seat??g.turn):g.turn):0,color=g?.players[seat]?.color??0,ink=color===3?'#102519':'#fff4d0';
   const pips=[[],[4],[0,8],[0,4,8],[0,2,6,8],[0,2,4,6,8],[0,2,3,5,6,8]];
   for(let die=0;die<2;die++){
-   const button=$('tableDie'+die),value=g?.dice?.[die],used=!!value&&!g.remaining.includes(die),selectable=!!g&&yourTurn(g)&&E.legal(g,die).length>0,higher=!!value&&!rolling&&value===Math.max(...g.dice);
+   const button=$('tableDie'+die),value=g?.dice?.[die],used=!!value&&!g.remaining.includes(die),selectable=!!g&&yourTurn(g)&&E.legal(g,die).length>0,higher=!!value&&!rolling&&g.remaining.includes(die)&&E.legal(g,die).length>0;
    button.style.background=E.TEAMS[color].color;button.style.color=ink;button.style.borderColor=ink;
    button.replaceChildren();button.className='table-die'+(higher?' higher':'')+(used?' used':'')+(g?.phase==='move'&&selectedDie===die?' chosen':'');
    button.disabled=!selectable;button.setAttribute('aria-pressed',String(g?.phase==='move'&&selectedDie===die));
-   button.setAttribute('aria-description',higher?'Highest number in this roll.':'');
+   button.setAttribute('aria-description',higher?'Play this die next.':'');
    button.setAttribute('aria-label','Die '+(die+1)+(value?': '+value:' not rolled')+(used?', used':''));
    const face=node('span',undefined,'die-face');face.setAttribute('aria-hidden','true');
    for(let dot=0;dot<9;dot++)face.append(node('i',undefined,'pip'+((pips[value||0]||[]).includes(dot)?' on':'')));
@@ -108,7 +108,7 @@
   const canRoll=!!g&&yourTurn(g)&&g.phase==='roll';$('roll').disabled=!canRoll;$('quickRoll').disabled=!canRoll;
   const values=g?.dice?.every(Number.isInteger)?g.dice.join(' + '):'';
   $('diceLabel').textContent=values?'Last roll · '+values:'Roll both dice on the table.';$('quickRoll').textContent=rolling?'Rolling…':'Roll two dice';
-  $('hint').textContent=!g?'':rolling?'Both dice are rolling on the table.':g.phase==='over'?'All four pieces are home. Start another game.':g.phase==='move'?(yourTurn(g)?'Use both dice when possible. Using die '+(selectedDie+1)+' ('+g.dice[selectedDie]+'). Tap the other unused die to change, then choose a piece.':'Waiting for '+g.players[g.turn].name+' to move.'):'Roll a six on either die to enter. Use each die once.';
+  $('hint').textContent=!g?'':rolling?'Both dice are rolling on the table.':g.phase==='over'?'All four pieces are home. Start another game.':g.phase==='move'?(yourTurn(g)?'Bigger die first. Using die '+(selectedDie+1)+' ('+g.dice[selectedDie]+'). Choose a piece for the highlighted die.':'Waiting for '+g.players[g.turn].name+' to move.'):'Roll a six on either die to enter. Move the bigger die first.';
   drawDice(g);moveButtons($('moves'),g);moveButtons($('quickMoves'),g);
   $('history').replaceChildren();(g?.history||[]).slice(-5).reverse().forEach(text=>$('history').append(node('p',text)));
   board(g);scheduleComputer();

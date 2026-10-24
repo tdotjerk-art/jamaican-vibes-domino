@@ -38,10 +38,14 @@
   p.tokens[move.piece]=move.to;g.remaining=g.remaining.filter(index=>index!==move.die);if(captured.length)g.capturedThisRoll.push(move.piece);
   return captured;
  }
+ function ordered(g){
+  const choices=rawLegal(g),highest=Math.max(...choices.map(move=>move.value));
+  return choices.filter(move=>move.value===highest);
+ }
  function legal(g,dieIndex){
-  let choices=rawLegal(g);
+  let choices=ordered(g);
   if(g.remaining.length>1){
-   const complete=choices.filter(move=>{const trial=structuredClone(g);place(trial,move);return trial.players[trial.turn].tokens.every(n=>n===HOME)||rawLegal(trial).length>0;});
+   const complete=choices.filter(move=>{const trial=structuredClone(g);place(trial,move);return trial.players[trial.turn].tokens.every(n=>n===HOME)||ordered(trial).length>0;});
    if(complete.length)choices=complete;
   }
   return choices.filter(move=>dieIndex===undefined||move.die===dieIndex);
@@ -72,7 +76,10 @@
   }
   const move=legal(g,die).find(m=>m.piece===action.piece&&m.die===die);
   if(!move){
-   if(rawLegal(g,die).some(m=>m.piece===action.piece&&m.die===die))throw Error('Use both dice when possible. Choose a move that keeps the other die playable.');
+   if(rawLegal(g,die).some(m=>m.piece===action.piece&&m.die===die)){
+    if(ordered(g).some(m=>m.value>g.dice[die]))throw Error('Move the bigger die first.');
+    throw Error('Use both dice when possible. Choose a move that keeps the other die playable.');
+   }
    throw Error('Choose an available piece and an unused die.');
   }
   const captured=place(g,move);
