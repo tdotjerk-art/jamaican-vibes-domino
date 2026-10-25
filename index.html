@@ -2876,10 +2876,10 @@ body.jv-theme-party #jvThemeOverlay{
 <script src="/voice-chat.js"></script>
 <style id="domino-turn-lights">
 .turn-light{position:absolute;z-index:30;width:12px;height:12px;border-radius:50%;pointer-events:none;background:#431010;border:2px solid #702525;box-shadow:inset 0 1px 2px #0009}
-.turn-light-1{bottom:0;left:50%;transform:translateX(-50%)}
-.turn-light-2{right:0;top:50%;transform:translateY(-50%)}
-.turn-light-3{top:0;left:50%;transform:translateX(-50%)}
-.turn-light-4{left:0;top:50%;transform:translateY(-50%)}
+.turn-light-1{top:75.5%;left:50%;transform:translate(-50%,-50%)}
+.turn-light-2{left:93.2%;top:50%;transform:translate(-50%,-50%)}
+.turn-light-3{top:15%;left:50%;transform:translate(-50%,-50%)}
+.turn-light-4{left:6.8%;top:50%;transform:translate(-50%,-50%)}
 .turn-light.on{background:#ff3030;border-color:#ffb1a8;animation:dominoTurnBlink 1s ease-in-out infinite;box-shadow:0 0 10px 3px #ff3030b3}
 @keyframes dominoTurnBlink{0%,100%{opacity:1}50%{opacity:.3}}
 @media(prefers-reduced-motion:reduce){.turn-light.on{animation:none}}
@@ -3187,7 +3187,10 @@ function positionTurnLights(){
     const row=hand.getBoundingClientRect(),horizontal=i===1||i===3;
     const extent=horizontal?table.clientWidth:table.clientHeight;
     const midpoint=horizontal?(row.left+row.width/2-frame.left-table.clientLeft):(row.top+row.height/2-frame.top-table.clientTop);
-    light.style[horizontal?'left':'top']=Math.max(6,Math.min(extent-6,midpoint))+'px';
+    // Follow the visible wooden rim, excluding the surrounding purple artwork.
+    const low=extent*(horizontal?.25:.35),high=extent*(horizontal?.75:.57);
+    light.style[horizontal?'left':'top']=Math.max(low,Math.min(high,midpoint))+'px';
+    light.style[horizontal?'top':'left']=(horizontal?(i===1?75.5:15):(i===2?93.2:6.8))+'%';
   }
 }
 window.addEventListener('resize',()=>requestAnimationFrame(positionTurnLights));
