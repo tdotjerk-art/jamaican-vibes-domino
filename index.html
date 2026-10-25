@@ -3181,7 +3181,7 @@ function separateFinishedHandsFromPlayedChain(){
 
 function positionTurnLights(){
   const table=document.querySelector('.table');if(!table)return;
-  const dealtLong=Math.min(48,table.clientWidth*.053-4,table.clientHeight*.10);
+  const dealtLong=Math.min(96,(table.clientWidth*.053-4)/.54,table.clientHeight*.11);
   table.style.setProperty('--dealt-long',dealtLong+'px');
   table.style.setProperty('--dealt-short',(dealtLong*.54)+'px');
   const frame=table.getBoundingClientRect();
@@ -7625,9 +7625,9 @@ window.JamaicanVibesCompleteFeatures={
 #card.individual-setup label,#card.individual-setup select{display:block!important;margin:10px 0;width:100%;font-size:16px;}
 </style>
 <style id="consistent-dealt-hands">
-/* All four dealt hands share the same physical tile size, rotated for side seats.
+/* All four dealt hands share enlarged tiles; upright side tiles fit outside the rim.
    The artwork's wood occupies y=12.5–80%, x=5.3–94.7%. */
-.table{--dealt-long:36px;--dealt-short:19.44px}
+.table{--dealt-long:64px;--dealt-short:34.56px}
 .table #hand1,.table #hand3{left:50%!important;right:auto!important;bottom:auto!important;width:auto!important;max-width:90%!important;padding:0!important;gap:3px!important;flex-direction:row!important;flex-wrap:nowrap!important;overflow:visible!important;transform:translateX(-50%)!important}
 .table #hand3{top:max(2px,calc(12.5% - var(--dealt-long) - 6px))!important}
 .table #hand1{top:calc(80% + 6px)!important}
@@ -7635,9 +7635,9 @@ window.JamaicanVibesCompleteFeatures={
 .table #hand2{right:2px!important;left:auto!important}
 .table #hand4{left:2px!important;right:auto!important}
 .table #hand1 .dom-physical,.table #hand1 .back,.table #hand3 .dom-physical,.table #hand3 .back{width:var(--dealt-short)!important;height:var(--dealt-long)!important;min-width:0!important;min-height:0!important;flex:0 0 var(--dealt-short)!important;transform:none!important}
-.table #hand2 .dom-physical,.table #hand2 .back,.table #hand4 .dom-physical,.table #hand4 .back{width:var(--dealt-long)!important;height:var(--dealt-short)!important;min-width:0!important;min-height:0!important;flex:0 0 var(--dealt-short)!important;transform:none!important}
-.table #hand2 .dom-physical,.table #hand4 .dom-physical{display:flex!important;flex-direction:row!important}
-.table #hand2 .dom-physical .divider,.table #hand4 .dom-physical .divider{width:1px!important;height:100%!important;flex:0 0 1px!important}
+.table #hand2 .dom-physical,.table #hand2 .back,.table #hand4 .dom-physical,.table #hand4 .back{width:var(--dealt-short)!important;height:var(--dealt-long)!important;min-width:0!important;min-height:0!important;flex:0 0 var(--dealt-long)!important;transform:none!important}
+.table #hand2 .dom-physical,.table #hand4 .dom-physical{display:flex!important;flex-direction:column!important}
+.table #hand2 .dom-physical .divider,.table #hand4 .dom-physical .divider{width:100%!important;height:1px!important;flex:0 0 1px!important}
 </style>
 </body>
 </html>
