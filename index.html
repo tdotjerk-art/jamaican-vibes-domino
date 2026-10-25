@@ -2870,7 +2870,7 @@ body.jv-theme-party #jvThemeOverlay{
 </style>
 
 <link rel="stylesheet" href="/mobile-layout.css">
-<script src="/mobile-layout.js?v=tight-spacing-20261025"></script>
+<script src="/mobile-layout.js?v=felt-bounds-20261025"></script>
 <script src="/domino-input.js"></script>
 <link rel="stylesheet" href="/voice-chat.css">
 <script src="/voice-chat.js"></script>
@@ -3260,7 +3260,7 @@ function renderPhotoTemplateBoard(){
 
   const W=host.clientWidth;
   const H=host.clientHeight;
-  if(window.JVMobileLayout && matchMedia('(max-width: 1000px) and (pointer: coarse), (max-width: 760px), (max-height: 520px)').matches){
+  if(window.JVMobileLayout){
     window.JVMobileLayout.render(host,board,openingId,tileEl);
     return;
   }
@@ -7642,6 +7642,10 @@ window.JamaicanVibesCompleteFeatures={
 <style id="shorter-table-artwork">
 /* Narrow only the visible table from left to right; keep height, tiles and seats unchanged. */
 .app>.table{background-size:92% 100%!important;background-position:center center!important}
+</style>
+<style id="played-chain-felt-bounds">
+/* Safe rectangle inside the curved felt of the narrowed table artwork. */
+.app>.table #board{left:16%!important;right:16%!important;top:24%!important;bottom:32%!important;width:auto!important;height:auto!important;max-width:none!important;max-height:none!important;overflow:hidden!important}
 </style>
 </body>
 </html>
