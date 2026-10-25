@@ -39,25 +39,17 @@
     placed.forEach(p=>{p.x+=dx;p.y+=dy;});
     placed.bounds={width:maxX-minX,height:maxY-minY};return placed;
   }
-  function layout(board,openingId,width,height){
-    // Reserve space for a complete 28-domino hand up front, so play never shrinks the chain.
-    let long=48;
-    for(;long>18;long-=2){
-      let fits=true;
-      for(const split of [0,7,14,21,27]){
-        const dummy=Array.from({length:28},(_,id)=>({id,a:1,b:2}));dummy[split]={id:split,a:6,b:6};
-        const probe=arrange(dummy,split,width,height,long);
-        if(probe.bounds.width>width-6||probe.bounds.height>height-6){fits=false;break;}
-      }
-      if(fits)break;
+  function layout(board,openingId,width,height,preferredLong=48){
+    // Start at the dealt-hand size; shrink only when the actual chain needs it.
+    let long=preferredLong,result=arrange(board,openingId,width,height,long);
+    while((result.bounds?.width>width-4||result.bounds?.height>height-4)&&long>4){
+      long=Math.max(4,long-1);result=arrange(board,openingId,width,height,long);
     }
-    let result=arrange(board,openingId,width,height,long);
-    // Hands with many doubles can need more vertical space than the conservative regular chain.
-    while((result.bounds?.width>width-4||result.bounds?.height>height-4)&&long>4){long-=1;result=arrange(board,openingId,width,height,long);}
     return {long,short:long*.51,placed:result};
   }
   function render(host,board,openingId,tileEl){
-    const geometry=layout(board,openingId,host.clientWidth,host.clientHeight);
+    const preferred=parseFloat(getComputedStyle(host.closest('.table')).getPropertyValue('--dealt-long'))||48;
+    const geometry=layout(board,openingId,host.clientWidth,host.clientHeight,preferred);
     for(const p of geometry.placed){
       const el=tileEl(p.t,p.o,null,p.flip);
       el.style.setProperty('--played-pw',geometry.short+'px');el.style.setProperty('--played-ph',geometry.long+'px');
@@ -71,6 +63,10 @@
     const actions=document.createElement('div');actions.id='jvGameActions';
     const feedback=document.createElement('div');feedback.id='jvGameFeedback';feedback.setAttribute('aria-live','polite');
     app.insertBefore(actions,table);app.insertBefore(feedback,table);
+    // Give the top hand and advertising their own rows so neither can cover a hand.
+    const topHand=document.getElementById('hand3'),ticker=document.getElementById('contactTicker');
+    if(topHand)app.insertBefore(topHand,table);
+    if(ticker)table.after(ticker);
     const placements=[];
     for(const [target,ids] of [[actions,['jvQuitGameBtn','jvFeatureToolbar']],[feedback,['onlineWaiting','jvStreakBadge','jvCoach','status']]]){
       for(const id of ids){const el=document.getElementById(id);if(!el)continue;
