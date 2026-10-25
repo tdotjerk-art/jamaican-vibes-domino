@@ -2870,7 +2870,7 @@ body.jv-theme-party #jvThemeOverlay{
 </style>
 
 <link rel="stylesheet" href="/mobile-layout.css">
-<script src="/mobile-layout.js?v=felt-bounds-20261025"></script>
+<script src="/mobile-layout.js?v=clear-hands-20261025"></script>
 <script src="/domino-input.js"></script>
 <link rel="stylesheet" href="/voice-chat.css">
 <script src="/voice-chat.js"></script>
@@ -3184,6 +3184,7 @@ function positionTurnLights(){
   const dealtLong=1.2*Math.min(96,(table.clientWidth*.053-4)/.54,table.clientHeight*.11);
   table.style.setProperty('--dealt-long',dealtLong+'px');
   table.style.setProperty('--dealt-short',(dealtLong*.54)+'px');
+  const topHand=$('hand3');if(topHand){topHand.style.setProperty('--dealt-long',dealtLong+'px');topHand.style.setProperty('--dealt-short',(dealtLong*.54)+'px');}
   const frame=table.getBoundingClientRect();
   for(let i=1;i<=4;i++){
     const hand=$('hand'+i),light=$('turnLight'+i);if(!hand||!light)return;
@@ -7646,6 +7647,11 @@ window.JamaicanVibesCompleteFeatures={
 <style id="played-chain-felt-bounds">
 /* Safe rectangle inside the curved felt of the narrowed table artwork. */
 .app>.table #board{left:16%!important;right:16%!important;top:24%!important;bottom:32%!important;width:auto!important;height:auto!important;max-width:none!important;max-height:none!important;overflow:hidden!important}
+</style>
+<style id="clear-top-hand-and-advert">
+.app>#hand3{position:relative!important;left:auto!important;right:auto!important;top:auto!important;bottom:auto!important;transform:none!important;translate:none!important;width:max-content!important;max-width:96%!important;display:flex!important;flex-direction:row!important;gap:3px!important;padding:0!important;margin:10px auto!important;order:2;overflow:visible!important;z-index:9}
+.app>#hand3 .back,.app>#hand3 .dom-physical{width:var(--dealt-short)!important;height:var(--dealt-long)!important;flex:0 0 var(--dealt-short)!important;transform:none!important;min-height:0!important;min-width:0!important}
+.app>#contactTicker{position:relative!important;inset:auto!important;transform:none!important;translate:none!important;width:96%!important;max-width:96%!important;margin:10px auto!important;order:5;flex:none!important;height:30px!important}
 </style>
 </body>
 </html>
