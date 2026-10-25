@@ -30,7 +30,7 @@
  .table #board{left:44px!important;right:44px!important;top:20%!important;bottom:24%!important;overflow:hidden!important}
  .table .hand{padding:0!important;gap:3px!important;translate:none!important;overflow:visible!important}
  .table #hand1{left:50%!important;right:auto!important;top:auto!important;bottom:35px!important;width:calc(100% - 12px)!important;max-width:none!important;transform:translateX(-50%)!important;flex-direction:row!important;flex-wrap:nowrap!important;justify-content:center!important}
- .table #hand3{left:50%!important;right:auto!important;top:24px!important;bottom:auto!important;max-width:80%!important;transform:translateX(-50%)!important;flex-direction:row!important}
+ .table #hand3{left:50%!important;right:auto!important;top:4px!important;bottom:auto!important;max-width:calc(100% - 12px)!important;transform:translateX(-50%)!important;flex-direction:row!important;flex-wrap:nowrap!important;justify-content:center!important}
  .table #hand2,.table #hand4{top:50%!important;bottom:auto!important;max-height:none!important;transform:translateY(-50%)!important;flex-direction:column!important}
  .table #hand2{left:auto!important;right:5px!important}
  .table #hand4{left:5px!important;right:auto!important}
