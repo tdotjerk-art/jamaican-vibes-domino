@@ -2876,10 +2876,10 @@ body.jv-theme-party #jvThemeOverlay{
 <script src="/voice-chat.js"></script>
 <style id="domino-turn-lights">
 .turn-light{position:absolute;z-index:30;width:12px;height:12px;border-radius:50%;pointer-events:none;background:#431010;border:2px solid #702525;box-shadow:inset 0 1px 2px #0009}
-.turn-light-1{top:73.46%;left:50%;transform:translate(-50%,-50%)}
-.turn-light-2{left:93.2%;top:50%;transform:translate(-50%,-50%)}
-.turn-light-3{top:17.8%;left:50%;transform:translate(-50%,-50%)}
-.turn-light-4{left:6.8%;top:50%;transform:translate(-50%,-50%)}
+.turn-light-1{top:75.5%;left:50%;transform:translate(-50%,-50%)}
+.turn-light-2{left:89.744%;top:50%;transform:translate(-50%,-50%)}
+.turn-light-3{top:15%;left:50%;transform:translate(-50%,-50%)}
+.turn-light-4{left:10.256%;top:50%;transform:translate(-50%,-50%)}
 .turn-light.on{background:#ff3030;border-color:#ffb1a8;animation:dominoTurnBlink 1s ease-in-out infinite;box-shadow:0 0 10px 3px #ff3030b3}
 @keyframes dominoTurnBlink{0%,100%{opacity:1}50%{opacity:.3}}
 @media(prefers-reduced-motion:reduce){.turn-light.on{animation:none}}
@@ -3193,7 +3193,7 @@ function positionTurnLights(){
     // Follow the visible wooden rim, excluding the surrounding purple artwork.
     const low=extent*(horizontal?.25:.35),high=extent*(horizontal?.75:.57);
     light.style[horizontal?'left':'top']=Math.max(low,Math.min(high,midpoint))+'px';
-    light.style[horizontal?'top':'left']=(horizontal?(i===1?73.46:17.8):(i===2?93.2:6.8))+'%';
+    light.style[horizontal?'top':'left']=(horizontal?(i===1?75.5:15):(i===2?89.744:10.256))+'%';
   }
 }
 window.addEventListener('resize',()=>requestAnimationFrame(positionTurnLights));
@@ -7640,8 +7640,8 @@ window.JamaicanVibesCompleteFeatures={
 .table #hand2 .dom-physical .divider,.table #hand4 .dom-physical .divider{width:100%!important;height:1px!important;flex:0 0 1px!important}
 </style>
 <style id="shorter-table-artwork">
-/* Shorten only the visible table; dealt tiles and player positions retain their size. */
-.app>.table{background-size:100% 92%!important;background-position:center center!important}
+/* Narrow only the visible table from left to right; keep height, tiles and seats unchanged. */
+.app>.table{background-size:92% 100%!important;background-position:center center!important}
 </style>
 </body>
 </html>
