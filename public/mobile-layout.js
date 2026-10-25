@@ -1,7 +1,7 @@
 /* Phone geometry is calculated in one coordinate system. Artwork and rules stay unchanged. */
 (function(root){
   function arrange(board,openingId,width,height,long){
-    const short=long*.51,gap=3,placed=[];
+    const short=long*.51,gap=1.5,placed=[];
     let anchor=board.findIndex(t=>t.id===openingId);if(anchor<0)anchor=0;
     const opening=board[anchor];if(!opening)return placed;
     const dims=o=>o==='v'?{w:short,h:long}:{w:long,h:short};
