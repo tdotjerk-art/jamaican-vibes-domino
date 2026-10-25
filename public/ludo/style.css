@@ -14,4 +14,4 @@
 .table-die.higher{box-shadow:0 0 0 2px #fff4d0,0 0 16px 3px #fed10099,0 4px 0 #8f805e}.table-die.higher .pip.on{box-shadow:0 0 3px currentColor,inset 0 1px 2px #0007}
 
 /* Green roll controls on the board and below it. */
-#roll,#tableRoll{background:#0b7840;color:#fff4d0;border-color:#10964b}
+#roll,#tableRoll,#quickRoll{background:#0b7840;color:#fff4d0;border-color:#10964b}
