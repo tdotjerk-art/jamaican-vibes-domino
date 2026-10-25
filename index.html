@@ -2876,10 +2876,10 @@ body.jv-theme-party #jvThemeOverlay{
 <script src="/voice-chat.js"></script>
 <style id="domino-turn-lights">
 .turn-light{position:absolute;z-index:30;width:12px;height:12px;border-radius:50%;pointer-events:none;background:#431010;border:2px solid #702525;box-shadow:inset 0 1px 2px #0009}
-.turn-light-1{bottom:2px;left:calc(50% + 76px)}
-.turn-light-2{right:2px;top:calc(50% + 48px)}
-.turn-light-3{top:2px;left:calc(50% + 76px)}
-.turn-light-4{left:2px;top:calc(50% + 48px)}
+.turn-light-1{bottom:0;left:50%;transform:translateX(-50%)}
+.turn-light-2{right:0;top:50%;transform:translateY(-50%)}
+.turn-light-3{top:0;left:50%;transform:translateX(-50%)}
+.turn-light-4{left:0;top:50%;transform:translateY(-50%)}
 .turn-light.on{background:#ff3030;border-color:#ffb1a8;animation:dominoTurnBlink 1s ease-in-out infinite;box-shadow:0 0 10px 3px #ff3030b3}
 @keyframes dominoTurnBlink{0%,100%{opacity:1}50%{opacity:.3}}
 @media(prefers-reduced-motion:reduce){.turn-light.on{animation:none}}
@@ -3179,6 +3179,19 @@ function separateFinishedHandsFromPlayedChain(){
   });
 }
 
+function positionTurnLights(){
+  const table=document.querySelector('.table');if(!table)return;
+  const frame=table.getBoundingClientRect();
+  for(let i=1;i<=4;i++){
+    const hand=$('hand'+i),light=$('turnLight'+i);if(!hand||!light)return;
+    const row=hand.getBoundingClientRect(),horizontal=i===1||i===3;
+    const extent=horizontal?table.clientWidth:table.clientHeight;
+    const midpoint=horizontal?(row.left+row.width/2-frame.left-table.clientLeft):(row.top+row.height/2-frame.top-table.clientTop);
+    light.style[horizontal?'left':'top']=Math.max(6,Math.min(extent-6,midpoint))+'px';
+  }
+}
+window.addEventListener('resize',()=>requestAnimationFrame(positionTurnLights));
+
 function updateTurnLights(){
   const playing=!gameOver&&hands.some(hand=>hand.length>0);
   for(let i=0;i<4;i++){
@@ -3191,6 +3204,7 @@ function updateTurnLights(){
 function render(){
   for(let i=0;i<4;i++)$('p'+(i+1)).classList.toggle('active',turn===i&&!gameOver);
   updateTurnLights();
+  requestAnimationFrame(positionTurnLights);
   JVDominoInput.renderHand($('hand1'),hands[0],t=>tileEl(t,'v'),id=>{
     // Resolve the current index: a redraw or previous play can change the hand.
     const i=hands[0].findIndex(t=>String(t.id)===id);
