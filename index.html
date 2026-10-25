@@ -3181,7 +3181,7 @@ function separateFinishedHandsFromPlayedChain(){
 
 function positionTurnLights(){
   const table=document.querySelector('.table');if(!table)return;
-  const dealtLong=Math.min(96,(table.clientWidth*.053-4)/.54,table.clientHeight*.11);
+  const dealtLong=1.2*Math.min(96,(table.clientWidth*.053-4)/.54,table.clientHeight*.11);
   table.style.setProperty('--dealt-long',dealtLong+'px');
   table.style.setProperty('--dealt-short',(dealtLong*.54)+'px');
   const frame=table.getBoundingClientRect();
