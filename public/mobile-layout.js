@@ -53,7 +53,7 @@
     }
     let result=arrange(board,openingId,width,height,long);
     // Hands with many doubles can need more vertical space than the conservative regular chain.
-    while((result.bounds?.width>width-4||result.bounds?.height>height-4)&&long>14){long-=1;result=arrange(board,openingId,width,height,long);}
+    while((result.bounds?.width>width-4||result.bounds?.height>height-4)&&long>4){long-=1;result=arrange(board,openingId,width,height,long);}
     return {long,short:long*.51,placed:result};
   }
   function render(host,board,openingId,tileEl){
