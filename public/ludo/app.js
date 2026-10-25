@@ -79,6 +79,9 @@
  function drawDice(g){
   $('tableDice').hidden=!g;$('tableDice').className='table-dice'+(rolling?' rolling':'');
   const seat=g?(rolling?(g.last?.seat??g.turn):g.turn):0,color=g?.players[seat]?.color??0,ink=color===3?'#102519':'#fff4d0';
+  for(const id of ['roll','quickRoll','tableRoll']){
+   const control=$(id);control.style.background=E.TEAMS[color].color;control.style.color=ink;control.style.borderColor=ink;
+  }
   const pips=[[],[4],[0,8],[0,4,8],[0,2,6,8],[0,2,4,6,8],[0,2,3,5,6,8]];
   for(let die=0;die<2;die++){
    const button=$('tableDie'+die),value=g?.dice?.[die],used=!!value&&!g.remaining.includes(die),selectable=!!g&&yourTurn(g)&&E.legal(g,die).length>0,higher=!!value&&!rolling&&g.remaining.includes(die)&&E.legal(g,die).length>0;
