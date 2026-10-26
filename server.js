@@ -189,7 +189,7 @@ function finishWin(r,seat){
    r.message=r.mode==="partner"?`Team ${match===0?"A":"B"} wins the Bruck and Start game by going 6.`:`${r.players[match]?.name||"Player"} wins the match.`;
    addHistory(r,r.message);r.lastEvent="match-win";emitAll(r);return
  }
- r.phase="hand-over";r.turn=null;r.message=`${n} wins the hand.`;r.lastEvent="hand-win";emitAll(r)
+ r.phase="hand-over";r.turn=null;r.message=`${n} wins the hand. Next hand starts in 5 seconds.`;r.lastEvent="hand-win";emitAll(r);scheduleNextHand(r)
 }
 function finishBlocked(r){
  clearTimer(r);r.revealHands=true;r.deadline=0;
@@ -199,7 +199,7 @@ function finishBlocked(r){
  else{tied=lows.length>1;if(!tied)winner=lows[0]}
  if(tied){
    r.tiedCarry=true;r.phase="hand-over";r.turn=null;r.message=`Blocked tie. Next hand is worth ${r.mode==="individual"&&tieRuleOf(r.tieRule)==="last-winner-one"?1:2} point${r.mode==="individual"&&tieRuleOf(r.tieRule)==="last-winner-one"?"":"s"}. Counts: ${counts.join(", ")}.`;
-   addHistory(r,r.message);r.lastEvent="blocked-win";emitAll(r);return
+   addHistory(r,r.message);r.lastEvent="blocked-win";emitAll(r);scheduleNextHand(r);return
  }
  const n=r.players[winner]?.name||"Player";
  if(r.mode==="partner"){
@@ -230,7 +230,7 @@ function finishBlocked(r){
  }
  r.phase="hand-over";r.turn=null;
  r.message=`${n} wins the blocked hand with ${low}. Counts: ${counts.join(", ")}.`;
- r.lastEvent="blocked-win";emitAll(r)
+ r.lastEvent="blocked-win";emitAll(r);scheduleNextHand(r)
 }
 function beginHand(r,poser=null){
  clearTimer(r);const d=shuffle(makeDeck());r.hands=[d.slice(0,7),d.slice(7,14),d.slice(14,21),d.slice(21,28)];
@@ -273,7 +273,15 @@ function beginHand(r,poser=null){
 }
 function nextHand(r){
  if(r.phase!=="hand-over")return;
+ clearTimeout(r.restartTimer);r.restartTimer=null;
  beginHand(r)
+}
+function scheduleNextHand(r){
+ clearTimeout(r.restartTimer);
+ r.restartTimer=setTimeout(()=>{
+  r.restartTimer=null;
+  if(r.phase==="hand-over")nextHand(r)
+ },5000)
 }
 function choosePoser(r,seat){
  if(r.phase!=="choose-poser" || !r.poseOptions.includes(seat))return;
