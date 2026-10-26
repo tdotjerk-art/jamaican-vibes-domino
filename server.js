@@ -11,6 +11,7 @@ app.get("/",(req,res)=>res.sendFile(__dirname + "/index.html"));
 app.get("/health",(req,res)=>res.status(200).send("ok"));
 const rooms=new Map();
 const GRACE_MS=90000;
+const NEXT_HAND_DELAY_MS=5000;
 
 const clampTarget=()=>6;
 const tieRuleOf=value=>value==="last-winner-one"?value:"double-six-two";
@@ -189,7 +190,7 @@ function finishWin(r,seat){
    r.message=r.mode==="partner"?`Team ${match===0?"A":"B"} wins the Bruck and Start game by going 6.`:`${r.players[match]?.name||"Player"} wins the match.`;
    addHistory(r,r.message);r.lastEvent="match-win";emitAll(r);return
  }
- r.phase="hand-over";r.turn=null;r.message=`${n} wins the hand. Next hand starts in 5 seconds.`;r.lastEvent="hand-win";emitAll(r);scheduleNextHand(r)
+ r.phase="hand-over";r.turn=null;r.message=`${n} wins the hand. Next hand starts in ${NEXT_HAND_DELAY_MS/1000} seconds.`;r.lastEvent="hand-win";emitAll(r);scheduleNextHand(r)
 }
 function finishBlocked(r){
  clearTimer(r);r.revealHands=true;r.deadline=0;
@@ -281,7 +282,7 @@ function scheduleNextHand(r){
  r.restartTimer=setTimeout(()=>{
   r.restartTimer=null;
   if(r.phase==="hand-over")nextHand(r)
- },5000)
+ },NEXT_HAND_DELAY_MS)
 }
 function choosePoser(r,seat){
  if(r.phase!=="choose-poser" || !r.poseOptions.includes(seat))return;
