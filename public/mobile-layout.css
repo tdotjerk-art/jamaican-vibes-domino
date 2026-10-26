@@ -190,3 +190,10 @@
   .table #hand3 .dom-physical { height:58px!important; }
   .table #hand3 { height:58px!important; }
 }
+
+
+/* Scale the complete domino table, including the board and all four player areas, down by 5%. */
+.app>.table {
+  transform:scale(.95)!important;
+  transform-origin:center center!important;
+}
