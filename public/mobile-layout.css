@@ -113,3 +113,34 @@
   .table #hand3 { top:4px!important; height:48px!important; }
   .table #hand3 .dom-physical { height:48px!important; }
 }
+
+
+/* Keep the center play-chain scrolling area directly in front of Player 3,
+   below their hand, rather than letting it drift across the table. */
+@media (max-width:1000px) and (pointer:coarse), (max-width:760px), (max-height:520px) {
+  .table #board {
+    left:44px!important;
+    right:44px!important;
+    top:calc(20% + 2px)!important;
+    bottom:24%!important;
+    overflow:auto!important;
+    overscroll-behavior:contain!important;
+    -webkit-overflow-scrolling:touch!important;
+    scrollbar-width:thin;
+    z-index:5!important;
+  }
+  .table #hand3 {
+    top:calc(20% - 58px)!important;
+    z-index:30!important;
+  }
+}
+@media (max-width:1000px) and (pointer:coarse) and (orientation:landscape),
+       (max-width:760px) and (orientation:landscape),
+       (max-height:520px) and (orientation:landscape) {
+  .table #board {
+    top:58px!important;
+    bottom:94px!important;
+    left:60px!important;
+    right:60px!important;
+  }
+}
