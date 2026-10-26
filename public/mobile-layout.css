@@ -70,3 +70,46 @@
 
 /* Keep the dealt-hand poser choice above floating game controls. */
 #modal:has(#card:is(.partner-pose-choice,.domino-end-choice,.individual-setup)){z-index:2147483647 !important;}
+
+
+/* Player 3 mobile hand: reserve the full row for all seven dominoes and bring it
+   down to the board edge instead of leaving a large empty gap above the board. */
+@media (max-width:1000px) and (pointer:coarse), (max-width:760px), (max-height:520px) {
+  .table #hand3 {
+    box-sizing:border-box!important;
+    left:50%!important;
+    right:auto!important;
+    top:calc(20% - 58px)!important;
+    bottom:auto!important;
+    width:calc(100% - 12px)!important;
+    max-width:none!important;
+    min-width:0!important;
+    height:52px!important;
+    display:flex!important;
+    flex-direction:row!important;
+    flex-wrap:nowrap!important;
+    justify-content:center!important;
+    align-items:center!important;
+    gap:2px!important;
+    overflow:visible!important;
+    transform:translateX(-50%)!important;
+    z-index:30!important;
+  }
+  .table #hand3 .dom-physical,
+  .table #hand3 .back {
+    flex:0 0 28px!important;
+    width:28px!important;
+    min-width:28px!important;
+    max-width:28px!important;
+    height:52px!important;
+    box-sizing:border-box!important;
+    margin:0!important;
+  }
+  .table #hand3 .back { height:42px!important; }
+}
+@media (max-width:1000px) and (pointer:coarse) and (orientation:landscape),
+       (max-width:760px) and (orientation:landscape),
+       (max-height:520px) and (orientation:landscape) {
+  .table #hand3 { top:4px!important; height:48px!important; }
+  .table #hand3 .dom-physical { height:48px!important; }
+}
