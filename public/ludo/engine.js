@@ -43,21 +43,10 @@
   return choices.filter(move=>move.value===highest);
  }
  function legal(g,dieIndex){
-  let choices=ordered(g);
-  if(g.remaining.length>1){
-   const complete=choices.filter(move=>{const trial=structuredClone(g);place(trial,move);return trial.players[trial.turn].tokens.every(n=>n===HOME)||ordered(trial).length>0;});
-   if(complete.length)choices=complete;
-   else choices=choices.filter(move=>{
-    const trial=structuredClone(g),captured=place(trial,move);
-    if(!captured.length)return true;
-    // A capture lock cannot be used as a reason to discard a playable die.
-    trial.capturedThisRoll=trial.capturedThisRoll.filter(piece=>piece!==move.piece);
-    return rawLegal(trial).length===0;
-   });
-  }
-  // Never auto-pass while a legal die move exists. If no sequence can use both dice,
-  // fall back to the highest currently playable die; the remaining die may be skipped.
-  if(!choices.length&&rawLegal(g).length)choices=ordered(g);
+  // Offer every legal move for the highest playable die. Do not hide a piece merely
+  // because moving it would make the other die unusable; the player must be able to
+  // choose a legal move for the piece they intend to advance.
+  const choices=ordered(g);
   return choices.filter(move=>dieIndex===undefined||move.die===dieIndex);
  }
  function note(g,message){g.history.push(message);g.history=g.history.slice(-40);}
