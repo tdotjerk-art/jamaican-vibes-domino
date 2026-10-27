@@ -153,9 +153,11 @@ test('a legal capture is not discarded when the other die cannot be used',()=>{
   A.equal(result.turn,1);A.equal(result.players[0].tokens[0],2);A.equal(result.players[1].tokens[0],-1);A.ok(result.history.some(line=>/captured 1 piece/.test(line)));
  }
 });
-test('entry capture cannot waste the five, but a real barrier still permits a blocked second move',()=>{
+test('entry capture is allowed when the remaining die cannot be used, and barriers still block',()=>{
  for(const pair of [[6,5],[5,6]]){
-  let g=fresh();g.players[0].tokens=[-1,E.HOME,E.HOME,E.HOME];g.players[1].tokens[0]=36;g=roll(g,...pair);A.equal(g.turn,1);A.equal(g.players[0].tokens[0],-1);A.equal(g.players[1].tokens[0],36);
+  let g=fresh();g.players[0].tokens=[-1,E.HOME,E.HOME,E.HOME];g.players[1].tokens[0]=36;g=roll(g,...pair);
+  A.equal(g.turn,0);A.equal(g.phase,'move');A.ok(E.legal(g).some(m=>m.piece===0&&m.value===6));
+  g=move(g,0,pair.indexOf(6));A.equal(g.players[0].tokens[0],0);A.equal(g.players[1].tokens[0],-1);A.equal(g.turn,1);
  }
  let g=fresh();g.players[0].tokens=[0,E.HOME,E.HOME,E.HOME];g.players[1].tokens[0]=38;g.players[2].tokens=[27,27,-1,-1];g=move(roll(g,2,1),0,0);A.equal(g.players[1].tokens[0],-1);A.equal(g.players[0].tokens[0],2);A.equal(g.turn,1);
 });
