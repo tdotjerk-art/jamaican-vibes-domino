@@ -55,6 +55,9 @@
     return rawLegal(trial).length===0;
    });
   }
+  // Never auto-pass while a legal die move exists. If no sequence can use both dice,
+  // fall back to the highest currently playable die; the remaining die may be skipped.
+  if(!choices.length&&rawLegal(g).length)choices=ordered(g);
   return choices.filter(move=>dieIndex===undefined||move.die===dieIndex);
  }
  function note(g,message){g.history.push(message);g.history=g.history.slice(-40);}
