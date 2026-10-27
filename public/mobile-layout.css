@@ -197,3 +197,37 @@
   transform:scale(.95)!important;
   transform-origin:center center!important;
 }
+
+
+/* Final mobile fix: keep Player 3's complete seven-tile hand visible and aligned
+   with the same tile dimensions as Player 1, directly above the board. */
+@media (max-width:1000px) and (pointer:coarse), (max-width:760px), (max-height:520px) {
+  .table #hand3 {
+    box-sizing:border-box!important;
+    left:50%!important; right:auto!important;
+    top:calc(20% - 60px)!important; bottom:auto!important;
+    width:calc(100% - 16px)!important; max-width:none!important; min-width:0!important;
+    height:62px!important; padding:0!important;
+    display:flex!important; flex-direction:row!important; flex-wrap:nowrap!important;
+    justify-content:center!important; align-items:center!important;
+    gap:2px!important; overflow:visible!important;
+    transform:translateX(-50%)!important; z-index:30!important;
+  }
+  .table #hand3 .dom-physical {
+    box-sizing:border-box!important;
+    width:34px!important; min-width:34px!important; max-width:34px!important;
+    height:62px!important; flex:0 0 34px!important;
+    margin:0!important; transform:none!important;
+  }
+  .table #hand3 .back {
+    box-sizing:border-box!important;
+    width:30px!important; min-width:30px!important; max-width:30px!important;
+    height:50px!important; flex:0 0 30px!important; margin:0!important;
+  }
+}
+@media (max-width:1000px) and (pointer:coarse) and (orientation:landscape),
+       (max-width:760px) and (orientation:landscape),
+       (max-height:520px) and (orientation:landscape) {
+  .table #hand3 { top:4px!important; height:58px!important; }
+  .table #hand3 .dom-physical { height:58px!important; }
+}
