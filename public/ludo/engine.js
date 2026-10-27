@@ -42,11 +42,29 @@
   const choices=rawLegal(g),highest=Math.max(...choices.map(move=>move.value));
   return choices.filter(move=>move.value===highest);
  }
+ function wouldCapture(g,move){
+  const player=g.players[g.turn],index=ring(player,move.to);
+  return index!==null&&occupants(g,index).some(other=>other.seat!==g.turn);
+ }
+ function onlyOnePieceAvailable(g){
+  return g.players[g.turn].tokens.filter(progress=>progress>=0&&progress<HOME).length===1;
+ }
+ function canUseOtherDieOnSamePiece(g,move){
+  const trial=structuredClone(g);
+  const captured=place(trial,move);
+  if(captured.length)return false;
+  if(!trial.remaining.length)return true;
+  const otherMoves=rawLegal(trial);
+  return otherMoves.some(nextMove=>nextMove.piece===move.piece&&!wouldCapture(trial,nextMove));
+ }
  function legal(g,dieIndex){
-  // Offer every legal move for the highest playable die. Do not hide a piece merely
-  // because moving it would make the other die unusable; the player must be able to
-  // choose a legal move for the piece they intend to advance.
-  const choices=ordered(g);
+  // When only one piece remains outside the home/finished areas, prefer a
+  // two-die route for that same piece over a capture that would waste a die.
+  let choices=ordered(g);
+  if(onlyOnePieceAvailable(g)&&g.remaining.length===2){
+   const continuations=choices.filter(move=>!wouldCapture(g,move)&&canUseOtherDieOnSamePiece(g,move));
+   if(continuations.length)choices=continuations;
+  }
   return choices.filter(move=>dieIndex===undefined||move.die===dieIndex);
  }
  function note(g,message){g.history.push(message);g.history=g.history.slice(-40);}
