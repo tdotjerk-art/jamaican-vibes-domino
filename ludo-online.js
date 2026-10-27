@@ -1,6 +1,6 @@
 const express=require('express'),crypto=require('node:crypto'),E=require('./public/ludo/engine');
 const digest=token=>crypto.createHash('sha256').update(token).digest('hex');
-function createLudoRouter({rollDie=()=>crypto.randomInt(1,7)}={}){
+function createLUDIRouter({rollDie=()=>crypto.randomInt(1,7)}={}){
  const router=express.Router(),rooms=new Map(),rates=new Map(),day=86400000;
  router.use(express.json({limit:'4kb'}));
  router.use((req,res,next)=>{
@@ -53,8 +53,8 @@ function createLudoRouter({rollDie=()=>crypto.randomInt(1,7)}={}){
    try{r.game=E.act(r.game,you,a,rollDie);r.votes=[]}catch(e){return res.status(400).json({error:e.message})}
   }
   r.version++;return res.json(view(r,you));
- }catch(error){console.error('Ludo room error:',error);res.status(500).json({error:'Unable to reach the game. Please try again.'})}}
+ }catch(error){console.error('LUDI room error:',error);res.status(500).json({error:'Unable to reach the game. Please try again.'})}}
  router.use((error,req,res,next)=>{if(error.type==='entity.too.large')return res.status(413).json({error:'Request too large.'});if(error instanceof SyntaxError)return res.status(400).json({error:'Invalid request.'});next(error)});
  return router;
 }
-module.exports={createLudoRouter};
+module.exports={createLUDIRouter};
