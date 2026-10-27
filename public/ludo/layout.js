@@ -1,6 +1,6 @@
 (function(root){
  'use strict';
- // Smaller home zones leave more room for the playable track.
+ // Compact home zones leave more room for the playable track.
  const UNIT=43,CENTER=600-12*UNIT;
  const edge=n=>n<=6?n*UNIT:6*UNIT+CENTER+(n-7)*UNIT;
  const middle=n=>(edge(n)+edge(n+1))/2;
@@ -21,8 +21,8 @@
   else if(c===6&&r>=7)code='BYGBYG'[r-7];
   return palettes[code||'B'];
  }
- function home(color){const [x,y]=[[0,0],[edge(8),0],[edge(8),edge(8)],[0,edge(8)]][color];const inset=26;return {x:x+inset,y:y+inset,width:edge(5)-2*inset,height:edge(5)-2*inset};}
- function yard(color,piece){const h=home(color),along=24+26*piece;return color===0?[h.x+24,h.y+along]:color===1?[h.x+along,h.y+24]:color===2?[h.x+h.width-16,h.y+along]:[h.x+along,h.y+h.height-16];}
+ function home(color){const [x,y]=[[0,0],[edge(8),0],[edge(8),edge(8)],[0,edge(8)]][color];const inset=34;return {x:x+inset,y:y+inset,width:edge(5)-2*inset,height:edge(5)-2*inset};}
+ function yard(color,piece){const h=home(color),along=22+20*piece;return color===0?[h.x+20,h.y+along]:color===1?[h.x+along,h.y+20]:color===2?[h.x+h.width-14,h.y+along]:[h.x+along,h.y+h.height-14];}
  function finished(color,piece){const near=edge(6)+12,far=edge(7)-12,along=264+24*piece;return color===0?[near,along]:color===1?[along,near]:color===2?[far,along]:[along,far];}
  const api={UNIT,edge,middle,paint,home,yard,finished};if(typeof module!=='undefined')module.exports=api;else root.JVLudiLayout=api;
 })(globalThis);
