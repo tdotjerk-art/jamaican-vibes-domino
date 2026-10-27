@@ -2,7 +2,7 @@ const test=require('node:test'),A=require('node:assert/strict'),E=require('../pu
 const fresh=(n=4)=>E.fresh(Array.from({length:n},(_,i)=>'P'+i));
 const roll=(g,first,second)=>{let next=0;return E.act(g,g.turn,{type:'roll'},()=>[first,second][next++]);};
 const move=(g,piece,die)=>E.act(g,g.turn,{type:'move',piece,die});
-test('Ludo uses 48 unique adjoining track squares and opposite corners for two players',()=>{
+test('LUDI uses 48 unique adjoining track squares and opposite corners for two players',()=>{
  A.equal(E.TRACK.length,48);A.equal(new Set(E.TRACK.map(p=>p.join(','))).size,48);
  for(let i=0;i<48;i++){const a=E.TRACK[i],b=E.TRACK[(i+1)%48];A.ok(Math.abs(a[0]-b[0])+Math.abs(a[1]-b[1])===1);}
  for(const n of [2,3,4]){const g=fresh(n);A.equal(g.players.length,n);A.deepEqual(g.players[1].tokens,[-1,-1,-1,-1]);}
