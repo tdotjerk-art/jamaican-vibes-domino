@@ -15,3 +15,6 @@
 
 /* Green roll controls on the board and below it. */
 #roll,#tableRoll,#quickRoll{background:#0b7840;color:#fff4d0;border-color:#10964b}
+
+/* Mobile board fills the available width; home zones meet their edges without black gutters. */
+@media(max-width:650px){.layout{padding:0 2px;margin:10px auto;gap:14px}.board-viewport{width:100%;max-width:none}.board-frame{padding:3px;border-radius:12px}.turn-banner{margin-bottom:8px}.table-heading{margin-bottom:7px}}
