@@ -1,7 +1,7 @@
 (function(root){
  'use strict';
  // Compact home zones leave more room for the playable track.
- const UNIT=50,CENTER=600-12*UNIT;
+ const UNIT=46,CENTER=600-12*UNIT;
  const edge=n=>n<=6?n*UNIT:6*UNIT+CENTER+(n-7)*UNIT;
  const middle=n=>(edge(n)+edge(n+1))/2;
  const palettes={B:'#080b08',G:'#08753c',Y:'#f4cf22'};
