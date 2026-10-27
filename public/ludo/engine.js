@@ -110,5 +110,5 @@
   return g;
  }
  const api={TEAMS,TRACK,HOME,OUTER_LAST,cleanName,fresh,ring,coordinate,legal,act};
- if(typeof module!=='undefined')module.exports=api;else root.JVLudo=api;
+ if(typeof module!=='undefined')module.exports=api;else root.JVLUDI=api;
 })(globalThis);
