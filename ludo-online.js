@@ -57,4 +57,4 @@ function createLUDIRouter({rollDie=()=>crypto.randomInt(1,7)}={}){
  router.use((error,req,res,next)=>{if(error.type==='entity.too.large')return res.status(413).json({error:'Request too large.'});if(error instanceof SyntaxError)return res.status(400).json({error:'Invalid request.'});next(error)});
  return router;
 }
-module.exports={createLUDIRouter};
+module.exports={createLUDIRouter,createLudoRouter:createLUDIRouter};
