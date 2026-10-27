@@ -1,6 +1,6 @@
 (()=>{
  'use strict';
- const E=JVLudo,L=JVLudiLayout,$=id=>document.getElementById(id),svgNS='http://www.w3.org/2000/svg';
+ const E=JVLUDI,L=JVLudiLayout,$=id=>document.getElementById(id),svgNS='http://www.w3.org/2000/svg';
  const seatKey='jv-ludo-room-v1',nameKey='jv-draff-player-name-v1';
  let local=null,room=null,token=null,version=-1,busy=false,epoch=0,poll=null,aiTimer=null,message='',selectedDie=null,rolling=false,rollTimer=null,shownRollNo=0;
  function saved(){try{const r=JSON.parse(localStorage.getItem(seatKey)||'null');return r&&/^[A-F0-9]{8}$/.test(r.code)&&/^[a-f0-9]{64}$/.test(r.token)?r:null}catch{return null}}
@@ -35,7 +35,7 @@
    const [r,c]=E.coordinate({color},step);
    svg('rect',{x:edge(c),y:edge(r),width:edge(c+1)-edge(c),height:edge(r+1)-edge(r),fill:E.TEAMS[color].color,stroke:'#eee7ce','stroke-width':2.2});
   }
-  const center=svg('g',{id:'ludo-center','aria-label':'Four-color center'}),low=edge(6),high=edge(7),mid=300;
+  const center=svg('g',{id:'ludi-center','aria-label':'Four-color center'}),low=edge(6),high=edge(7),mid=300;
   svg('rect',{x:low,y:low,width:high-low,height:high-low,fill:'#080e09',stroke:'#eee7ce','stroke-width':2.2},center);
   for(const [color,points]of [[0,`${low},${low} ${mid},${mid} ${low},${high}`],[1,`${low},${low} ${high},${low} ${mid},${mid}`],[2,`${high},${low} ${high},${high} ${mid},${mid}`],[3,`${low},${high} ${mid},${mid} ${high},${high}`]])svg('polygon',{points,fill:E.TEAMS[color].color,'aria-label':E.TEAMS[color].name+' finish'},center);
   const cross=`M${low} ${low}L${high} ${high}M${high} ${low}L${low} ${high}`;
