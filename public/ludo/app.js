@@ -27,13 +27,13 @@
   }
   pieceGradients();
   E.TRACK.forEach(([r,c],i)=>{
-   svg('rect',{x:edge(c),y:edge(r),width:edge(c+1)-edge(c),height:edge(r+1)-edge(r),fill:L.paint(r,c),stroke:'#eee7ce','stroke-width':2.2});
+   const cell=14; svg('rect',{x:edge(c)-cell/2,y:edge(r)-cell/2,width:edge(c+1)-edge(c)+cell,height:edge(r+1)-edge(r)+cell,fill:L.paint(r,c),stroke:'#eee7ce','stroke-width':2.2});
    const start=E.TEAMS.findIndex(t=>t.start===i);
    if(start>=0)svg('text',{x:middle(c),y:middle(r)+7,'text-anchor':'middle',fill:'#287a42','font-size':24,'font-weight':900,transform:`rotate(${[0,90,180,-90][start]} ${middle(c)} ${middle(r)})`},root,'➜');
   });
   for(let color=0;color<4;color++)for(let step=E.OUTER_LAST+1;step<E.HOME;step++){
    const [r,c]=E.coordinate({color},step);
-   svg('rect',{x:edge(c),y:edge(r),width:edge(c+1)-edge(c),height:edge(r+1)-edge(r),fill:E.TEAMS[color].color,stroke:'#eee7ce','stroke-width':2.2});
+   const cell=14; svg('rect',{x:edge(c)-cell/2,y:edge(r)-cell/2,width:edge(c+1)-edge(c)+cell,height:edge(r+1)-edge(r)+cell,fill:E.TEAMS[color].color,stroke:'#eee7ce','stroke-width':2.2});
   }
   const center=svg('g',{id:'ludi-center','aria-label':'Four-color center'}),low=edge(6),high=edge(7),mid=300;
   svg('rect',{x:low,y:low,width:high-low,height:high-low,fill:'#080e09',stroke:'#eee7ce','stroke-width':2.2},center);
