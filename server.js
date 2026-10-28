@@ -114,7 +114,7 @@ function scheduleTurn(r){
  clearTimer(r);if(r.phase!=="playing"||r.turn==null)return;
  if(connectedPlayers(r)<4){pauseForDisconnect(r);return}
  const sec=turnSeconds(r.hands[r.turn].length);r.deadline=Date.now()+sec*1000;
- r.timer=setTimeout(()=>autoAction(r),sec*1000+75);emitAll(r)
+ r.timer=setTimeout(()=>autoAction(r),sec*1000+75);r.timer.unref?.();emitAll(r)
 }
 function allBlocked(r){return r.hands.every(h=>!h.some(t=>canPlay(r.board,t)))}
 function nextPlayableTurn(r){
@@ -282,7 +282,7 @@ function scheduleNextHand(r){
  r.restartTimer=setTimeout(()=>{
   r.restartTimer=null;
   if(r.phase==="hand-over")nextHand(r)
- },NEXT_HAND_DELAY_MS)
+ },NEXT_HAND_DELAY_MS);r.restartTimer.unref?.()
 }
 function choosePoser(r,seat){
  if(r.phase!=="choose-poser" || !r.poseOptions.includes(seat))return;

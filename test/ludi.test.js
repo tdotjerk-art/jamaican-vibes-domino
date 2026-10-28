@@ -143,21 +143,26 @@ test('a blocked or overshooting bigger die permits the smaller die',()=>{
  g=fresh();g.players[0].tokens=[E.HOME-2,E.HOME,E.HOME,E.HOME];g=move(roll(g,6,2),0,1);A.equal(g.phase,'over');
 });
 
-test('a legal capture is not discarded when the other die cannot be used',()=>{
+test('a lone piece prefers a two-move route and permits capture when none exists',()=>{
  for(const pair of [[2,1],[1,2],[2,2]]){
   const original=fresh();original.players[0].tokens=[0,E.HOME,E.HOME,E.HOME];original.players[1].tokens[0]=38;
-  const pending=structuredClone(original);pending.phase='move';pending.dice=pair;pending.remaining=[0,1];pending.rollNo=1;
-  const available=E.legal(pending);A.ok(available.length>0);A.ok(available.some(m=>m.value===2));
-  const rolled=roll(original,...pair);A.equal(rolled.turn,0);A.equal(rolled.phase,'move');A.ok(E.legal(rolled).length>0);
-  const chosen=E.legal(rolled)[0],result=move(rolled,chosen.piece,chosen.die);
-  A.equal(result.turn,1);A.equal(result.players[0].tokens[0],2);A.equal(result.players[1].tokens[0],-1);A.ok(result.history.some(line=>/captured 1 piece/.test(line)));
+  const rolled=roll(original,...pair);A.equal(rolled.turn,0);A.equal(rolled.phase,'move');
+  const choices=E.legal(rolled);A.ok(choices.length>0);
+  A.ok(choices.every(m=>m.value===1||pair[0]===pair[1]));
+  if(pair.includes(1))A.throws(()=>move(rolled,0,pair.indexOf(2)),/Use both dice/);
+  const chosen=choices[0],first=move(rolled,chosen.piece,chosen.die);
+  if(pair[0]===pair[1]){A.equal(first.phase,'roll');A.equal(first.turn,1);A.equal(first.players[0].tokens[0],2);A.equal(first.players[1].tokens[0],-1);continue;}
+  A.equal(first.phase,'move');A.equal(first.turn,0);A.equal(first.players[1].tokens[0],38);
+  const other=E.legal(first)[0],result=move(first,other.piece,other.die);
+  A.equal(result.turn,1);A.equal(result.players[0].tokens[0],pair[0]+pair[1]);
+  A.equal(result.players[1].tokens[0],38);
  }
 });
 test('entry capture is allowed when the remaining die cannot be used, and barriers still block',()=>{
  for(const pair of [[6,5],[5,6]]){
   let g=fresh();g.players[0].tokens=[-1,E.HOME,E.HOME,E.HOME];g.players[1].tokens[0]=36;g=roll(g,...pair);
   A.equal(g.turn,0);A.equal(g.phase,'move');A.ok(E.legal(g).some(m=>m.piece===0&&m.value===6));
-  g=move(g,0,pair.indexOf(6));A.equal(g.players[0].tokens[0],0);A.equal(g.players[1].tokens[0],-1);A.equal(g.turn,1);
+  g=move(g,0,pair.indexOf(6));A.equal(g.players[0].tokens[0],0);A.equal(g.players[1].tokens[0],-1);A.equal(g.turn,0);A.equal(g.phase,'roll');A.deepEqual(g.remaining,[]);
  }
  let g=fresh();g.players[0].tokens=[0,E.HOME,E.HOME,E.HOME];g.players[1].tokens[0]=38;g.players[2].tokens=[27,27,-1,-1];g=move(roll(g,2,1),0,0);A.equal(g.players[1].tokens[0],-1);A.equal(g.players[0].tokens[0],2);A.equal(g.turn,1);
 });

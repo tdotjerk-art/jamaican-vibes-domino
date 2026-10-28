@@ -27,7 +27,7 @@ test('either table die can be selected first and both show actual pips',()=>{
  ui.get('moves').children[0].onclick();A.equal(ui.get('tableRoll').disabled,false);
 });
 test('same-device play allows the next person to roll on the same browser',()=>{
- const ui=boot(1);ui.get('mode').value='local';ui.start();ui.get('roll').onclick();ui.tick();A.match(ui.get('turnBanner').textContent,/Player 2/);A.equal(ui.get('roll').disabled,false);A.equal(ui.timeouts.size,0);
+ const ui=boot(1);ui.get('mode').value='local';ui.start();ui.get('roll').onclick();ui.tick();A.match(ui.get('turnBanner').textContent,/Player 2/);A.equal(ui.get('roll').disabled,false);A.equal(ui.timeouts.size,1);A.equal([...ui.timeouts.values()][0].ms,10000);
  ui.get('roll').onclick();ui.tick();A.match(ui.get('turnBanner').textContent,/Junior/);
 });
 test('online Ludi sends the name and count, waits for players, and recovers from a lost room',async()=>{
