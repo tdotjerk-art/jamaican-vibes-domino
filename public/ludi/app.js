@@ -190,7 +190,7 @@
   try{const r=await request(null,credentials);if(generation!==epoch)return;$('mode').value='online';token=credentials.token;version=-1;message='';receive(r,credentials.token);polling()}
   catch(e){if(generation===epoch&&!terminal(e))$('error').textContent=e.message}finally{if(generation===epoch){busy=false;render()}}
  }
- function startLocal(){const n=count(),player=name();shownRollNo=0;local=E.fresh(Array.from({length:n},(_,i)=>i===0?player:$('mode').value==='ai'?E.TEAMS[n===2?2:i].name+' · Computer':'Player '+(i+1)));render()}
+ function startLocal(){const n=count(),player=name();shownRollNo=0;local=E.fresh(Array.from({length:n},(_,i)=>i===0?player:$('mode').value==='ai'?'Computer '+(i+1):'Player '+(i+1)));render()}
  $('setupForm').onsubmit=e=>{e.preventDefault();if($('mode').value==='online')enter('create');else try{startLocal();$('error').textContent=''}catch(error){$('error').textContent=error.message}};
  $('mode').onchange=()=>{message='';$('error').textContent='';render()};$('join').onclick=()=>enter('join');$('resume').onclick=resume;
  $('startOnline').onclick=()=>send({type:'start'});$('roll').onclick=$('quickRoll').onclick=$('tableRoll').onclick=()=>action({type:'roll'});
