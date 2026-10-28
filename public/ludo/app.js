@@ -112,7 +112,7 @@
   const canRoll=!!g&&yourTurn(g)&&g.phase==='roll';$('roll').disabled=!canRoll;$('quickRoll').disabled=!canRoll;
   const values=g?.dice?.every(Number.isInteger)?g.dice.join(' + '):'';
   $('diceLabel').textContent=values?'Last roll · '+values:'Roll both dice on the table.';$('quickRoll').textContent=rolling?'Rolling…':'Roll two dice';
-  $('hint').textContent=!g?'':rolling?'Both dice are rolling on the table.':g.phase==='over'?'All four pieces are home. Start another game.':g.phase==='move'?(yourTurn(g)?'Bigger die first. Using die '+(selectedDie+1)+' ('+g.dice[selectedDie]+'). Choose a piece for the highlighted die.':'Waiting for '+g.players[g.turn].name+' to move.'):'Roll a six on either die to enter. Move the bigger die first.';
+  $('hint').textContent=!g?'':rolling?'Both dice are rolling on the table.':g.phase==='over'?'All four pieces are home. Start another game.':g.phase==='move'?(yourTurn(g)?'Tap either die to play it first. Using die '+(selectedDie+1)+' ('+g.dice[selectedDie]+'). Choose a piece for the highlighted die.':'Waiting for '+g.players[g.turn].name+' to move.'):'Roll a six on either die to enter. Tap either die to choose which to play first.';
   drawDice(g);moveButtons($('moves'),g);moveButtons($('quickMoves'),g);
   $('history').replaceChildren();(g?.history||[]).slice(-5).reverse().forEach(text=>$('history').append(node('p',text)));
   board(g);scheduleComputer();
