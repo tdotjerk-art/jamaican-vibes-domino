@@ -19,6 +19,8 @@
  function movesFor(g,die){
   const player=g.players[g.turn];
   return player.tokens.flatMap((from,piece)=>{
+   // A piece that captured with the first die cannot move again on this roll.
+   if(g.capturedThisRoll.includes(piece))return [];
    if(from===HOME||from<0&&die!==6)return [];
    const to=from<0?0:from+die;if(to>HOME)return [];
    for(let step=from<0?0:from+1;step<=Math.min(to,OUTER_LAST);step++){
