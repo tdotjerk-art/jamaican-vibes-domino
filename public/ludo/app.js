@@ -96,9 +96,26 @@
   }
   $('tableRoll').disabled=!g||!yourTurn(g)||g.phase!=='roll';$('tableRoll').textContent=rolling?'Rolling…':'Roll dice';
  }
+ function bestAutoMove(g){
+  const moves=E.legal(g);
+  if(!moves.length)return null;
+  const ranked=moves.map(m=>{
+   const next=E.act(g,g.turn,{type:'move',piece:m.piece,die:m.die});
+   const captured=next.last?.captured?.length||0;
+   const follow=next.phase==='move'&&next.turn===g.turn?E.legal(next):[];
+   const canUseBoth=g.remaining.length===2&&follow.length>0;
+   const followCaptures=follow.some(f=>{
+    const after=E.act(next,next.turn,{type:'move',piece:f.piece,die:f.die});
+    return after.last?.captured?.length>0;
+   });
+   const score=(canUseBoth?10000:0)+captured*1000+(followCaptures?400:0)+(m.to===E.HOME?250:0)+(m.from<0?60:0)+m.to;
+   return {m,score};
+  }).sort((a,b)=>b.score-a.score);
+  return ranked[0].m;
+ }
  function scheduleAutoRoll(g){
-  const eligible=!!g&&g.phase==='roll'&&yourTurn(g)&&($('mode').value!=='ai'||g.turn===0);
-  const key=eligible?(local?'local':'online')+':'+(room?.code||'')+':'+g.turn+':'+g.rollNo:'';
+  const eligible=!!g&&g.phase!=='over'&&yourTurn(g)&&($('mode').value!=='ai'||g.turn===0);
+  const key=eligible?(local?'local':'online')+':'+(room?.code||'')+':'+g.turn+':'+g.rollNo+':'+g.phase+':'+g.remaining.join(',')+':'+g.players[g.turn].tokens.join(','):'';
   if(key===autoRollKey)return;
   clearTimeout(autoRollTimer);autoRollTimer=null;autoRollKey=key;
   if(!key)return;
@@ -106,8 +123,13 @@
   autoRollTimer=setTimeout(()=>{
    autoRollTimer=null;
    const current=snapshot();
-   if(autoRollKey!==key||!current||current.phase!=='roll'||current.turn!==g.turn||current.rollNo!==g.rollNo||!yourTurn(current))return;
-   action({type:'roll'});
+   const currentKey=current?(local?'local':'online')+':'+(room?.code||'')+':'+current.turn+':'+current.rollNo+':'+current.phase+':'+current.remaining.join(',')+':'+current.players[current.turn].tokens.join(','):'';
+   if(autoRollKey!==key||currentKey!==key||!yourTurn(current))return;
+   if(current.phase==='roll')action({type:'roll'});
+   else if(current.phase==='move'){
+    const choice=bestAutoMove(current);
+    if(choice)action({type:'move',piece:choice.piece,die:choice.die});
+   }
   },10000);
  }
  function render(){
