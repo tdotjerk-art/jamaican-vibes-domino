@@ -1,7 +1,7 @@
 (()=>{
  'use strict';
  const E=JVLUDI,L=JVLudiLayout,$=id=>document.getElementById(id),svgNS='http://www.w3.org/2000/svg';
- const seatKey='jv-ludo-room-v1',nameKey='jv-draff-player-name-v1';
+ const seatKey='jv-ludi-room-v1',nameKey='jv-draff-player-name-v1';
  let local=null,room=null,token=null,version=-1,busy=false,epoch=0,poll=null,aiTimer=null,message='',selectedDie=null,rolling=false,rollTimer=null,shownRollNo=0,autoRollTimer=null,autoRollKey='',autoRollDeadline=0;
  function saved(){try{const r=JSON.parse(localStorage.getItem(seatKey)||'null');return r&&/^[A-F0-9]{8}$/.test(r.code)&&/^[a-f0-9]{64}$/.test(r.token)?r:null}catch{return null}}
  function save(r){try{if(r)localStorage.setItem(seatKey,JSON.stringify({code:r.code,token:r.token}));else localStorage.removeItem(seatKey)}catch{}}
@@ -55,7 +55,7 @@
    let radius=piece.progress<0?(piece.p.color===0||piece.p.color===3?15.4:14.5):piece.progress===E.HOME?9:13;
    if(n>1){const cols=n===2?2:Math.ceil(Math.sqrt(n)),rows=Math.ceil(n/cols);const gap=n>4?10:12;x+=(index%cols-(cols-1)/2)*gap;y+=(Math.floor(index/cols)-(rows-1)/2)*gap;radius=n>4?5:n>2?7:10}
    const playable=!!g&&g.turn===piece.seat&&allowed.includes(piece.piece),team=E.TEAMS[piece.p.color];
-   const tokenNode=svg('g',{class:'ludo-token'+(playable?' playable':''),role:'button',tabindex:playable?0:-1,'aria-disabled':!playable,'aria-label':piece.p.name+', piece '+(piece.piece+1)+(piece.progress<0?', in yard':piece.progress===E.HOME?', home':', on board')});
+   const tokenNode=svg('g',{class:'ludi-token'+(playable?' playable':''),role:'button',tabindex:playable?0:-1,'aria-disabled':!playable,'aria-label':piece.p.name+', piece '+(piece.piece+1)+(piece.progress<0?', in yard':piece.progress===E.HOME?', home':', on board')});
    svg('circle',{cx:x,cy:y+2,r:radius,fill:'#0008'},tokenNode);
    svg('circle',{cx:x,cy:y,r:radius,fill:'url(#ludi-gem-'+piece.p.color+')',stroke:'#eee7ce','stroke-width':1},tokenNode);
    for(let facet=0;facet<8;facet++){
@@ -167,7 +167,7 @@
  }
  function action(a){const g=snapshot();if(!g||!yourTurn(g))return;if(local){try{local=E.act(local,local.turn,a);$('error').textContent='';render()}catch(e){$('error').textContent=e.message}}else return send(a)}
  async function request(a,credentials=room?{code:room.code,token}:null){
-  const response=await fetch('/api/ludo'+(a?'':'?code='+encodeURIComponent(credentials.code)),{method:a?'POST':'GET',headers:{'Content-Type':'application/json',...(credentials?.token?{Authorization:'Bearer '+credentials.token}:{})},...(a?{body:JSON.stringify({...a,...(credentials?{code:credentials.code,version}:{})})}:{})});
+  const response=await fetch('/api/ludi'+(a?'':'?code='+encodeURIComponent(credentials.code)),{method:a?'POST':'GET',headers:{'Content-Type':'application/json',...(credentials?.token?{Authorization:'Bearer '+credentials.token}:{})},...(a?{body:JSON.stringify({...a,...(credentials?{code:credentials.code,version}:{})})}:{})});
   const r=await response.json();if(!response.ok){const e=Error(r.error||'Unable to connect.');e.status=response.status;throw e}return r;
  }
  function receive(r,newToken){if(room&&r.code===room.code&&r.version<version)return;room=r;version=r.version;if(newToken)token=newToken;render()}

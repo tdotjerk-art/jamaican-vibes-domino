@@ -1,4 +1,4 @@
-const express=require('express'),crypto=require('node:crypto'),E=require('./public/ludo/engine');
+const express=require('express'),crypto=require('node:crypto'),E=require('./public/ludi/engine');
 const digest=token=>crypto.createHash('sha256').update(token).digest('hex');
 function createLUDIRouter({rollDie=()=>crypto.randomInt(1,7)}={}){
  const router=express.Router(),rooms=new Map(),rates=new Map(),day=86400000;
@@ -57,4 +57,4 @@ function createLUDIRouter({rollDie=()=>crypto.randomInt(1,7)}={}){
  router.use((error,req,res,next)=>{if(error.type==='entity.too.large')return res.status(413).json({error:'Request too large.'});if(error instanceof SyntaxError)return res.status(400).json({error:'Invalid request.'});next(error)});
  return router;
 }
-module.exports={createLUDIRouter,createLudoRouter:createLUDIRouter};
+module.exports={createLUDIRouter};

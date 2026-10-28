@@ -1,4 +1,4 @@
-const test=require('node:test'),A=require('node:assert/strict'),E=require('../public/ludo/engine');
+const test=require('node:test'),A=require('node:assert/strict'),E=require('../public/ludi/engine');
 const fresh=(n=4)=>E.fresh(Array.from({length:n},(_,i)=>'P'+i));
 const roll=(g,first,second)=>{let next=0;return E.act(g,g.turn,{type:'roll'},()=>[first,second][next++]);};
 const move=(g,piece,die)=>E.act(g,g.turn,{type:'move',piece,die});

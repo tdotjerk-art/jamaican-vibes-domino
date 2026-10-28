@@ -253,7 +253,7 @@ service, account, dependency, or environment variable is required.
 
 ## LUDI
 
-Choose **LUDI** on the home menu or open `/ludo/`. The board follows the
+Choose **LUDI** on the home menu or open `/ludi/`. The board follows the
 owner's Jamaican reference: black, green and gold, with Kingston, Cornwall,
 Middlesex and Surrey corners, long continuous stripes, rotated county artwork,
 and single-file rows of green, black, red and gold pieces. The supplied hummingbird
@@ -272,7 +272,7 @@ play the bigger die first, then the smaller die, on one piece or split between p
 can bring a piece out and the other die can move it. Unusable remaining dice are
 skipped. Computer rolls and moves are separated by deliberate pauses.
 
-Online rooms use `/api/ludo` on the existing Express service. The host chooses
+Online rooms use `/api/ludi` on the existing Express service. The host chooses
 the player count; every seat must be filled before the host starts. Dice are
 rolled on the server, actions are validated against the current turn and room
 revision, and a secret browser-held token recovers each seat. A room code or a

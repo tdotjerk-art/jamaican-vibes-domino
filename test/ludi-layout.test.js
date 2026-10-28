@@ -1,4 +1,4 @@
-const test=require('node:test'),A=require('node:assert/strict'),E=require('../public/ludo/engine'),L=require('../public/ludo/layout');
+const test=require('node:test'),A=require('node:assert/strict'),E=require('../public/ludi/engine'),L=require('../public/ludi/layout');
 test('reference board has continuous long lanes, one cell per corner, and no overlapping playable spaces',()=>{
  const cells=E.TRACK.slice();
  for(let color=0;color<4;color++)for(let step=E.OUTER_LAST+1;step<E.HOME;step++)cells.push(E.coordinate({color},step));

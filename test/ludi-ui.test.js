@@ -1,10 +1,10 @@
-const test=require('node:test'),A=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),E=require('../public/ludo/engine');
+const test=require('node:test'),A=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),E=require('../public/ludi/engine');
 function element(){return {children:[],style:{},value:'',hidden:false,disabled:false,textContent:'',attributes:{},append(...els){this.children.push(...els)},replaceChildren(...els){this.children=els},setAttribute(k,v){this.attributes[k]=v},classList:{toggle(){}}};}
 function boot(die=[6,1]){
  const nodes={},timeouts=new Map(),intervals=new Map(),storage=new Map([['jv-draff-player-name-v1','Junior']]);let next=0,response,lastBody;
  const get=id=>nodes[id]||(nodes[id]=element());get('mode').value='ai';get('count').value='2';get('name').value='Junior';
- const context=vm.createContext({JVLudiLayout:require('../public/ludo/layout'),JVLudo:{...E,act:(g,seat,a)=>{let next=0;const pair=typeof die==='function'?die(g,seat,a):die;return E.act(g,seat,a,()=>Array.isArray(pair)?pair[next++]:pair)}},document:{getElementById:get,createElement:element,createElementNS:element,body:element(),addEventListener(){},hidden:false},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},setTimeout:(fn,ms)=>{timeouts.set(++next,{fn,ms});return next},clearTimeout:id=>timeouts.delete(id),setInterval:fn=>{intervals.set(++next,fn);return next},clearInterval:id=>intervals.delete(id),location:{origin:'https://game.test',href:'https://game.test/ludo/'},URL,navigator:{clipboard:{writeText:async()=>{}}},confirm:()=>true,fetch:async(url,options)=>{lastBody=options.body?JSON.parse(options.body):null;return response}});
- vm.runInContext(fs.readFileSync('public/ludo/app.js','utf8'),context);
+ const context=vm.createContext({JVLudiLayout:require('../public/ludi/layout'),JVLUDI:{...E,act:(g,seat,a)=>{let next=0;const pair=typeof die==='function'?die(g,seat,a):die;return E.act(g,seat,a,()=>Array.isArray(pair)?pair[next++]:pair)}},document:{getElementById:get,createElement:element,createElementNS:element,body:element(),addEventListener(){},hidden:false},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},setTimeout:(fn,ms)=>{timeouts.set(++next,{fn,ms});return next},clearTimeout:id=>timeouts.delete(id),setInterval:fn=>{intervals.set(++next,fn);return next},clearInterval:id=>intervals.delete(id),location:{origin:'https://game.test',href:'https://game.test/ludi/'},URL,navigator:{clipboard:{writeText:async()=>{}}},confirm:()=>true,fetch:async(url,options)=>{lastBody=options.body?JSON.parse(options.body):null;return response}});
+ vm.runInContext(fs.readFileSync('public/ludi/app.js','utf8'),context);
  return {get,timeouts,intervals,storage,setResponse:r=>response=r,lastBody:()=>lastBody,start:()=>get('setupForm').onsubmit({preventDefault(){}}),tick(){const [id,job]=timeouts.entries().next().value;timeouts.delete(id);job.fn();return job.ms;}};
 }
 test('two dice tumble on the table before moves unlock; computer rolls and moves pause separately',()=>{
@@ -30,10 +30,10 @@ test('same-device play allows the next person to roll on the same browser',()=>{
  const ui=boot(1);ui.get('mode').value='local';ui.start();ui.get('roll').onclick();ui.tick();A.match(ui.get('turnBanner').textContent,/Player 2/);A.equal(ui.get('roll').disabled,false);A.equal(ui.timeouts.size,0);
  ui.get('roll').onclick();ui.tick();A.match(ui.get('turnBanner').textContent,/Junior/);
 });
-test('online Ludo sends the name and count, waits for players, and recovers from a lost room',async()=>{
+test('online Ludi sends the name and count, waits for players, and recovers from a lost room',async()=>{
  const ui=boot(),host={code:'ABCDEF12',token:'a'.repeat(64),you:0,version:0,total:2,players:['Junior'],state:null,votes:[]};
  ui.get('mode').value='online';ui.setResponse({ok:true,json:async()=>host});ui.start();await new Promise(setImmediate);
- A.equal(ui.lastBody().name,'Junior');A.equal(ui.lastBody().total,2);A.equal(ui.get('startOnline').disabled,true);A.equal(ui.storage.has('jv-ludo-room-v1'),true);
+ A.equal(ui.lastBody().name,'Junior');A.equal(ui.lastBody().total,2);A.equal(ui.get('startOnline').disabled,true);A.equal(ui.storage.has('jv-ludi-room-v1'),true);
  ui.setResponse({ok:true,json:async()=>({...host,version:1,players:['Junior','Andre']})});await [...ui.intervals.values()][0]();A.equal(ui.get('startOnline').disabled,false);
  ui.setResponse({ok:true,json:async()=>({...host,version:2,players:['Junior','Andre'],state:E.fresh(['Junior','Andre'])})});await ui.get('startOnline').onclick();A.equal(ui.get('roll').disabled,false);A.equal(ui.get('playControls').hidden,false);
  let draw=0;const pair=E.act(E.fresh(['Junior','Andre']),0,{type:'roll'},()=>[6,2][draw++]);const rolled={...host,version:3,players:['Junior','Andre'],state:pair};
@@ -42,7 +42,7 @@ test('online Ludo sends the name and count, waits for players, and recovers from
  const moved=E.act(pair,0,{type:'move',piece:0,die:0});ui.setResponse({ok:true,json:async()=>({...rolled,version:4,state:moved})});await ui.get('moves').children[0].onclick();A.equal(ui.lastBody().die,0);A.match(ui.get('tableDie0').className,/used/);A.equal(ui.get('tableDie1').attributes['aria-pressed'],'true');
 
  ui.setResponse({ok:false,status:404,json:async()=>({error:'Room not found or expired. Create a new room.'})});await [...ui.intervals.values()][0]();
- A.equal(ui.get('setup').hidden,false);A.equal(ui.storage.has('jv-ludo-room-v1'),false);A.equal(ui.intervals.size,0);A.match(ui.get('error').textContent,/not found/);
+ A.equal(ui.get('setup').hidden,false);A.equal(ui.storage.has('jv-ludi-room-v1'),false);A.equal(ui.intervals.size,0);A.match(ui.get('error').textContent,/not found/);
 });
 
 test('both dice match all four players and keep the actual roller color until the animation finishes',()=>{
