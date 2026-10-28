@@ -1,8 +1,11 @@
 (function(root){
  'use strict';
  // Compact home zones leave more room for the playable track.
- const UNIT=46,CENTER=600-12*UNIT;
- const edge=n=>n<=6?n*UNIT:6*UNIT+CENTER+(n-7)*UNIT;
+ const UNIT=46;
+ // Give the three-wide colored cross the unused space between the fixed home zones.
+ // All 13 columns and rows still tile the full 600px board without overlaps.
+ const OUTER=40,CROSS=200/3;
+ const edge=n=>n<=5?n*OUTER:n<=8?5*OUTER+(n-5)*CROSS:400+(n-8)*OUTER;
  const middle=n=>(edge(n)+edge(n+1))/2;
  const palettes={B:'#080b08',G:'#08753c',Y:'#f4cf22'};
  function paint(r,c){
