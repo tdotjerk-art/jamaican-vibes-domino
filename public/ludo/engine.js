@@ -41,8 +41,8 @@
   return captured;
  }
  function ordered(g){
-  const choices=rawLegal(g),highest=Math.max(...choices.map(move=>move.value));
-  return choices.filter(move=>move.value===highest);
+  // Either die may be chosen first by tapping it on the table.
+  return rawLegal(g);
  }
  function wouldCapture(g,move){
   const player=g.players[g.turn],index=ring(player,move.to);
@@ -82,7 +82,7 @@
    g.dice=dice;g.remaining=[0,1];g.capturedThisRoll=[];g.rollNo++;g.bonus=dice.includes(6);g.last={type:'roll',seat,dice:dice.slice()};
    note(g,p.name+' rolled '+dice[0]+' and '+dice[1]+'.');
    g.phase='move';
-   if(!legal(g).length){note(g,rawLegal(g).length?'No legal bigger-die move can preserve the other die. Turn passes without capturing.':p.name+' has no available move with either die. Turn passes.');next(g);}
+   if(!legal(g).length){note(g,rawLegal(g).length?'No legal move can preserve the other die. Turn passes without capturing.':p.name+' has no available move with either die. Turn passes.');next(g);}
    return g;
   }
   if(action.type!=='move'||g.phase!=='move')throw Error('Roll the dice first.');
@@ -95,7 +95,6 @@
   const move=legal(g,die).find(m=>m.piece===action.piece&&m.die===die);
   if(!move){
    if(rawLegal(g,die).some(m=>m.piece===action.piece&&m.die===die)){
-    if(ordered(g).some(m=>m.value>g.dice[die]))throw Error('Move the bigger die first.');
     throw Error('Use both dice when possible. Choose a move that keeps the other die playable.');
    }
    throw Error('Choose an available piece and an unused die.');
