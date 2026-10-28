@@ -21,7 +21,7 @@
   else if(c===6&&r>=7)code='BYGBYG'[r-7];
   return palettes[code||'B'];
  }
- function home(color){const [x,y]=[[0,0],[edge(8),0],[edge(8),edge(8)],[0,edge(8)]][color];return {x:x+25,y:y+25,width:edge(5)-50,height:edge(5)-50};}
+ function home(color){const side=edge(5)-50,margin=8,far=600-margin-side;const [x,y]=[[margin,margin],[far,margin],[far,far],[margin,far]][color];return {x,y,width:side,height:side};}
  function yard(color,piece){const h=home(color),along=20+34*piece;return color===0?[h.x+30,h.y+along]:color===1?[h.x+along,h.y+30]:color===2?[h.x+h.width-20,h.y+along]:[h.x+along,h.y+h.height-20];}
  function finished(color,piece){const near=edge(6)+12,far=edge(7)-12,along=264+24*piece;return color===0?[near,along]:color===1?[along,near]:color===2?[far,along]:[along,far];}
  const api={UNIT,edge,middle,paint,home,yard,finished};if(typeof module!=='undefined')module.exports=api;else root.JVLudiLayout=api;
