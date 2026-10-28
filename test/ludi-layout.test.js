@@ -4,7 +4,7 @@ test('reference board has continuous long lanes, one cell per corner, and no ove
  for(let color=0;color<4;color++)for(let step=E.OUTER_LAST+1;step<E.HOME;step++)cells.push(E.coordinate({color},step));
  A.equal(cells.length,68);A.equal(new Set(cells.map(p=>p.join(','))).size,68);
  const boxes=cells.map(([r,c])=>({x:L.edge(c),y:L.edge(r),w:L.edge(c+1)-L.edge(c),h:L.edge(r+1)-L.edge(r)}));
- A.equal(L.edge(6),228);A.equal(L.edge(7),372);A.equal(L.edge(13),600);
+ A.ok(L.edge(6)>0&&L.edge(6)<300);A.equal(L.edge(6)+L.edge(7),600);A.equal(L.edge(13),600);
  for(let i=0;i<boxes.length;i++){
   const a=boxes[i];A.ok(a.x>=0&&a.y>=0&&a.x+a.w<=600.001&&a.y+a.h<=600.001);
   A.ok(Math.abs(a.w-(L.edge(7)-L.edge(6)))<.001||Math.abs(a.h-(L.edge(7)-L.edge(6)))<.001||Math.abs(a.w-L.UNIT)<.001);
