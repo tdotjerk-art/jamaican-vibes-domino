@@ -1,6 +1,6 @@
 (function(root){
  'use strict';
- const TEAMS=[{name:'Kingston',color:'#10964b',start:1},{name:'Cornwall',color:'#e84444',start:13},{name:'Middlesex',color:'#202924',start:25},{name:'Surrey',color:'#fed100',start:37}];
+ const TEAMS=[{name:'Green',color:'#10964b',start:1},{name:'Red',color:'#e84444',start:13},{name:'Black',color:'#202924',start:25},{name:'Gold',color:'#fed100',start:37}];
  const TRACK=[[5,0],[5,1],[5,2],[5,3],[5,4],[5,5],[4,5],[3,5],[2,5],[1,5],[0,5],[0,6],[0,7],[1,7],[2,7],[3,7],[4,7],[5,7],[5,8],[5,9],[5,10],[5,11],[5,12],[6,12],[7,12],[7,11],[7,10],[7,9],[7,8],[7,7],[8,7],[9,7],[10,7],[11,7],[12,7],[12,6],[12,5],[11,5],[10,5],[9,5],[8,5],[7,5],[7,4],[7,3],[7,2],[7,1],[7,0],[6,0]];
  const HOME=52,OUTER_LAST=46;
  const cleanName=value=>typeof value==='string'?value.replace(/[\u0000-\u001f\u007f-\u009f]/g,'').replace(/\s+/g,' ').trim().slice(0,24):'';
