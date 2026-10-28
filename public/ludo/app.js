@@ -2,7 +2,7 @@
  'use strict';
  const E=JVLUDI,L=JVLudiLayout,$=id=>document.getElementById(id),svgNS='http://www.w3.org/2000/svg';
  const seatKey='jv-ludo-room-v1',nameKey='jv-draff-player-name-v1';
- let local=null,room=null,token=null,version=-1,busy=false,epoch=0,poll=null,aiTimer=null,message='',selectedDie=null,rolling=false,rollTimer=null,shownRollNo=0;
+ let local=null,room=null,token=null,version=-1,busy=false,epoch=0,poll=null,aiTimer=null,message='',selectedDie=null,rolling=false,rollTimer=null,shownRollNo=0,autoRollTimer=null,autoRollKey='',autoRollDeadline=0;
  function saved(){try{const r=JSON.parse(localStorage.getItem(seatKey)||'null');return r&&/^[A-F0-9]{8}$/.test(r.code)&&/^[a-f0-9]{64}$/.test(r.token)?r:null}catch{return null}}
  function save(r){try{if(r)localStorage.setItem(seatKey,JSON.stringify({code:r.code,token:r.token}));else localStorage.removeItem(seatKey)}catch{}}
  function name(){const n=E.cleanName($('name').value);if(!n)throw Error('Enter your name to play.');try{localStorage.setItem(nameKey,n)}catch{}return n}
@@ -96,6 +96,20 @@
   }
   $('tableRoll').disabled=!g||!yourTurn(g)||g.phase!=='roll';$('tableRoll').textContent=rolling?'Rolling…':'Roll dice';
  }
+ function scheduleAutoRoll(g){
+  const eligible=!!g&&g.phase==='roll'&&yourTurn(g)&&($('mode').value!=='ai'||g.turn===0);
+  const key=eligible?(local?'local':'online')+':'+(room?.code||'')+':'+g.turn+':'+g.rollNo:'';
+  if(key===autoRollKey)return;
+  clearTimeout(autoRollTimer);autoRollTimer=null;autoRollKey=key;
+  if(!key)return;
+  autoRollDeadline=Date.now()+10000;
+  autoRollTimer=setTimeout(()=>{
+   autoRollTimer=null;
+   const current=snapshot();
+   if(autoRollKey!==key||!current||current.phase!=='roll'||current.turn!==g.turn||current.rollNo!==g.rollNo||!yourTurn(current))return;
+   action({type:'roll'});
+  },10000);
+ }
  function render(){
   clearTimeout(aiTimer);const g=snapshot(),active=!!(local||room);syncRoll(g);const choices=g?E.legal(g):[];if(!choices.some(m=>m.die===selectedDie))selectedDie=choices[0]?.die??null;document.body.classList.toggle('in-game',!!g);
   $('setup').hidden=active;$('gamePanel').hidden=!active;$('joinControls').hidden=$('mode').value!=='online';$('begin').textContent=$('mode').value==='online'?'Create online room':'Start game ↗';$('resume').hidden=!saved();
@@ -115,7 +129,7 @@
   $('hint').textContent=!g?'':rolling?'Both dice are rolling on the table.':g.phase==='over'?'All four pieces are home. Start another game.':g.phase==='move'?(yourTurn(g)?'Tap either die to play it first. Using die '+(selectedDie+1)+' ('+g.dice[selectedDie]+'). Choose a piece for the highlighted die.':'Waiting for '+g.players[g.turn].name+' to move.'):'Roll a six on either die to enter. Tap either die to choose which to play first.';
   drawDice(g);moveButtons($('moves'),g);moveButtons($('quickMoves'),g);
   $('history').replaceChildren();(g?.history||[]).slice(-5).reverse().forEach(text=>$('history').append(node('p',text)));
-  board(g);scheduleComputer();
+  board(g);scheduleAutoRoll(g);scheduleComputer();
  }
  function scheduleComputer(){
   const g=local;if(!g||rolling||$('mode').value!=='ai'||g.turn===0||g.phase==='over')return;
@@ -160,7 +174,7 @@
  $('startOnline').onclick=()=>send({type:'start'});$('roll').onclick=$('quickRoll').onclick=$('tableRoll').onclick=()=>action({type:'roll'});
  for(let die=0;die<2;die++)$('tableDie'+die).onclick=()=>{const g=snapshot();if(g&&yourTurn(g)&&E.legal(g,die).length){selectedDie=die;render()}};
  $('newGame').onclick=()=>{if(room)send({type:'rematch'});else if(confirm('Start a new LUDI game? The current board will be cleared.'))startLocal()};
- $('leave').onclick=()=>{if(!confirm('Leave this table? Online players can return using this browser’s saved room.'))return;epoch++;clearTimeout(aiTimer);clearTimeout(rollTimer);rolling=false;clearInterval(poll);local=null;room=null;token=null;version=-1;busy=false;message='';$('error').textContent='';render()};
+ $('leave').onclick=()=>{if(!confirm('Leave this table? Online players can return using this browser’s saved room.'))return;epoch++;clearTimeout(aiTimer);clearTimeout(rollTimer);clearTimeout(autoRollTimer);autoRollKey='';rolling=false;clearInterval(poll);local=null;room=null;token=null;version=-1;busy=false;message='';$('error').textContent='';render()};
  $('copy').onclick=async()=>{if(!room)return;const link=new URL('/ludo/',location.origin);link.searchParams.set('room',room.code);try{await navigator.clipboard.writeText(link.href);message='Invite link copied.'}catch{message='Share room code: '+room.code}render()};
  try{$('name').value=E.cleanName(localStorage.getItem(nameKey))}catch{}
  const invite=new URL(location.href).searchParams.get('room');if(invite){$('mode').value='online';$('code').value=invite.toUpperCase()}
