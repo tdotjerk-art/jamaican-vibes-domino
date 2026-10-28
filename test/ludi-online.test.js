@@ -1,7 +1,7 @@
 const test=require('node:test'),A=require('node:assert/strict'),express=require('express');
-const {createLudiRouter}=require('../ludi-online');
-test('Ludi online rooms validate seats, server dice, revisions, reconnects and unanimous rematches',async()=>{
- let rolled=0;const app=express();app.use('/api/ludi',createLudiRouter({rollDie:()=>[6,3][rolled++%2]}));const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const origin='http://127.0.0.1:'+server.address().port;
+const {createLUDIRouter}=require('../ludi-online');
+test('LUDI online rooms validate seats, server dice, revisions, reconnects and unanimous rematches',async()=>{
+ let rolled=0;const app=express();app.use('/api/ludi',createLUDIRouter({rollDie:()=>[6,3][rolled++%2]}));const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const origin='http://127.0.0.1:'+server.address().port;
  const call=async(a,seat)=>{const response=await fetch(origin+'/api/ludi'+(a?'':'?code='+seat.code),{method:a?'POST':'GET',headers:{Origin:origin,'Content-Type':'application/json',...(seat?{Authorization:'Bearer '+seat.token}:{})},...(a?{body:JSON.stringify({...a,...(seat?{code:seat.code,version:seat.version}:{})})}:{})});return {status:response.status,data:await response.json()}};
  try{
   A.equal((await call({type:'create',total:2})).status,400);A.equal((await call({type:'create',name:'P',total:5})).status,400);
@@ -26,7 +26,7 @@ test('Ludi online rooms validate seats, server dice, revisions, reconnects and u
   const foreign=await fetch(origin+'/api/ludi',{method:'POST',headers:{Origin:'https://other.test','Content-Type':'application/json'},body:JSON.stringify({type:'create',name:'P',total:2})});A.equal(foreign.status,403);
  }finally{server.closeAllConnections();await new Promise(r=>server.close(r))}
 });
-test('the existing app serves Ludi, its assets and the home-menu link',async()=>{
+test('the existing app serves LUDI, its assets and the home-menu link',async()=>{
  const {server,io}=require('../server');await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin='http://127.0.0.1:'+server.address().port;
  try{
   const home=await(await fetch(origin+'/')).text();A.match(home,/href="\/ludi\/"[^>]*>LUDI/);
