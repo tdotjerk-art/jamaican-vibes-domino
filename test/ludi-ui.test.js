@@ -17,7 +17,7 @@ test('two dice tumble on the table before moves unlock; computer rolls and moves
  }
  ui.get('tableRoll').onclick();A.equal(ui.tick(),950);ui.get('moves').children[0].onclick();ui.get('moves').children[0].onclick();A.match(ui.get('turnBanner').textContent,/thinking/);A.equal(ui.get('tableRoll').disabled,true);A.equal([...ui.timeouts.values()][0].ms,1400);
  ui.tick();A.equal([...ui.timeouts.values()][0].ms,950);ui.tick();A.equal([...ui.timeouts.values()][0].ms,1100);ui.tick();A.equal([...ui.timeouts.values()][0].ms,1100);
- ui.get('leave').onclick();A.equal(ui.timeouts.size,0);A.equal(ui.get('setup').hidden,false);A.equal(ui.get('tableDice').hidden,true);
+ ui.get('leave').onclick();A.ok([...ui.timeouts.values()].every(t=>t.ms===10000));A.equal(ui.get('setup').hidden,false);A.equal(ui.get('tableDice').hidden,true);
 });
 test('either table die can be selected first and both show actual pips',()=>{
  const ui=boot([6,6]);ui.start();ui.get('tableRoll').onclick();ui.tick();
