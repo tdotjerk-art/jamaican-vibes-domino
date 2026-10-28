@@ -1,8 +1,8 @@
 (function(root){
  'use strict';
  // Larger track squares and inset homes keep every part within the 600-unit board.
- // Widen the colored central cross by another 15% while preserving the 600px board and corner homes.
- const CENTER=144*1.15*1.15,UNIT=(600-CENTER)/12;
+ // Widen the colored central cross by an additional 10% while preserving the 600px board and corner homes.
+ const CENTER=144*1.15*1.15*1.10,UNIT=(600-CENTER)/12;
  const edge=n=>n<=6?n*UNIT:6*UNIT+CENTER+(n-7)*UNIT;
  const middle=n=>(edge(n)+edge(n+1))/2;
  const palettes={B:'#080b08',G:'#08753c',Y:'#f4cf22'};
