@@ -16,15 +16,28 @@ function createLUDIRouter({rollDie=()=>crypto.randomInt(1,7)}={}){
  });
  function cleanup(){const now=Date.now();for(const [code,r]of rooms)if(r.expires<=now){clearTimeout(r.rollTimer);rooms.delete(code)};for(const [key,r]of rates)if(now-r.start>=60000)rates.delete(key)}
  const timer=setInterval(cleanup,60000);timer.unref?.();
- // Online rolls are enforced by the server, even when the active player's browser closes.
- function scheduleRoll(r){
+ // Enforce both online rolls and moves on the server, even if a player disconnects.
+ function scheduleTurn(r){
   clearTimeout(r.rollTimer);r.rollTimer=null;
-  if(!r.game||r.game.phase!=='roll')return;
+  if(!r.game||!['roll','move'].includes(r.game.phase))return;
   const expectedVersion=r.version,expectedGame=r.game;
   r.rollTimer=setTimeout(()=>{
-   if(r.version!==expectedVersion||r.game!==expectedGame||r.game.phase!=='roll')return;
-   try{r.game=E.act(r.game,r.game.turn,{type:'roll'},rollDie);r.version++;r.votes=[];scheduleRoll(r)}
-   catch(error){console.error('LUDI automatic roll failed:',error)}
+   if(r.version!==expectedVersion||r.game!==expectedGame)return;
+   try{
+    let action={type:'roll'};
+    if(r.game.phase==='move'){
+     const moves=E.legal(r.game);
+     if(!moves.length)return;
+     // Prefer using both dice, then captures, then progress toward home.
+     const ranked=moves.map(m=>{
+      const next=E.act(r.game,r.game.turn,{type:'move',piece:m.piece,die:m.die});
+      const follows=next.phase==='move'&&next.turn===r.game.turn?E.legal(next):[];
+      return {m,score:(r.game.remaining.length===2&&follows.length?10000:0)+(next.last?.captured?.length||0)*1000+(m.to===E.HOME?250:0)+(m.from<0?60:0)+m.to};
+     }).sort((a,b)=>b.score-a.score);
+     action={type:'move',piece:ranked[0].m.piece,die:ranked[0].m.die};
+    }else if(r.game.phase!=='roll')return;
+    r.game=E.act(r.game,r.game.turn,action,rollDie);r.version++;r.votes=[];scheduleTurn(r);
+   }catch(error){console.error('LUDI automatic turn failed:',error)}
   },10000);
   r.rollTimer.unref?.();
  }
@@ -64,7 +77,7 @@ function createLUDIRouter({rollDie=()=>crypto.randomInt(1,7)}={}){
    if(!r.game)return res.status(400).json({error:'Wait for the host to start.'});
    try{r.game=E.act(r.game,you,a,rollDie);r.votes=[]}catch(e){return res.status(400).json({error:e.message})}
   }
-  r.version++;scheduleRoll(r);return res.json(view(r,you));
+  r.version++;scheduleTurn(r);return res.json(view(r,you));
  }catch(error){console.error('LUDI room error:',error);res.status(500).json({error:'Unable to reach the game. Please try again.'})}}
  router.use((error,req,res,next)=>{if(error.type==='entity.too.large')return res.status(413).json({error:'Request too large.'});if(error instanceof SyntaxError)return res.status(400).json({error:'Invalid request.'});next(error)});
  return router;
