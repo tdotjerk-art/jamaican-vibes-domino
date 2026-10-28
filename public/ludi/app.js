@@ -114,7 +114,7 @@
   return ranked[0].m;
  }
  function scheduleAutoRoll(g){
-  const eligible=!!g&&g.phase!=='over'&&yourTurn(g)&&($('mode').value!=='ai'||g.turn===0);
+  const eligible=!!g&&!!local&&g.phase!=='over'&&yourTurn(g)&&($('mode').value!=='ai'||g.turn===0);
   const key=eligible?(local?'local':'online')+':'+(room?.code||'')+':'+g.turn+':'+g.rollNo+':'+g.phase+':'+g.remaining.join(',')+':'+g.players[g.turn].tokens.join(','):'';
   if(key===autoRollKey)return;
   clearTimeout(autoRollTimer);autoRollTimer=null;autoRollKey=key;
