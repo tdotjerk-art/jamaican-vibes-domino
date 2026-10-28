@@ -18,3 +18,6 @@
 
 /* Mobile board fills the available width; home zones meet their edges without black gutters. */
 @media(max-width:650px){.layout{padding:0 2px;margin:10px auto;gap:14px}.board-viewport{width:100%;max-width:none}.board-frame{padding:3px;border-radius:12px}.turn-banner{margin-bottom:8px}.table-heading{margin-bottom:7px}}
+
+/* Keep the dice centered while removing only the on-table roll button. */
+#tableRoll{display:none!important}
