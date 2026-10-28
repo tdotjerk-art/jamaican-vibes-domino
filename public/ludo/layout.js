@@ -1,11 +1,8 @@
 (function(root){
  'use strict';
- // Corner homes and expanded three-wide bridges into the center finish.
- const UNIT=46;
- // Symmetric grid: 5 outer cells (36px), 3 bridge/finish cells (80px), 5 outer cells (36px).
- // The grid tiles the 600px board with no gaps or overlapping squares.
- const OUTER=36,CROSS=80;
- const edge=n=>n<=5?n*OUTER:n<=8?5*OUTER+(n-5)*CROSS:420+(n-8)*OUTER;
+ // Larger track squares and inset homes keep every part within the 600-unit board.
+ const UNIT=38,CENTER=600-12*UNIT;
+ const edge=n=>n<=6?n*UNIT:6*UNIT+CENTER+(n-7)*UNIT;
  const middle=n=>(edge(n)+edge(n+1))/2;
  const palettes={B:'#080b08',G:'#08753c',Y:'#f4cf22'};
  function paint(r,c){
@@ -24,8 +21,8 @@
   else if(c===6&&r>=7)code='BYGBYG'[r-7];
   return palettes[code||'B'];
  }
- function home(color){const side=147,margin=12,far=600-margin-side;const [x,y]=[[margin,margin],[far,margin],[far,far],[margin,far]][color];return {x,y,width:side,height:side};}
- function yard(color,piece){const h=home(color),along=22+20*piece;return color===0?[h.x+20,h.y+along]:color===1?[h.x+along,h.y+20]:color===2?[h.x+h.width-14,h.y+along]:[h.x+along,h.y+h.height-14];}
+ function home(color){const [x,y]=[[0,0],[edge(8),0],[edge(8),edge(8)],[0,edge(8)]][color];return {x:x+25,y:y+25,width:edge(5)-50,height:edge(5)-50};}
+ function yard(color,piece){const h=home(color),along=20+34*piece;return color===0?[h.x+30,h.y+along]:color===1?[h.x+along,h.y+30]:color===2?[h.x+h.width-20,h.y+along]:[h.x+along,h.y+h.height-20];}
  function finished(color,piece){const near=edge(6)+12,far=edge(7)-12,along=264+24*piece;return color===0?[near,along]:color===1?[along,near]:color===2?[far,along]:[along,far];}
  const api={UNIT,edge,middle,paint,home,yard,finished};if(typeof module!=='undefined')module.exports=api;else root.JVLudiLayout=api;
 })(globalThis);
