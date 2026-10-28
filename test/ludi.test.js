@@ -17,9 +17,9 @@ test('a six enters a piece and the other die moves it before the bonus roll',()=
  g=move(g,0,0);A.equal(g.players[0].tokens[0],0);A.equal(g.turn,0);A.equal(g.phase,'move');A.deepEqual(g.remaining,[1]);
  g=move(g,0,1);A.equal(g.players[0].tokens[0],2);A.equal(g.turn,0);A.equal(g.phase,'roll');A.deepEqual(g.remaining,[]);
 });
-test('the bigger die goes first, on one piece or split, and neither can be reused',()=>{
+test('either die may go first, on one piece or split, and neither can be reused',()=>{
  let g=fresh();g.players[0].tokens=[0,10,-1,-1];g=roll(g,3,4);
- A.throws(()=>move(g,0,0),/bigger die/);A.equal(E.act(g,0,{type:'move',piece:0}).last.die,1);
+ A.equal(E.act(g,0,{type:'move',piece:0,die:0}).last.die,0);A.equal(E.act(g,0,{type:'move',piece:0,die:1}).last.die,1);
  g=move(g,0,1);A.equal(g.players[0].tokens[0],4);A.deepEqual(g.remaining,[0]);A.throws(()=>move(g,0,1),/unused die/);A.throws(()=>roll(g,1,1),/remaining/);
  g=move(g,1,0);A.equal(g.players[0].tokens[1],13);A.equal(g.turn,1);A.equal(g.phase,'roll');
  g=fresh();g=move(move(roll(g,6,6),0,0),1,1);A.deepEqual(g.players[0].tokens,[0,0,-1,-1]);A.equal(g.turn,0);A.equal(g.phase,'roll');
@@ -131,10 +131,10 @@ test('seeded full two-dice games finish and conserve every piece within the boar
  }
 });
 
-test('6 and 5 enforce the six first in either dice position, then allow the five',()=>{
+test('6 and 5 allow either die first, then the remaining die',()=>{
  for(const pair of [[6,5],[5,6]]){
   let g=fresh();g.players[0].tokens[0]=0;g=roll(g,...pair);const high=pair.indexOf(6),low=pair.indexOf(5),before=structuredClone(g);
-  A.ok(E.legal(g).every(m=>m.value===6));A.equal(E.legal(g,low).length,0);A.throws(()=>move(g,0,low),/bigger die/);A.deepEqual(g,before);
+  A.ok(E.legal(g).some(m=>m.value===6));A.ok(E.legal(g,low).some(m=>m.value===5));A.deepEqual(g,before);
   g=move(g,0,high);A.ok(E.legal(g).every(m=>m.value===5));g=move(g,0,low);A.equal(g.players[0].tokens[0],11);
  }
 });
@@ -147,7 +147,7 @@ test('a legal capture is not discarded when the other die cannot be used',()=>{
  for(const pair of [[2,1],[1,2],[2,2]]){
   const original=fresh();original.players[0].tokens=[0,E.HOME,E.HOME,E.HOME];original.players[1].tokens[0]=38;
   const pending=structuredClone(original);pending.phase='move';pending.dice=pair;pending.remaining=[0,1];pending.rollNo=1;
-  const available=E.legal(pending);A.ok(available.length>0);A.ok(available.every(m=>m.value===2));
+  const available=E.legal(pending);A.ok(available.length>0);A.ok(available.some(m=>m.value===2));
   const rolled=roll(original,...pair);A.equal(rolled.turn,0);A.equal(rolled.phase,'move');A.ok(E.legal(rolled).length>0);
   const chosen=E.legal(rolled)[0],result=move(rolled,chosen.piece,chosen.die);
   A.equal(result.turn,1);A.equal(result.players[0].tokens[0],2);A.equal(result.players[1].tokens[0],-1);A.ok(result.history.some(line=>/captured 1 piece/.test(line)));
