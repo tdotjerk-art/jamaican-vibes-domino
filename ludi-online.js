@@ -14,8 +14,20 @@ function createLUDIRouter({rollDie=()=>crypto.randomInt(1,7)}={}){
   }
   next();
  });
- function cleanup(){const now=Date.now();for(const [code,r]of rooms)if(r.expires<=now)rooms.delete(code);for(const [key,r]of rates)if(now-r.start>=60000)rates.delete(key)}
+ function cleanup(){const now=Date.now();for(const [code,r]of rooms)if(r.expires<=now){clearTimeout(r.rollTimer);rooms.delete(code)};for(const [key,r]of rates)if(now-r.start>=60000)rates.delete(key)}
  const timer=setInterval(cleanup,60000);timer.unref?.();
+ // Online rolls are enforced by the server, even when the active player's browser closes.
+ function scheduleRoll(r){
+  clearTimeout(r.rollTimer);r.rollTimer=null;
+  if(!r.game||r.game.phase!=='roll')return;
+  const expectedVersion=r.version,expectedGame=r.game;
+  r.rollTimer=setTimeout(()=>{
+   if(r.version!==expectedVersion||r.game!==expectedGame||r.game.phase!=='roll')return;
+   try{r.game=E.act(r.game,r.game.turn,{type:'roll'},rollDie);r.version++;r.votes=[];scheduleRoll(r)}
+   catch(error){console.error('LUDI automatic roll failed:',error)}
+  },10000);
+  r.rollTimer.unref?.();
+ }
  const view=(r,you,token)=>({code:r.code,you,...(token?{token}:{}),version:r.version,total:r.total,players:r.seats.map(p=>p.name),state:r.game,votes:r.votes});
  router.route('/').get(handle).post(handle);
  function handle(req,res){try{
@@ -52,7 +64,7 @@ function createLUDIRouter({rollDie=()=>crypto.randomInt(1,7)}={}){
    if(!r.game)return res.status(400).json({error:'Wait for the host to start.'});
    try{r.game=E.act(r.game,you,a,rollDie);r.votes=[]}catch(e){return res.status(400).json({error:e.message})}
   }
-  r.version++;return res.json(view(r,you));
+  r.version++;scheduleRoll(r);return res.json(view(r,you));
  }catch(error){console.error('LUDI room error:',error);res.status(500).json({error:'Unable to reach the game. Please try again.'})}}
  router.use((error,req,res,next)=>{if(error.type==='entity.too.large')return res.status(413).json({error:'Request too large.'});if(error instanceof SyntaxError)return res.status(400).json({error:'Invalid request.'});next(error)});
  return router;
