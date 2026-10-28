@@ -70,7 +70,23 @@
   return choices.filter(move=>dieIndex===undefined||move.die===dieIndex);
  }
  function note(g,message){g.history.push(message);g.history=g.history.slice(-40);}
- function next(g){g.turn=(g.turn+1)%g.players.length;g.phase='roll';g.remaining=[];g.capturedThisRoll=[];g.bonus=false;}
+ function completelyBarrierBlocked(g){
+  const pieces=g.players[g.turn].tokens;
+  // Only auto-pass before rolling when all four pieces are on the track and
+  // no possible die (1 through 6) could get any of them past the barrier.
+  return pieces.every(progress=>progress>=0&&progress<HOME)
+   &&![1,2,3,4,5,6].some(die=>movesFor(g,die).length);
+ }
+ function next(g){
+  g.turn=(g.turn+1)%g.players.length;g.phase='roll';g.remaining=[];g.capturedThisRoll=[];g.bonus=false;
+  // Avoid an endless loop when every player is trapped.
+  for(let checked=0;checked<g.players.length&&completelyBarrierBlocked(g);checked++){
+   const blocked=g.players[g.turn];
+   note(g,blocked.name+' is completely blocked by a barrier. Automatic pass.');
+   g.last={type:'pass',seat:g.turn,reason:'barrier'};
+   g.turn=(g.turn+1)%g.players.length;
+  }
+ }
  function act(state,seat,action,rollDie=()=>Math.floor(Math.random()*6)+1){
   if(!action||typeof action!=='object')throw Error('Invalid action.');
   if(state.phase==='over')throw Error('This game is finished. Start a new game.');
@@ -78,6 +94,7 @@
   const g=structuredClone(state),p=g.players[seat];
   if(action.type==='roll'){
    if(g.phase!=='roll')throw Error('Use the remaining dice before rolling again.');
+   if(completelyBarrierBlocked(g)){note(g,p.name+' is completely blocked by a barrier. Automatic pass.');g.last={type:'pass',seat,reason:'barrier'};next(g);return g;}
    const dice=[rollDie(),rollDie()];if(dice.some(die=>!Number.isInteger(die)||die<1||die>6))throw Error('Invalid dice result.');
    g.dice=dice;g.remaining=[0,1];g.capturedThisRoll=[];g.rollNo++;g.bonus=dice.includes(6);g.last={type:'roll',seat,dice:dice.slice()};
    note(g,p.name+' rolled '+dice[0]+' and '+dice[1]+'.');
