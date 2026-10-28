@@ -197,7 +197,7 @@
  for(let die=0;die<2;die++)$('tableDie'+die).onclick=()=>{const g=snapshot();if(g&&yourTurn(g)&&E.legal(g,die).length){selectedDie=die;render()}};
  $('newGame').onclick=()=>{if(room)send({type:'rematch'});else if(confirm('Start a new LUDI game? The current board will be cleared.'))startLocal()};
  $('leave').onclick=()=>{if(!confirm('Leave this table? Online players can return using this browser’s saved room.'))return;epoch++;clearTimeout(aiTimer);clearTimeout(rollTimer);clearTimeout(autoRollTimer);autoRollKey='';rolling=false;clearInterval(poll);local=null;room=null;token=null;version=-1;busy=false;message='';$('error').textContent='';render()};
- $('copy').onclick=async()=>{if(!room)return;const link=new URL('/ludo/',location.origin);link.searchParams.set('room',room.code);try{await navigator.clipboard.writeText(link.href);message='Invite link copied.'}catch{message='Share room code: '+room.code}render()};
+ $('copy').onclick=async()=>{if(!room)return;const link=new URL('/ludi/',location.origin);link.searchParams.set('room',room.code);try{await navigator.clipboard.writeText(link.href);message='Invite link copied.'}catch{message='Share room code: '+room.code}render()};
  try{$('name').value=E.cleanName(localStorage.getItem(nameKey))}catch{}
  const invite=new URL(location.href).searchParams.get('room');if(invite){$('mode').value='online';$('code').value=invite.toUpperCase()}
  document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh()});render();
