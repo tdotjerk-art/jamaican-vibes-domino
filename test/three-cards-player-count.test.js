@@ -17,7 +17,7 @@ for(const count of [2,3])test(`${count} online players complete calls and a hand
   let guard=0;while(clients[0].current.game.phase==='pick'&&guard++<30){const g=clients[0].current.game;const seat=g.pickSeats.find(i=>!g.picks[i]);await command(clients[seat],'action',{type:'pick'});}
   let g=clients[0].current.game;await command(clients[g.dealer],'action',{type:'deal'});
   g=clients[0].current.game;assert.equal(g.players.length,count);assert(['offer','draw'].includes(g.phase));
-  const expectedBonus=[6,11].includes(g.opening.rank)?count:0;assert.equal(g.bonus,expectedBonus);const hands=clients.map((client,i)=>client.current.game.players[i].hand);const expected=callResult(hands,hands.flatMap((hand,i)=>evaluateCall(hand)?[i]:[]));assert.deepEqual(g.callSummary.deltas,expected.deltas);assert.equal(g.players[g.dealer].score,expectedBonus+expected.deltas[g.dealer]);const beforeHand=g.players.map(p=>p.score);
+  const expectedBonus=[6,11].includes(g.opening.rank)?count-1:0;assert.equal(g.bonus,expectedBonus);const hands=clients.map((client,i)=>client.current.game.players[i].hand);const expected=callResult(hands,hands.flatMap((hand,i)=>evaluateCall(hand)?[i]:[]));assert.deepEqual(g.callSummary.deltas,expected.deltas);assert.equal(g.players[g.dealer].score,expectedBonus+expected.deltas[g.dealer]);const beforeHand=g.players.map(p=>p.score);
   guard=0;while(!['hand-over','session-over'].includes(clients[0].current.game.phase)&&guard++<300){
    g=clients[0].current.game;const seat=g.turn;let action;
    if(g.phase==='draw')action={type:'draw'};

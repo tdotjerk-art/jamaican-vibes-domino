@@ -16,10 +16,10 @@ test('regular 52-card pack and highest card selects dealer; ties repick',()=>{
  const g=new Game(['A','B','C']);g.pickDeck=[c(8),c(14),c(3)];g.pick(0);g.pick(1);g.pick(2);assert.equal(g.dealer,1);assert.equal(g.phase,'deal');
  g.beginPicker();g.pickDeck=[c(14,'♥'),c(14),c(3)];g.pick(0);g.pick(1);g.pick(2);assert.equal(g.phase,'pick');assert.deepEqual(g.pickSeats,[1,2]);assert.equal(g.pick(0),false);
 });
-test('dealer bonus is one point per player for a six or jack, not other cards',()=>{
+test('dealer bonus is one point per opponent for a six or jack, not other cards',()=>{
  for(const rank of [6,11,7]){const g=new Game(['A','B','C'],5,seeded(123));g.phase='deal';g.dealer=0;
   // Deterministic deals exercise the bonus separately from automatic call transfers.
-  let found=false;for(let tries=0;tries<2000;tries++){g.players.forEach(p=>p.score=0);g.phase='deal';g.deal(0);if(g.opening.rank===rank){found=true;const bonus=rank===7?0:3;assert.equal(g.bonus,bonus);assert.equal(g.players[0].score,bonus+g.callSummary.deltas[0]);assert.equal(g.players.reduce((n,p)=>n+p.score,0),bonus);assert.equal(g.players.reduce((n,p)=>n+p.hand.length,0),9);break;}}
+  let found=false;for(let tries=0;tries<2000;tries++){g.players.forEach(p=>p.score=0);g.phase='deal';g.deal(0);if(g.opening.rank===rank){found=true;const bonus=rank===7?0:2;assert.equal(g.bonus,bonus);assert.equal(g.players[0].score,bonus+g.callSummary.deltas[0]);assert.equal(g.players.reduce((n,p)=>n+p.score,0),bonus);assert.equal(g.players.reduce((n,p)=>n+p.hand.length,0),9);break;}}
   assert(found);
  }
 });

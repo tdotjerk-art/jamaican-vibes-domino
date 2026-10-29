@@ -88,3 +88,18 @@ test('one- and two-point calls transfer their value per opponent; all-player tie
  const equal=[['♠','♠','♠'],['♥','♥','♥'],['♦','♦','♦'],['♣','♣','♣']].map(suits=>hand([2,7,9],suits));
  assert.deepEqual(callResult(equal,[0,1,2,3]).deltas,[0,0,0,0]);
 });
+
+ test('only the highest call is exposed in summaries and every online view',()=>{
+ const cases=[
+  [hand([3,4,5]),hand([8,9,10]),hand([2,5,9])],
+  [hand([8,9,10]),hand([2,7,9],['♥','♥','♥']),hand([2,5,9])],
+  [hand([2,7,9],['♥','♥','♥']),hand([3,4,5],['♠','♠','♠']),hand([2,5,9])],
+  [hand([3,4,5],['♠','♠','♠']),hand([2,2,2]),hand([2,5,9])],
+  [hand([2,7,9],['♥','♥','♥']),hand([3,8,10],['♠','♠','♠']),hand([2,5,9])]
+ ];
+ for(const hands of cases){const g=dealt(hands);hands.forEach((h,i)=>g.declare(i,!!evaluateCall(h)));
+ assert.deepEqual(g.callSummary.winners,[1]);assert.deepEqual(g.callSummary.calls.map(c=>!!c),[false,true,false]);
+ for(let seat=0;seat<hands.length;seat++){assert.deepEqual(g.view(seat).callSummary.calls.map(c=>!!c),[false,true,false]);}
+ g.finish(null);assert.deepEqual(g.view(0).callSummary.hands.map(h=>h.seat),[1]);
+ }
+ });
