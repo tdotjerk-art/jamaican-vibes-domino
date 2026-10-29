@@ -28,7 +28,7 @@ test('solo interface announces automatic calls, conceals winning cards and sched
  assert(ui.get('actions').children.every(b=>!/Declare/.test(b.textContent)));
  assert.deepEqual(g.callSummary.winners,[3]);assert.deepEqual(g.players.map(p=>p.score),[-3,-3,-3,9]);
  assert.match(ui.get('callResult').textContent,/Winston calls Flush, straight and threes/);assert.match(ui.get('callResult').textContent,/Winston has the strongest call/);assert.match(ui.get('callResult').textContent,/Winston \+9/);
- const opponents=ui.get('players').children.slice(1);for(const [i,el] of opponents.entries()){if(Engine.evaluateCall(g.players[i+1].hand))assert.match(text(el),/CALL:/);else assert.doesNotMatch(text(el),/CALL:/);assert.equal(descendants(el).filter(n=>n.className.split(' ').includes('back')).length,3);assert(!descendants(el).some(n=>n.className.includes('winning-cards')));}
+ const opponents=ui.get('players').children.slice(1);for(const [i,el] of opponents.entries()){if(g.callSummary.winners.includes(i+1))assert.match(text(el),/CALL:/);else assert.doesNotMatch(text(el),/CALL:/);assert.equal(descendants(el).filter(n=>n.className.split(' ').includes('back')).length,3);assert(!descendants(el).some(n=>n.className.includes('winning-cards')));}
  assert(ui.tick());assert.equal(ui.get('error').textContent,'');
 });
 test('online interface shows settled calls, preserves matching controls and pauses on disconnect',()=>{

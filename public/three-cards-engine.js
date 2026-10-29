@@ -76,7 +76,7 @@
    if(this.declarations.every(value=>value!==null)){
     const result=callResult(this.players.map(p=>p.hand),this.declarations.flatMap((value,i)=>value?[i]:[]));
     this.players.forEach((p,i)=>p.score=Math.round((p.score+result.deltas[i])*6)/6);
-    this.callSummary={name:result.call?.name||null,points:result.call?.points||0,winners:result.winners,deltas:result.deltas,tied:result.tied,calls:this.players.map(p=>{const c=evaluateCall(p.hand);return c?{name:c.name,points:c.points}:null;}),hands:result.winners.map(seat=>({seat,cards:this.players[seat].hand.slice()}))};
+    this.callSummary={name:result.call?.name||null,points:result.call?.points||0,winners:result.winners,deltas:result.deltas,tied:result.tied,calls:this.players.map((p,seat)=>result.winners.includes(seat)?{name:result.call.name,points:result.call.points}:null),hands:result.winners.map(seat=>({seat,cards:this.players[seat].hand.slice()}))};
     const names=result.winners.map(i=>this.players[i].name).join(' & ');
     this.note(result.call?names+(result.tied?' share ':' wins ')+result.call.name+'. '+result.deltas.map((delta,i)=>this.players[i].name+' '+scoreText(delta)).join('; ')+'. Matching-card play continues.':'No calls declared. Matching-card play continues.');
     this.offer((this.dealer+1)%this.players.length);
