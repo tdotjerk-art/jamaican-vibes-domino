@@ -62,7 +62,7 @@
    this.stock=deck(this.random);this.pile=[];this.players.forEach(p=>{p.hand=[];p.played=[];});this.bonus=0;this.winner=null;this.winningHand=[];this.drawn=false;
    for(let c=0;c<3;c++)for(let n=1;n<=this.players.length;n++)this.players[(this.dealer+n)%this.players.length].hand.push(this.stock.pop());
    const trump=this.stock.pop();this.opening=trump;this.pile.push(trump);
-   if(trump.rank===6||trump.rank===11){this.bonus=this.players.length;this.players[this.dealer].score+=this.bonus;this.note(this.players[this.dealer].name+' turns up '+face(trump)+' and gets '+this.bonus+' bonus points.');}
+   if(trump.rank===6||trump.rank===11){this.bonus=this.players.length-1;this.players[this.dealer].score+=this.bonus;this.note(this.players[this.dealer].name+' turns up '+face(trump)+' and gets '+this.bonus+' bonus points.');}
    else this.note(this.players[this.dealer].name+' turns up '+face(trump)+'.');
    this.nextDrawer=(this.dealer+2)%this.players.length;this.declarations=this.players.map(()=>null);this.callSummary=null;this.phase='declare';this.turn=null;this.note('The game checks every hand for calls automatically.');this.players.forEach((p,i)=>this.declare(i,!!evaluateCall(p.hand)));return true;
   }
