@@ -231,3 +231,19 @@
   .table #hand3 { top:4px!important; height:58px!important; }
   .table #hand3 .dom-physical { height:58px!important; }
 }
+
+/* Reference-sized landscape game: keep the whole table inside the visible screen. */
+@media (orientation:landscape) {
+ html,body {height:100%!important;overflow:hidden!important}
+ body .app {height:100dvh!important;min-height:0!important;max-height:100dvh!important;overflow:hidden!important}
+ body .app>.table {
+  width:80%!important;max-width:1120px!important;align-self:center!important;
+  flex:1 1 0!important;min-height:0!important;height:auto!important;max-height:100%!important;
+  margin:4px auto!important;transform:none!important;container-type:size;
+ }
+ body .app>.table {--dealt-long:clamp(20px,11cqh,64px);--dealt-short:calc(var(--dealt-long)*.54)}
+ body .app>.table #hand1,body .app>.table #hand3 {height:auto!important;min-height:0!important}
+ body .app>.table :is(#hand1,#hand2,#hand3,#hand4) .dom-physical,body .app>.table :is(#hand1,#hand2,#hand3,#hand4) .back {
+  min-width:0!important;max-width:none!important;width:var(--dealt-short)!important;height:var(--dealt-long)!important;
+ }
+}
