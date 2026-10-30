@@ -6196,7 +6196,8 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
   let nextTimer=null;
   let tickTimer=null;
   let active=false;
-  let seconds=10;
+  const nextHandSeconds=5;
+  let seconds=nextHandSeconds;
 
   function cancelCountdown(){
     active=false;
@@ -6235,7 +6236,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     cancelCountdown();
     if(localMatchOver)return;
     active=true;
-    seconds=10;
+    seconds=nextHandSeconds;
     pendingCountdownPoser=null;
 
     // The countdown ends by dealing; poser selection happens after that deal.
@@ -6257,7 +6258,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
       }
     },1000);
 
-    nextTimer=setTimeout(nextHandAction,10000);
+    nextTimer=setTimeout(nextHandAction,nextHandSeconds*1000);
   }
 
   if(typeof finishNormalWin==='function'){
