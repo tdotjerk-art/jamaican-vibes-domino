@@ -255,7 +255,7 @@
  body .app>.table {
   position:absolute!important;left:50%!important;top:32px!important;right:auto!important;bottom:auto!important;
   width:80vw!important;
-  height:calc(100dvh - 56px)!important;
+  height:min(44.944vw,calc(100dvh - 56px))!important;
   min-height:0!important;max-height:none!important;max-width:none!important;flex:none!important;
   margin:0!important;transform:translateX(-50%)!important;aspect-ratio:auto!important;container-type:size;
   --dealt-long:clamp(24px,10.5cqh,64px);--dealt-short:calc(var(--dealt-long)*.54);
