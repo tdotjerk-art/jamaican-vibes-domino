@@ -286,3 +286,5 @@
  body .app #jvGameActions #jvQuitGameBtn {position:static!important}
  body .app #jvGameActions #jvFeatureToolbar {position:static!important}
 }
+
+@media(orientation:landscape){body .app>.toolbar{left:auto!important;width:auto!important;max-width:none!important;transform:none!important;justify-content:flex-end!important}body .app>#scoreboard{width:auto!important;max-width:none!important;justify-content:flex-end!important}}
