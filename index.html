@@ -3181,7 +3181,7 @@ function separateFinishedHandsFromPlayedChain(){
 
 function positionTurnLights(){
   const table=document.querySelector('.table');if(!table)return;
-  const dealtLong=1.44*Math.min(96,(table.clientWidth*.053-4)/.54,table.clientHeight*.11);
+  const dealtLong=1.584*Math.min(96,(table.clientWidth*.053-4)/.54,table.clientHeight*.11);
   // Keep seven enlarged side tiles visible on short landscape screens.
   table.classList.toggle('compact-side-hands',dealtLong*7+18>table.clientHeight-8);
   table.style.setProperty('--dealt-long',dealtLong+'px');
