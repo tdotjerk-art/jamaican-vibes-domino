@@ -288,3 +288,13 @@
 }
 
 @media(orientation:landscape){body .app>.toolbar{left:auto!important;width:auto!important;max-width:none!important;transform:none!important;justify-content:flex-end!important}body .app>#scoreboard{width:auto!important;max-width:none!important;justify-content:flex-end!important}}
+
+/* Wrap enlarged side hands when a single seven-tile column exceeds the table. */
+.table.compact-side-hands #hand2,.table.compact-side-hands #hand4 {
+ display:grid!important;
+ grid-template-columns:repeat(2,var(--dealt-short))!important;
+ grid-auto-rows:var(--dealt-long)!important;
+ gap:3px!important;
+ width:max-content!important;
+ align-content:center!important;
+}

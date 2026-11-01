@@ -3181,7 +3181,9 @@ function separateFinishedHandsFromPlayedChain(){
 
 function positionTurnLights(){
   const table=document.querySelector('.table');if(!table)return;
-  const dealtLong=1.2*Math.min(96,(table.clientWidth*.053-4)/.54,table.clientHeight*.11);
+  const dealtLong=1.44*Math.min(96,(table.clientWidth*.053-4)/.54,table.clientHeight*.11);
+  // Keep seven enlarged side tiles visible on short landscape screens.
+  table.classList.toggle('compact-side-hands',dealtLong*7+18>table.clientHeight-8);
   table.style.setProperty('--dealt-long',dealtLong+'px');
   table.style.setProperty('--dealt-short',(dealtLong*.54)+'px');
   const topHand=$('hand3');if(topHand){topHand.style.setProperty('--dealt-long',dealtLong+'px');topHand.style.setProperty('--dealt-short',(dealtLong*.54)+'px');}
