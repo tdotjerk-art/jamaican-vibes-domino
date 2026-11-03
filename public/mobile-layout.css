@@ -377,3 +377,15 @@ body .app>.toolbar button[onclick="showRules()"],body .app>.toolbar #rulesBtn{di
 
 /* Keep Chat on the table; Extras and Replay remain available in the menu. */
 #jvFeatureToolbar #jvExtrasBtn,#jvFeatureToolbar #jvReplayBtn{display:none!important}
+
+/* Give Player 3 a separate hand row outside the table, mirroring Player 1. */
+body .app>#hand3{position:relative!important;inset:auto!important;left:auto!important;top:auto!important;bottom:auto!important;right:auto!important;transform:none!important;translate:none!important;display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;justify-content:center!important;align-items:center!important;gap:3px!important;width:max-content!important;max-width:96%!important;height:auto!important;min-height:0!important;padding:0!important;margin:3px auto!important;flex:none!important;order:2;z-index:30!important}
+body .app>#hand3 :is(.back,.dom-physical){width:var(--dealt-short)!important;min-width:0!important;max-width:none!important;height:var(--dealt-long)!important;flex:0 0 var(--dealt-short)!important;transform:none!important}
+body .app>.table #turnLight3{left:50%!important;top:7.5%!important}
+@media(orientation:landscape){
+ html,body{height:auto!important;min-height:100%;overflow-y:auto!important}
+ body .app{height:auto!important;min-height:100dvh!important;max-height:none!important;overflow:visible!important;padding-top:32px!important;align-items:center!important}
+ body .app>.table{position:relative!important;left:auto!important;right:auto!important;top:auto!important;bottom:auto!important;transform:none!important;order:3}
+ body .app>#contactTicker{position:relative!important;inset:auto!important;left:auto!important;bottom:auto!important;transform:none!important;order:4;flex:none!important;margin:3px auto!important}
+ body .app #jvGameFeedback{position:relative!important;inset:auto!important;left:auto!important;bottom:auto!important;order:5}
+}
