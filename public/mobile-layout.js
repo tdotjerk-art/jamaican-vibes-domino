@@ -60,6 +60,33 @@
   }
   function mount(){
     const app=document.querySelector('.app'),table=document.querySelector('.table');if(!app||!table)return;
+    // Move only the poser-choice card; buttons keep their normal tap behavior.
+    let poseDrag=null;
+    function positionPose(card,x,y){
+      const box=card.getBoundingClientRect();
+      card.style.setProperty('--pose-left',Math.max(8,Math.min(x,innerWidth-box.width-8))+'px');
+      card.style.setProperty('--pose-top',Math.max(8,Math.min(y,innerHeight-box.height-8))+'px');
+    }
+    document.addEventListener('pointerdown',event=>{
+      const card=event.target.closest('#card.partner-pose-choice');
+      if(!card||event.target.closest('button,input,select,a')||event.button!==0)return;
+      const box=card.getBoundingClientRect();
+      poseDrag={card,id:event.pointerId,dx:event.clientX-box.left,dy:event.clientY-box.top};
+      card.setPointerCapture(event.pointerId);
+      event.preventDefault();
+    });
+    document.addEventListener('pointermove',event=>{
+      if(!poseDrag||event.pointerId!==poseDrag.id)return;
+      positionPose(poseDrag.card,event.clientX-poseDrag.dx,event.clientY-poseDrag.dy);
+    });
+    const stopPoseDrag=()=>{poseDrag=null;};
+    document.addEventListener('pointerup',stopPoseDrag);
+    document.addEventListener('pointercancel',stopPoseDrag);
+    document.addEventListener('lostpointercapture',stopPoseDrag);
+    root.addEventListener('resize',()=>{
+      const card=document.querySelector('#card.partner-pose-choice');
+      if(card){const box=card.getBoundingClientRect();positionPose(card,box.left,box.top);}
+    });
     const actions=document.createElement('div');actions.id='jvGameActions';
     const feedback=document.createElement('div');feedback.id='jvGameFeedback';feedback.setAttribute('aria-live','polite');
     app.insertBefore(actions,table);app.insertBefore(feedback,table);
