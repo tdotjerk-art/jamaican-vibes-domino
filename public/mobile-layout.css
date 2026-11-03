@@ -447,3 +447,10 @@ body .app>.table #turnLight3{top:6.25%!important}
 body .app>.table #turnLight1{top:82.75%!important}
 body .app>.table #turnLight2{left:94.712%!important}
 body .app>.table #turnLight4{left:5.288%!important}
+
+/* Add 20% only along the Player 1–Player 3 axis; retain the one-screen frame. */
+body .app>.table{background-size:103.5% 168.75%!important;background-position:center 39.813636%!important}
+body .app>.table::before{top:3.678125%;bottom:3.678125%}
+body .app>.table #board{top:13.128125%!important;bottom:12.621875%!important}
+body .app>.table #turnLight3{top:1.5%!important}
+body .app>.table #turnLight1{top:98%!important}
