@@ -401,3 +401,7 @@ body .app>.table #turnLight3{top:11.75%!important}
 body .app>.table #turnLight1{top:72.95%!important}
 body .app>.table #turnLight2{left:85.7696%!important}
 body .app>.table #turnLight4{left:14.2304%!important}
+
+/* Keep automatic next-hand flow without controls or countdown over the table. */
+#blockedNextHand,#topNextHandBtn,#jvAutoNextCountdown{display:none!important}
+#modal:has(#card>button[onclick="closeModal();dealHand()"]){display:none!important}
