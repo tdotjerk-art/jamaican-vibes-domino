@@ -405,3 +405,30 @@ body .app>.table #turnLight4{left:14.2304%!important}
 /* Keep automatic next-hand flow without controls or countdown over the table. */
 #blockedNextHand,#topNextHandBtn,#jvAutoNextCountdown{display:none!important}
 #modal:has(#card>button[onclick="closeModal();dealHand()"]){display:none!important}
+
+/* One visible frame: controls, top hand, table, ticker and status each have a budget. */
+html,body{height:var(--fit-viewport-height,100dvh)!important;min-height:0!important;overflow:hidden!important;overscroll-behavior:none}
+body .app{position:fixed!important;inset:0!important;width:100%!important;height:var(--fit-viewport-height,100dvh)!important;min-height:0!important;max-height:var(--fit-viewport-height,100dvh)!important;display:flex!important;flex-direction:column!important;align-items:center!important;box-sizing:border-box!important;padding:32px 0 0!important;gap:0!important;overflow:hidden!important}
+body .app>.table{position:relative!important;inset:auto!important;left:auto!important;top:auto!important;width:96vw!important;height:var(--fit-table-height)!important;min-height:0!important;max-height:none!important;flex:0 0 var(--fit-table-height)!important;transform:none!important;order:3;margin:0 auto!important}
+body .app>.table,body .app>#hand3{--dealt-long:var(--fit-dealt-long)!important;--dealt-short:var(--fit-dealt-short)!important}
+body .app>#hand3{order:2;margin:3px auto!important}
+body .app>#contactTicker{position:relative!important;inset:auto!important;left:auto!important;bottom:auto!important;width:80%!important;height:20px!important;min-height:20px!important;max-height:20px!important;flex:0 0 20px!important;box-sizing:border-box!important;transform:none!important;order:4;margin:3px auto!important}
+body .app #jvGameFeedback{position:relative!important;inset:auto!important;left:auto!important;bottom:auto!important;height:20px!important;min-height:0!important;max-height:20px!important;flex:0 0 20px!important;overflow:hidden!important;order:5;margin:0!important}
+@media(orientation:landscape){
+ #jvHome{padding:6px!important;align-items:center!important;overflow:hidden!important}
+ #jvHome>.jv-card{padding:10px!important;max-height:calc(var(--fit-viewport-height,100dvh) - 12px)!important;box-sizing:border-box!important}
+ #jvHome .jv-title{font-size:22px!important;margin:0 0 6px!important}
+ #jvHome .jv-grid{gap:5px!important}
+ #jvHome .jv-btn{font-size:11px!important;min-height:30px!important;padding:6px!important;margin:0!important}
+ #jvHome .jv-small{font-size:10px!important;line-height:1.2!important;margin-top:6px!important}
+}
+
+/* Controls share the reserved top strip in either orientation. */
+body .app>.brand,body .app>header{display:none!important}
+body .app>.toolbar{position:absolute!important;top:3px!important;right:4px!important;height:26px!important;margin:0!important}
+body .app>#scoreboard{position:absolute!important;top:4px!important;right:6px!important;left:auto!important;width:auto!important;max-width:none!important;transform:none!important;margin:0!important;gap:3px!important;flex-wrap:nowrap!important}
+body .app>#scoreboard .pill{font-size:9px!important;min-height:18px!important;padding:2px 4px!important}
+body .app #jvGameActions{position:absolute!important;left:4px!important;top:3px!important;height:26px!important;min-height:0!important;margin:0!important;gap:4px!important;z-index:100001}
+body .app #jvGameActions button{min-height:26px!important;padding:4px 7px!important;font-size:10px!important}
+body .app>#jvFeatureToolbar{position:absolute!important;left:82px!important;top:3px!important;height:26px!important}
+#jvQuitGameBtn{top:3px!important;left:4px!important;min-height:26px!important;font-size:10px!important;padding:4px 7px!important}
