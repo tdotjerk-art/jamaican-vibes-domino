@@ -24,3 +24,33 @@
   sync();
  });
 })();
+
+/* A single unpitched tile impact, shared by local and online play. */
+(function(){
+ let context,lastImpact=0;
+ window.jvDominoKnock=function(kind='play',heavy=false){
+  if(!window.JVSound.enabled(kind))return;
+  try{
+   const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
+   context=context||new AC();
+   if(context.state==='suspended')context.resume().catch(()=>{});
+   const now=context.currentTime;
+   // Multiple game listeners may report the same placement.
+   if(now-lastImpact<.085&&lastImpact)return;lastImpact=now;
+   const duration=heavy?.18:.12;
+   const buffer=context.createBuffer(1,Math.ceil(context.sampleRate*duration),context.sampleRate);
+   const data=buffer.getChannelData(0);
+   let body=0;
+   for(let i=0;i<data.length;i++){
+    const t=i/context.sampleRate,n=Math.random()*2-1;
+    body=.83*body+.17*n;
+    data[i]=(n*.38*Math.exp(-t/ .009)+body*2.4*Math.exp(-t/(heavy?.036:.024)))*Math.min(1,t/.0005);
+   }
+   const source=context.createBufferSource(),filter=context.createBiquadFilter(),gain=context.createGain();
+   source.buffer=buffer;filter.type='lowpass';filter.frequency.value=heavy?2400:3200;
+   gain.gain.value=heavy?.85:.65;
+   source.connect(filter);filter.connect(gain);gain.connect(context.destination);
+   source.onended=()=>{source.disconnect();filter.disconnect();gain.disconnect()};source.start(now);
+  }catch(e){}
+ };
+})();
