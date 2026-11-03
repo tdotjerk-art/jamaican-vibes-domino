@@ -374,3 +374,6 @@ body .app>.table #turnLight3{left:72%!important;top:7.5%!important;z-index:40!im
 
 /* Rules remains available from the home menu rather than the game table. */
 body .app>.toolbar button[onclick="showRules()"],body .app>.toolbar #rulesBtn{display:none!important}
+
+/* Keep Chat on the table; Extras and Replay remain available in the menu. */
+#jvFeatureToolbar #jvExtrasBtn,#jvFeatureToolbar #jvReplayBtn{display:none!important}
