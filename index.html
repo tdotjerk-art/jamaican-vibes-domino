@@ -3213,6 +3213,7 @@ function updateTurnLights(){
 function render(){
   for(let i=0;i<4;i++)$('p'+(i+1)).classList.toggle('active',turn===i&&!gameOver);
   updateTurnLights();
+  paintTurnTimer();
   requestAnimationFrame(positionTurnLights);
   JVDominoInput.renderHand($('hand1'),hands[0],t=>tileEl(t,'v'),id=>{
     // Resolve the current index: a redraw or previous play can change the hand.
@@ -3532,7 +3533,7 @@ function paintTurnTimer(){
     const el=$(id);
     if(!el)return;
 
-    const active=(i===turn && !gameOver);
+    const active=(i===turn && !gameOver && hands[i].length>0);
     el.classList.toggle('active',active);
 
     if(!active){
@@ -3546,6 +3547,7 @@ function paintTurnTimer(){
 
     el.textContent=seconds;
   });
+  if(window.JVPlayerTimers)window.JVPlayerTimers.schedule();
 }
 
 function autoPlayRandomHumanTile(){
@@ -4472,90 +4474,7 @@ render();openSetup();
 </script>
 
 
-<script>
-/* TIMER POSITION — PLAYER'S RIGHT-HAND SIDE, MATCHING RED CIRCLES */
-(() => {
-  const mapping = [
-    ['timerP1','hand1','screen-right'],  // bottom player: right = screen right
-    ['timerP2','hand2','screen-top'],    // right player: right = screen top
-    ['timerP3','hand3','screen-left'],   // top player: right = screen left
-    ['timerP4','hand4','screen-bottom']  // left player: right = screen bottom
-  ];
-
-  function remainingHandRect(hand){
-    const pieces=[...hand.children].filter(el=>{
-      const r=el.getBoundingClientRect();
-      return r.width>0 && r.height>0;
-    });
-    if(!pieces.length) return hand.getBoundingClientRect();
-
-    let left=Infinity,right=-Infinity,top=Infinity,bottom=-Infinity;
-    pieces.forEach(el=>{
-      const r=el.getBoundingClientRect();
-      left=Math.min(left,r.left);
-      right=Math.max(right,r.right);
-      top=Math.min(top,r.top);
-      bottom=Math.max(bottom,r.bottom);
-    });
-    return {left,right,top,bottom,width:right-left,height:bottom-top};
-  }
-
-  function placeOne(timerId,handId,side){
-    const table=document.querySelector('.table');
-    const timer=document.getElementById(timerId);
-    const hand=document.getElementById(handId);
-    if(!table || !timer || !hand) return;
-
-    const tr=table.getBoundingClientRect();
-    const hr=remainingHandRect(hand);
-    const tw=timer.offsetWidth || 54;
-    const th=timer.offsetHeight || 40;
-    const gap=8;
-
-    let left=0, top=0;
-
-    if(side==='screen-right'){
-      left=(hr.right-tr.left)+gap;
-      top=(hr.top-tr.top)+(hr.height-th)/2;
-    }else if(side==='screen-left'){
-      left=(hr.left-tr.left)-gap-tw;
-      top=(hr.top-tr.top)+(hr.height-th)/2;
-    }else if(side==='screen-top'){
-      left=(hr.left-tr.left)+(hr.width-tw)/2;
-      top=(hr.top-tr.top)-gap-th;
-    }else{ // screen-bottom
-      left=(hr.left-tr.left)+(hr.width-tw)/2;
-      top=(hr.bottom-tr.top)+gap;
-    }
-
-    // Keep it visible inside the table without changing which side it belongs on.
-    left=Math.max(3,Math.min(left,tr.width-tw-3));
-    top=Math.max(3,Math.min(top,tr.height-th-3));
-
-    timer.style.setProperty('left',left+'px','important');
-    timer.style.setProperty('right','auto','important');
-    timer.style.setProperty('top',top+'px','important');
-    timer.style.setProperty('bottom','auto','important');
-    timer.style.setProperty('transform','none','important');
-  }
-
-  function placeAll(){
-    mapping.forEach(([timerId,handId,side])=>placeOne(timerId,handId,side));
-  }
-
-  mapping.forEach(([,handId])=>{
-    const hand=document.getElementById(handId);
-    if(hand){
-      new MutationObserver(()=>requestAnimationFrame(placeAll))
-        .observe(hand,{childList:true,subtree:true});
-    }
-  });
-
-  window.addEventListener('resize',()=>requestAnimationFrame(placeAll));
-  requestAnimationFrame(placeAll);
-  setTimeout(placeAll,60);
-})();
-</script>
+<script src="/player-timers.js"></script>
 
 
 <script>
@@ -4872,40 +4791,7 @@ function topNextHandAction(){
 .player-timer{display:none !important; z-index:9999 !important;}
 .player-timer.active{display:flex !important;}
 </style>
-<script>
-(function(){
-  const fixedTimerPositions = new WeakMap();
 
-  function placeActiveTimers(){
-    document.querySelectorAll('.player-timer').forEach(function(timer){
-      if(!timer.classList.contains('active')) return;
-
-      /* Capture its real visible starting position only after it becomes active. */
-      if(!fixedTimerPositions.has(timer)){
-        const r=timer.getBoundingClientRect();
-        fixedTimerPositions.set(timer,{left:r.left,top:r.top});
-      }
-
-      const p=fixedTimerPositions.get(timer);
-      timer.style.setProperty('position','fixed','important');
-      timer.style.setProperty('left',p.left+'px','important');
-      timer.style.setProperty('top',p.top+'px','important');
-      timer.style.setProperty('right','auto','important');
-      timer.style.setProperty('bottom','auto','important');
-      timer.style.setProperty('margin','0','important');
-      timer.style.setProperty('z-index','9999','important');
-    });
-  }
-
-  requestAnimationFrame(placeActiveTimers);
-  new MutationObserver(function(){
-    requestAnimationFrame(placeActiveTimers);
-  }).observe(document.body,{
-    childList:true,subtree:true,attributes:true,
-    attributeFilter:['class']
-  });
-})();
-</script>
 
 
 <style>
