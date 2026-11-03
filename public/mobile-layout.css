@@ -298,3 +298,6 @@
  width:max-content!important;
  align-content:center!important;
 }
+
+/* Keep the streak message from covering the player's dominoes. */
+#jvStreakBadge { display:none!important; }
