@@ -392,3 +392,12 @@ body .app>.table #turnLight3{left:50%!important;top:7.5%!important}
 
 /* Keep the separate top hand centred over the table's rim light. */
 body .app>.table{margin-left:auto!important;margin-right:auto!important}
+
+/* Shrink the table artwork and felt by 10%, without scaling dominoes. */
+body .app>.table{background-size:82.8% 112.5%!important}
+body .app>.table::before{left:15.08%;right:15.08%;top:14.45%;bottom:23.7875%}
+body .app>.table #board{left:19.4%!important;right:19.4%!important;top:20.75%!important;bottom:29.75%!important}
+body .app>.table #turnLight3{top:11.75%!important}
+body .app>.table #turnLight1{top:72.95%!important}
+body .app>.table #turnLight2{left:85.7696%!important}
+body .app>.table #turnLight4{left:14.2304%!important}
