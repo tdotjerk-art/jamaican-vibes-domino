@@ -60,6 +60,15 @@
   }
   function mount(){
     const app=document.querySelector('.app'),table=document.querySelector('.table');if(!app||!table)return;
+    // Match Setup belongs on the home menu, outside the in-game toolbar.
+    const setup=document.getElementById('jvMatchSetupBtn');
+    const menu=document.querySelector('#jvHome .jv-grid');
+    if(setup&&menu){
+      setup.classList.add('jv-btn');
+      setup.textContent='⚙ MATCH SETUP';
+      menu.appendChild(setup);
+      setup.onclick=()=>document.getElementById('jvSingle')?.click();
+    }
     // Move only the poser-choice card; buttons keep their normal tap behavior.
     let poseDrag=null;
     function positionPose(card,x,y){
