@@ -11,7 +11,7 @@
   for(const [id,key] of [['jvAmbience','ambience'],['jvCrowd','crowd']]){const el=document.getElementById(id);if(el)el.checked=values[key]}
  }
  function set(kind,on){if(!(kind in labels))return;values[kind]=!!on;try{localStorage.setItem('jvSoundSettings',JSON.stringify(values))}catch(e){}sync();window.dispatchEvent(new Event('jv-sound-change'))}
- window.JVSound={enabled:kind=>master()&&values[kind]!==false,get:kind=>values[kind],set};
+ window.JVSound={enabled:kind=>{const on=master()&&values[kind]!==false;if(on&&['play','double','six'].includes(kind)&&window.jvDominoKnock){window.jvDominoKnock(kind,kind!=='play');return false}return on},get:kind=>values[kind],set};
  document.addEventListener('DOMContentLoaded',()=>{
   const container=document.getElementById('jvSoundOptions');
   for(const [kind,label] of Object.entries(labels)){
@@ -29,7 +29,8 @@
 (function(){
  let context,lastImpact=0;
  window.jvDominoKnock=function(kind='play',heavy=false){
-  if(!window.JVSound.enabled(kind))return;
+  if(window.JVSound.get(kind)===false)return;
+  const master=document.getElementById('jvSound');if(master&&!master.checked)return;
   try{
    const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
    context=context||new AC();
