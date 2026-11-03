@@ -336,3 +336,21 @@ body>#playerTimers .player-timer {
  border-width:2px!important;border-radius:7px!important;font-size:16px!important;
 }
 body>#playerTimers .player-timer.active {display:flex!important;}
+
+/* Start the phone menu below the safe area; a tall menu scrolls from its title. */
+@media (max-width:650px), (max-height:520px) {
+ #jvHome {
+  top:0!important;bottom:auto!important;height:100dvh!important;
+  align-items:flex-start!important;overflow-y:auto!important;
+  padding:calc(env(safe-area-inset-top,0px) + 12px) calc(env(safe-area-inset-right,0px) + 10px) calc(env(safe-area-inset-bottom,0px) + 16px) calc(env(safe-area-inset-left,0px) + 10px)!important;
+  scroll-padding-top:12px;overscroll-behavior:contain;
+ }
+ #jvHome>.jv-card {
+  flex:0 0 auto!important;margin:0!important;max-height:none!important;
+  overflow:visible!important;min-height:0!important;
+ }
+ #jvHome .jv-title {
+  font-size:clamp(22px,6.5vw,32px)!important;line-height:1.15!important;
+  margin:0 0 14px!important;overflow-wrap:normal;
+ }
+}
