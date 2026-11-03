@@ -78,8 +78,75 @@
       boardTop:feltTop+8,boardBottom:tableHeight-feltBottom+8,
       topLight:10,bottomLight:tableHeight-handHeight-8};
   }
+function partnerWin(r,winnerSeat){
+ const team=winnerSeat%2;
+ const other=1-team;
+ const points=r.handValue===2?2:1;
+
+ if(r.oneOnePlayTwo){
+   r.oneOnePlayTwo=false;
+   r.bruckStartTeam=team;
+   r.bruckStartCount=2;
+   r.teamScores=[0,0];
+   r.teamScores[team]=2;
+   r.nextPlayFor=1;
+   return {team,count:2,won:false,bruck:false,oneOneResolved:true};
+ }
+
+ if(r.bruckStartTeam===null || r.bruckStartCount===0){
+   r.bruckStartTeam=team;
+   r.bruckStartCount=points;
+   r.teamScores=[0,0];
+   r.teamScores[team]=points;
+   r.nextPlayFor=1;
+   return {team,count:points,won:false,bruck:false,oneOne:false};
+ }
+
+ if(r.bruckStartTeam===team){
+   // Six is the hard finish line. Never allow the winning score to pass 6.
+   r.bruckStartCount=Math.min(6,r.bruckStartCount+points);
+   r.teamScores=[0,0];
+   r.teamScores[team]=r.bruckStartCount;
+   r.nextPlayFor=1;
+   return {team,count:r.bruckStartCount,won:r.bruckStartCount===6,bruck:false,oneOne:false};
+ }
+
+ if(r.bruckStartCount===1 && points===2){
+   r.oneOnePlayTwo=false;r.bruckStartTeam=team;r.bruckStartCount=2;
+   r.teamScores=[0,0];r.teamScores[team]=2;r.nextPlayFor=1;
+   return {team,count:2,won:false,bruck:false,oneOne:false};
+ }
+ if(r.bruckStartCount===1){
+   r.oneOnePlayTwo=true;
+   r.bruckStartTeam=null;
+   r.bruckStartCount=0;
+   r.teamScores=[1,1];
+   r.nextPlayFor=2;
+   return {team,count:1,won:false,bruck:false,oneOne:true};
+ }
+
+ r.oneOnePlayTwo=false;
+ r.doubleSixPoseAfterBruck=true;
+ r.lastWinnerTeam=null;
+ r.bruckStartTeam=null;
+ r.bruckStartCount=0;
+ r.scores=[0,0,0,0];
+ r.teamScores=[0,0];
+ r.nextPlayFor=1;
+ return {team,count:0,won:false,bruck:true,oneOne:false};
+}
   function mount(){
     const app=document.querySelector('.app'),table=document.querySelector('.table');if(!app||!table)return;
+    // Both local result paths use the actual value of the hand after a blocked tie.
+    root.applyOfflineBruckAndStartWin=function(winner){
+      const state={handValue,bruckStartTeam:offlineBruckTeam,bruckStartCount:offlineBruckCount,
+        oneOnePlayTwo:offlineOneOnePlayTwo,nextPlayFor:offlineNextPlayFor,teamScores:[scores[0],scores[1]],scores:[0,0,0,0]};
+      const result=partnerWin(state,winner);
+      offlineBruckTeam=state.bruckStartTeam;offlineBruckCount=state.bruckStartCount;
+      offlineOneOnePlayTwo=state.oneOnePlayTwo;offlineNextPlayFor=state.nextPlayFor;
+      scores[0]=state.teamScores[0];scores[1]=state.teamScores[1];
+      return result;
+    };
     // Match Setup belongs on the home menu, outside the in-game toolbar.
     const setup=document.getElementById('jvMatchSetupBtn');
     const menu=document.querySelector('#jvHome .jv-grid');
@@ -166,6 +233,6 @@
     root.visualViewport?.addEventListener('resize',requestFit);
     fitFrame();
   }
-  root.JVMobileLayout={layout,render,mount,frame};
-  if(typeof module!=='undefined')module.exports={layout,frame};
+  root.JVMobileLayout={layout,render,mount,frame,partnerWin};
+  if(typeof module!=='undefined')module.exports={layout,frame,partnerWin};
 })(typeof window!=='undefined'?window:globalThis);
