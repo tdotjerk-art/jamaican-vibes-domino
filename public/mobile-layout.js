@@ -63,7 +63,9 @@
     const baselineHeight=width>height?Math.min(width*.539328,height-56):Math.max(560,height-105);
     const long=1.584*Math.min(96,(tableWidth*.053-4)/.54,baselineHeight*.11);
     const handHeight=Math.max(20,long);
-    return {long:handHeight,short:handHeight*.54,tableHeight:Math.max(40,height-32-handHeight-6-26-20-8)};
+    const available=height-32-handHeight-6-26-20-8;
+    const tableHeight=Math.max(40,handHeight>available*.2?(available-handHeight)/.8:available);
+    return {long:handHeight,short:handHeight*.54,tableHeight,bottomOverhang:Math.max(0,handHeight-tableHeight*.2)};
   }
   function mount(){
     const app=document.querySelector('.app'),table=document.querySelector('.table');if(!app||!table)return;
@@ -132,6 +134,7 @@
       const geometry=frame(width,height);
       document.documentElement.style.setProperty('--fit-viewport-height',height+'px');
       table.style.setProperty('--fit-table-height',geometry.tableHeight+'px');
+      app.style.setProperty('--fit-bottom-overhang',geometry.bottomOverhang+'px');
       for(const el of [table,topHand]){
         if(!el)continue;
         el.style.setProperty('--fit-dealt-long',geometry.long+'px');
