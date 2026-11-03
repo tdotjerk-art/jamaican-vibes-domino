@@ -438,3 +438,12 @@ body .app>#contactTicker{margin-top:calc(3px + var(--fit-bottom-overhang,0px))!i
 
 /* Temporarily hide the scrolling advertising banner below the game. */
 body .app>#contactTicker,#contactTicker{display:none!important}
+
+/* Enlarge the table artwork 25% within the existing single-screen frame. */
+body .app>.table{background-size:103.5% 140.625%!important;background-position:center 40%!important}
+body .app>.table::before{left:6.35%;right:6.35%;top:9.625%;bottom:13.171875%}
+body .app>.table #board{left:11.75%!important;right:11.75%!important;top:17.5%!important;bottom:20.625%!important}
+body .app>.table #turnLight3{top:6.25%!important}
+body .app>.table #turnLight1{top:82.75%!important}
+body .app>.table #turnLight2{left:94.712%!important}
+body .app>.table #turnLight4{left:5.288%!important}
