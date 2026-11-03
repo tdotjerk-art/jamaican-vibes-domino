@@ -432,3 +432,6 @@ body .app #jvGameActions{position:absolute!important;left:4px!important;top:3px!
 body .app #jvGameActions button{min-height:26px!important;padding:4px 7px!important;font-size:10px!important}
 body .app>#jvFeatureToolbar{position:absolute!important;left:82px!important;top:3px!important;height:26px!important}
 #jvQuitGameBtn{top:3px!important;left:4px!important;min-height:26px!important;font-size:10px!important;padding:4px 7px!important}
+
+body .app>.table{overflow:visible!important}
+body .app>#contactTicker{margin-top:calc(3px + var(--fit-bottom-overhang,0px))!important}
