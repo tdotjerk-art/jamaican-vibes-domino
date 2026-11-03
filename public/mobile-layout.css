@@ -465,3 +465,12 @@ body .app>.table #hand1{top:auto!important;bottom:2px!important}
 body .app>.table #turnLight3{top:var(--fit-top-light)!important}
 body .app>.table #turnLight1{top:var(--fit-bottom-light)!important}
 body .app #jvGameFeedback{margin-top:4px!important}
+
+/* Share the top strip on short landscape phones instead of stacking empty rows. */
+body .app{--screen-safe-top:env(safe-area-inset-top,0px);padding-top:calc(var(--fit-top-budget,32px) + env(safe-area-inset-top,0px))!important}
+body .app #jvGameFeedback{position:absolute!important;left:4px!important;bottom:env(safe-area-inset-bottom,0px)!important;top:auto!important;width:22%!important;max-width:22%!important;margin:0!important;z-index:50}
+body .app>.table #hand2,body .app>.table #hand4{top:calc((100% - var(--dealt-long))/2)!important}
+body .app>.table #turnLight2,body .app>.table #turnLight4{top:calc((100% - var(--dealt-long))/2)!important}
+@media(orientation:landscape) and (max-height:520px){
+ body .app>#hand3{position:absolute!important;left:50%!important;top:calc(env(safe-area-inset-top,0px) + 2px)!important;margin:0!important;transform:translateX(-50%)!important;max-width:40%!important}
+}

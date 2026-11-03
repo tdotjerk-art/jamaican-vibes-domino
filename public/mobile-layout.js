@@ -63,17 +63,20 @@
     const baselineHeight=width>height?Math.min(width*.539328,height-56):Math.max(560,height-105);
     const long=1.584*Math.min(96,(tableWidth*.053-4)/.54,baselineHeight*.11);
     const handHeight=Math.max(20,long);
-    // The ticker is hidden. Use every remaining pixel, with the bottom hand
-    // inside the frame and clear of the wood instead of hanging below it.
-    const tableHeight=Math.max(40,height-32-safeTop-safeBottom-handHeight-6-20-4);
-    const artHeight=Math.max(1,(tableHeight-handHeight-16)/.675);
-    const artTop=8-artHeight*.125;
+    // On short landscape screens the top hand shares the controls strip.
+    // Feedback floats beside the bottom hand, so neither needs an extra row.
+    const sharedTop=width>height&&height<=520;
+    const topBudget=sharedTop?Math.max(32,handHeight+4):32;
+    const topHandRow=sharedTop?0:handHeight+6;
+    const tableHeight=Math.max(40,height-topBudget-safeTop-safeBottom-topHandRow-2);
+    const artHeight=Math.max(1,(tableHeight-handHeight-10)/.675);
+    const artTop=6-artHeight*.125;
     const feltTop=artTop+artHeight*.184;
     const feltBottom=artTop+artHeight*.733;
-    return {long:handHeight,short:handHeight*.54,tableHeight,bottomOverhang:0,
+    return {long:handHeight,short:handHeight*.54,tableHeight,topBudget,sharedTop,bottomOverhang:0,
       artHeight,artTop,feltTop,feltBottom:tableHeight-feltBottom,
       boardTop:feltTop+8,boardBottom:tableHeight-feltBottom+8,
-      topLight:12,bottomLight:tableHeight-handHeight-12};
+      topLight:10,bottomLight:tableHeight-handHeight-8};
   }
   function mount(){
     const app=document.querySelector('.app'),table=document.querySelector('.table');if(!app||!table)return;
@@ -140,9 +143,10 @@
       const width=root.visualViewport?.width||root.innerWidth;
       const height=root.visualViewport?.height||root.innerHeight;
       const appStyle=getComputedStyle(app);
-      const safeTop=Math.max(0,parseFloat(appStyle.paddingTop)-32)||0;
+      const safeTop=parseFloat(appStyle.getPropertyValue('--screen-safe-top'))||0;
       const safeBottom=parseFloat(appStyle.paddingBottom)||0;
       const geometry=frame(width,height,safeTop,safeBottom);
+      app.style.setProperty('--fit-top-budget',geometry.topBudget+'px');
       for(const key of ['artHeight','artTop','feltTop','feltBottom','boardTop','boardBottom','topLight','bottomLight']){
         table.style.setProperty('--fit-'+key.replace(/[A-Z]/g,c=>'-'+c.toLowerCase()),geometry[key]+'px');
       }
