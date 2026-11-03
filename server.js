@@ -62,6 +62,7 @@ function setEvent(r,type,msg){r.lastEvent=type;r.message=msg||""}
 function applyBruckAndStartWin(r,winnerSeat){
  const team=teamOf(winnerSeat);
  const other=1-team;
+ const points=r.handValue===2?2:1;
 
  if(r.oneOnePlayTwo){
    r.oneOnePlayTwo=false;
@@ -75,22 +76,27 @@ function applyBruckAndStartWin(r,winnerSeat){
 
  if(r.bruckStartTeam===null || r.bruckStartCount===0){
    r.bruckStartTeam=team;
-   r.bruckStartCount=1;
+   r.bruckStartCount=points;
    r.teamScores=[0,0];
-   r.teamScores[team]=1;
+   r.teamScores[team]=points;
    r.nextPlayFor=1;
-   return {team,count:1,won:false,bruck:false,oneOne:false};
+   return {team,count:points,won:false,bruck:false,oneOne:false};
  }
 
  if(r.bruckStartTeam===team){
    // Six is the hard finish line. Never allow the winning score to pass 6.
-   r.bruckStartCount=Math.min(6,r.bruckStartCount+1);
+   r.bruckStartCount=Math.min(6,r.bruckStartCount+points);
    r.teamScores=[0,0];
    r.teamScores[team]=r.bruckStartCount;
    r.nextPlayFor=1;
    return {team,count:r.bruckStartCount,won:r.bruckStartCount===6,bruck:false,oneOne:false};
  }
 
+ if(r.bruckStartCount===1 && points===2){
+   r.oneOnePlayTwo=false;r.bruckStartTeam=team;r.bruckStartCount=2;
+   r.teamScores=[0,0];r.teamScores[team]=2;r.nextPlayFor=1;
+   return {team,count:2,won:false,bruck:false,oneOne:false};
+ }
  if(r.bruckStartCount===1){
    r.oneOnePlayTwo=true;
    r.bruckStartTeam=null;
