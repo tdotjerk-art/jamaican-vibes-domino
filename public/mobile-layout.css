@@ -368,3 +368,6 @@ body>#playerTimers .player-timer.active {display:flex!important;}
 body .app>.table{background-size:92% 125%!important}
 body .app>.table::before{top:10.5%;bottom:20.875%}
 body .app>.table #board{top:17.5%!important;bottom:27.5%!important}
+
+/* Keep Player 3's indicator on exposed wood beside their seven-tile hand. */
+body .app>.table #turnLight3{left:72%!important;top:7.5%!important;z-index:40!important}
