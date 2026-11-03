@@ -61,7 +61,7 @@
   function frame(width,height,safeTop=0,safeBottom=0){
     const tableWidth=width*.96;
     const baselineHeight=width>height?Math.min(width*.539328,height-56):Math.max(560,height-105);
-    const long=1.584*Math.min(96,(tableWidth*.053-4)/.54,baselineHeight*.11);
+    const long=1.15*1.584*Math.min(96,(tableWidth*.053-4)/.54,baselineHeight*.11);
     const handHeight=Math.max(20,long);
     // On short landscape screens the top hand shares the controls strip.
     // Feedback floats beside the bottom hand, so neither needs an extra row.
@@ -71,8 +71,15 @@
     const tableHeight=Math.max(40,height-topBudget-safeTop-safeBottom-topHandRow-2);
     const artHeight=Math.max(1,(tableHeight-handHeight-10)/.675);
     const artTop=6-artHeight*.125;
-    const feltTop=artTop+artHeight*.184;
-    const feltBottom=artTop+artHeight*.733;
+    const originalFeltTop=artTop+artHeight*.184;
+    const originalFeltBottom=artTop+artHeight*.733;
+    const centre=(originalFeltTop+originalFeltBottom)/2;
+    const requestedSpan=(originalFeltBottom-originalFeltTop)*1.2;
+    // Expand the playing surface toward Players 1 and 3, retaining visible wood.
+    const rimTop=artTop+artHeight*.125;
+    const rimBottom=artTop+artHeight*.8;
+    const feltTop=Math.max(rimTop+4,centre-requestedSpan/2);
+    const feltBottom=Math.min(rimBottom-4,centre+requestedSpan/2);
     return {long:handHeight,short:handHeight*.54,tableHeight,topBudget,sharedTop,bottomOverhang:0,
       artHeight,artTop,feltTop,feltBottom:tableHeight-feltBottom,
       boardTop:feltTop+8,boardBottom:tableHeight-feltBottom+8,
