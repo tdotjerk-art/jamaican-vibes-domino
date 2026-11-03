@@ -58,6 +58,13 @@
       host.appendChild(el);
     }
   }
+  function frame(width,height){
+    const tableWidth=width*.96;
+    const baselineHeight=width>height?Math.min(width*.539328,height-56):Math.max(560,height-105);
+    const long=1.584*Math.min(96,(tableWidth*.053-4)/.54,baselineHeight*.11);
+    const handHeight=Math.max(20,long);
+    return {long:handHeight,short:handHeight*.54,tableHeight:Math.max(40,height-32-handHeight-6-26-20-8)};
+  }
   function mount(){
     const app=document.querySelector('.app'),table=document.querySelector('.table');if(!app||!table)return;
     // Match Setup belongs on the home menu, outside the in-game toolbar.
@@ -116,7 +123,28 @@
     // Restore the original desktop DOM positions when the viewport grows.
     const resize=new ResizeObserver(()=>{if(typeof root.renderPhotoTemplateBoard==='function')root.renderPhotoTemplateBoard();});
     resize.observe(document.getElementById('board'));
+    // Budget every row against the actual visible iPhone viewport, including browser bars.
+    let fitQueued=false;
+    function fitFrame(){
+      fitQueued=false;
+      const width=root.visualViewport?.width||root.innerWidth;
+      const height=root.visualViewport?.height||root.innerHeight;
+      const geometry=frame(width,height);
+      document.documentElement.style.setProperty('--fit-viewport-height',height+'px');
+      table.style.setProperty('--fit-table-height',geometry.tableHeight+'px');
+      for(const el of [table,topHand]){
+        if(!el)continue;
+        el.style.setProperty('--fit-dealt-long',geometry.long+'px');
+        el.style.setProperty('--fit-dealt-short',geometry.short+'px');
+      }
+      requestAnimationFrame(()=>{if(typeof root.render==='function')root.render();});
+    }
+    function requestFit(){if(!fitQueued){fitQueued=true;requestAnimationFrame(fitFrame)}}
+    root.addEventListener('resize',requestFit);
+    root.addEventListener('orientationchange',requestFit);
+    root.visualViewport?.addEventListener('resize',requestFit);
+    fitFrame();
   }
-  root.JVMobileLayout={layout,render,mount};
-  if(typeof module!=='undefined')module.exports={layout};
+  root.JVMobileLayout={layout,render,mount,frame};
+  if(typeof module!=='undefined')module.exports={layout,frame};
 })(typeof window!=='undefined'?window:globalThis);
