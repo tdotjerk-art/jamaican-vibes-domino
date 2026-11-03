@@ -454,3 +454,14 @@ body .app>.table::before{top:3.678125%;bottom:3.678125%}
 body .app>.table #board{top:13.128125%!important;bottom:12.621875%!important}
 body .app>.table #turnLight3{top:1.5%!important}
 body .app>.table #turnLight1{top:98%!important}
+
+/* Maximum Player 1–Player 3 span within the visible screen.
+   Keep all artwork inside the frame and reserve the bottom hand at full size. */
+body .app{padding-top:calc(32px + env(safe-area-inset-top,0px))!important;padding-bottom:env(safe-area-inset-bottom,0px)!important}
+body .app>.table{background-size:103.5% var(--fit-art-height)!important;background-position:center var(--fit-art-top)!important}
+body .app>.table::before{top:var(--fit-felt-top);bottom:var(--fit-felt-bottom)}
+body .app>.table #board{top:var(--fit-board-top)!important;bottom:var(--fit-board-bottom)!important}
+body .app>.table #hand1{top:auto!important;bottom:2px!important}
+body .app>.table #turnLight3{top:var(--fit-top-light)!important}
+body .app>.table #turnLight1{top:var(--fit-bottom-light)!important}
+body .app #jvGameFeedback{margin-top:4px!important}

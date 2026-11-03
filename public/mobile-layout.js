@@ -58,14 +58,22 @@
       host.appendChild(el);
     }
   }
-  function frame(width,height){
+  function frame(width,height,safeTop=0,safeBottom=0){
     const tableWidth=width*.96;
     const baselineHeight=width>height?Math.min(width*.539328,height-56):Math.max(560,height-105);
     const long=1.584*Math.min(96,(tableWidth*.053-4)/.54,baselineHeight*.11);
     const handHeight=Math.max(20,long);
-    const available=height-32-handHeight-6-26-20-8;
-    const tableHeight=Math.max(40,handHeight>available*.2?(available-handHeight)/.8:available);
-    return {long:handHeight,short:handHeight*.54,tableHeight,bottomOverhang:Math.max(0,handHeight-tableHeight*.2)};
+    // The ticker is hidden. Use every remaining pixel, with the bottom hand
+    // inside the frame and clear of the wood instead of hanging below it.
+    const tableHeight=Math.max(40,height-32-safeTop-safeBottom-handHeight-6-20-4);
+    const artHeight=Math.max(1,(tableHeight-handHeight-16)/.675);
+    const artTop=8-artHeight*.125;
+    const feltTop=artTop+artHeight*.184;
+    const feltBottom=artTop+artHeight*.733;
+    return {long:handHeight,short:handHeight*.54,tableHeight,bottomOverhang:0,
+      artHeight,artTop,feltTop,feltBottom:tableHeight-feltBottom,
+      boardTop:feltTop+8,boardBottom:tableHeight-feltBottom+8,
+      topLight:12,bottomLight:tableHeight-handHeight-12};
   }
   function mount(){
     const app=document.querySelector('.app'),table=document.querySelector('.table');if(!app||!table)return;
@@ -131,7 +139,13 @@
       fitQueued=false;
       const width=root.visualViewport?.width||root.innerWidth;
       const height=root.visualViewport?.height||root.innerHeight;
-      const geometry=frame(width,height);
+      const appStyle=getComputedStyle(app);
+      const safeTop=Math.max(0,parseFloat(appStyle.paddingTop)-32)||0;
+      const safeBottom=parseFloat(appStyle.paddingBottom)||0;
+      const geometry=frame(width,height,safeTop,safeBottom);
+      for(const key of ['artHeight','artTop','feltTop','feltBottom','boardTop','boardBottom','topLight','bottomLight']){
+        table.style.setProperty('--fit-'+key.replace(/[A-Z]/g,c=>'-'+c.toLowerCase()),geometry[key]+'px');
+      }
       document.documentElement.style.setProperty('--fit-viewport-height',height+'px');
       table.style.setProperty('--fit-table-height',geometry.tableHeight+'px');
       app.style.setProperty('--fit-bottom-overhang',geometry.bottomOverhang+'px');
