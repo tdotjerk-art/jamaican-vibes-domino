@@ -324,3 +324,15 @@ body #modal #card.partner-pose-choice p {
 body #modal #card.partner-pose-choice button {
  font-size:14px!important;padding:8px 12px!important;min-height:40px;cursor:pointer;touch-action:manipulation;
 }
+
+/* Clocks sit just beyond the rightmost remaining tile of each player. */
+body>#playerTimers {
+ position:fixed!important;inset:0!important;pointer-events:none!important;
+}
+body>#playerTimers .player-timer {
+ position:fixed!important;display:none!important;min-width:0!important;
+ margin:0!important;right:auto!important;bottom:auto!important;
+ transform:none!important;translate:none!important;box-sizing:border-box!important;
+ border-width:2px!important;border-radius:7px!important;font-size:16px!important;
+}
+body>#playerTimers .player-timer.active {display:flex!important;}
