@@ -474,3 +474,14 @@ body .app>.table #turnLight2,body .app>.table #turnLight4{top:calc((100% - var(-
 @media(orientation:landscape) and (max-height:520px){
  body .app>#hand3{position:absolute!important;left:50%!important;top:calc(env(safe-area-inset-top,0px) + 2px)!important;margin:0!important;transform:translateX(-50%)!important;max-width:40%!important}
 }
+
+/* Player 3 is outside .table, so revealed tiles need the same pip sizing rules. */
+body .app>#hand3 .dom-physical{display:flex!important;flex-direction:column!important;box-sizing:border-box!important;padding:2px!important;overflow:hidden!important}
+body .app>#hand3 .dom-physical .half{width:100%!important;min-width:0!important;min-height:0!important;height:calc(50% - 1px)!important;flex:1 1 0!important;display:flex!important;align-items:center!important;justify-content:center!important;overflow:hidden!important}
+body .app>#hand3 .dom-physical .pipgrid{display:grid!important;grid-template:repeat(3,minmax(0,1fr))/repeat(3,minmax(0,1fr))!important;width:100%!important;height:100%!important;min-width:0!important;min-height:0!important;max-width:100%!important;max-height:100%!important;padding:1px!important;box-sizing:border-box!important;overflow:hidden!important;align-items:center!important;justify-items:center!important}
+body .app>#hand3 .dom-physical .pipgrid .pip{width:65%!important;height:auto!important;aspect-ratio:1!important;min-width:0!important;min-height:0!important;max-width:100%!important;max-height:100%!important}
+body .app>#hand3 .dom-physical .divider{width:100%!important;height:1px!important;min-height:1px!important;flex:0 0 1px!important}
+/* Keep blocked totals compact and clear of the side hands and played chain. */
+body #blockedCounts .blocked-count{font-size:18px!important;min-width:24px!important;line-height:1.1!important;box-sizing:border-box!important;padding:3px 5px!important;border:1px solid #ffd92f!important;border-radius:6px!important;background:#092d20ed!important;text-shadow:none!important}
+body #blockedCounts #countP2{left:auto!important;right:7%!important;top:3px!important;transform:none!important}
+body #blockedCounts #countP4{left:7%!important;right:auto!important;top:3px!important;transform:none!important}
