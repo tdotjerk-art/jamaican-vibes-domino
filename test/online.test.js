@@ -38,7 +38,8 @@ test('four players can start, pause, and reclaim a disconnected seat',async()=>{
     const playing=waitFor(first,'private-state',s=>s.phase==='playing');
     clients.forEach(c=>c.emit('toggle-ready'));
     const started=await playing;
-    const remaining=Math.ceil((started.deadline-Date.now())/1000);
+    assert.ok(started.dealUntil>Date.now(),"shuffle and deal has a server deadline");
+    const remaining=Math.ceil((started.deadline-started.dealUntil)/1000);
     assert.ok(remaining>=19&&remaining<=20,`expected about 20 seconds, received ${remaining}`);
 
     const paused=waitFor(first,'private-state',s=>s.phase==='paused');

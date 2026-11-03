@@ -55,3 +55,6 @@
   }catch(e){}
  };
 })();
+
+// Load table preparation after the existing game has installed its handlers.
+document.addEventListener('DOMContentLoaded',()=>{const script=document.createElement('script');script.src='/shuffle-deal.js';document.head.appendChild(script)});

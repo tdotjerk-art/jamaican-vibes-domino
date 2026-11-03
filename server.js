@@ -41,7 +41,7 @@ function roomState(r){return {
 function gameBase(r){return {
  code:r.code,players:publicPlayers(r),hostSeat:r.hostSeat,mode:r.mode,target:r.target,tieRule:tieRuleOf(r.tieRule),phase:r.phase,
  turn:r.turn,handNo:r.handNo,handValue:r.handValue,board:r.board,handCounts:r.hands.map(h=>h.length),
- revealHands:r.revealHands,scores:r.scores,teamScores:r.teamScores,deadline:r.deadline||0,message:r.message||"",
+ revealHands:r.revealHands,scores:r.scores,teamScores:r.teamScores,deadline:r.deadline||0,dealUntil:r.dealUntil||0,message:r.message||"",
  poseOptions:r.poseOptions||[],history:r.history,lastEvent:r.lastEvent||"",spectatorCount:r.spectators.size,
  bruckStartTeam:r.bruckStartTeam,bruckStartCount:r.bruckStartCount,oneOnePlayTwo:r.oneOnePlayTwo,nextPlayFor:r.nextPlayFor
 }}
@@ -113,8 +113,8 @@ function applyBruckAndStartWin(r,winnerSeat){
 function scheduleTurn(r){
  clearTimer(r);if(r.phase!=="playing"||r.turn==null)return;
  if(connectedPlayers(r)<4){pauseForDisconnect(r);return}
- const sec=turnSeconds(r.hands[r.turn].length);r.deadline=Date.now()+sec*1000;
- r.timer=setTimeout(()=>autoAction(r),sec*1000+75);r.timer.unref?.();emitAll(r)
+ const sec=turnSeconds(r.hands[r.turn].length),intro=Math.max(0,(r.dealUntil||0)-Date.now());r.deadline=Date.now()+intro+sec*1000;
+ r.timer=setTimeout(()=>autoAction(r),intro+sec*1000+75);r.timer.unref?.();emitAll(r)
 }
 function allBlocked(r){return r.hands.every(h=>!h.some(t=>canPlay(r.board,t)))}
 function nextPlayableTurn(r){
@@ -128,6 +128,7 @@ function nextPlayableTurn(r){
  if(r.phase==="playing")scheduleTurn(r)
 }
 function playTile(r,seat,tileId,side,automatic=false){
+ if(Date.now()<(r.dealUntil||0))return {ok:false,error:"Wait for the shuffle and deal to finish."};
  if(r.phase!=="playing"||r.turn!==seat)return {ok:false,error:"Not your turn."};
  const hand=r.hands[seat],idx=hand.findIndex(t=>t.id===Number(tileId));
  if(idx<0)return {ok:false,error:"Domino not found in your hand."};
@@ -234,6 +235,7 @@ function finishBlocked(r){
  r.lastEvent="blocked-win";emitAll(r);scheduleNextHand(r)
 }
 function beginHand(r,poser=null){
+ r.dealUntil=Date.now()+4000;
  clearTimer(r);const d=shuffle(makeDeck());r.hands=[d.slice(0,7),d.slice(7,14),d.slice(14,21),d.slice(21,28)];
  r.board=[];r.playSequence=0;r.revealHands=false;r.handNo++;r.handValue=r.mode==="individual"?(r.tiedCarry&&tieRuleOf(r.tieRule)==="double-six-two"?2:1):(r.tiedCarry?2:(r.nextPlayFor||1));r.phase="playing";r.poseOptions=[];r.message="";
 
