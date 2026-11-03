@@ -101,7 +101,8 @@
     app.insertBefore(actions,table);app.insertBefore(feedback,table);
     // Give the top hand and advertising their own rows so neither can cover a hand.
     const topHand=document.getElementById('hand3'),ticker=document.getElementById('contactTicker');
-    // Keep Player 3's hand inside the table: its mobile position is controlled by .table #hand3 CSS.
+    // Keep the top hand outside the playing surface, in its own row.
+    if(topHand)table.before(topHand);
     if(ticker)table.after(ticker);
     const placements=[];
     for(const [target,ids] of [[actions,['jvQuitGameBtn','jvFeatureToolbar']],[feedback,['onlineWaiting','jvStreakBadge','jvCoach','status']]]){
