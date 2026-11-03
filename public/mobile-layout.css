@@ -389,3 +389,6 @@ body .app>.table #turnLight3{left:50%!important;top:7.5%!important}
  body .app>#contactTicker{position:relative!important;inset:auto!important;left:auto!important;bottom:auto!important;transform:none!important;order:4;flex:none!important;margin:3px auto!important}
  body .app #jvGameFeedback{position:relative!important;inset:auto!important;left:auto!important;bottom:auto!important;order:5}
 }
+
+/* Keep the separate top hand centred over the table's rim light. */
+body .app>.table{margin-left:auto!important;margin-right:auto!important}
