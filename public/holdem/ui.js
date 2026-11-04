@@ -1,5 +1,71 @@
 (()=>{'use strict';const $=id=>document.getElementById(id),E=JVHoldem;let game=new E.Game(),timer;
 let previous, soundContext;
+let socket, online, practice, clock;
+const seatOfUser = () => online?.seat ?? 0;
+function connectFriends() {
+  if (socket) return socket;
+  socket = globalThis.io('/holdem');
+  socket.on('connect', () => {
+    const saved = sessionStorage.getItem('holdem-private-seat');
+    if (saved) socket.emit('table-join', JSON.parse(saved));
+  });
+  socket.on('table-seat', seat => sessionStorage.setItem('holdem-private-seat', JSON.stringify(seat)));
+  socket.on('table-error', message => {
+    $('friendsStatus').textContent = message;
+    $('error').textContent = message;
+    if (message === 'Your seat is no longer available.') {
+      sessionStorage.removeItem('holdem-private-seat');
+      leaveFriends(false);
+    }
+  });
+  socket.on('connect_error', () => { $('friendsStatus').textContent = 'Could not connect. Trying again…'; });
+  socket.on('disconnect', () => {
+    if (online) {
+      $('actions').replaceChildren();
+      $('message').textContent = 'Connection lost. Reconnecting to your seat…';
+    }
+  });
+  socket.on('table-state', state => {
+    if (!online) practice = game;
+    online = state;
+    if (state.game) {
+      game = Object.assign(onlineGame(state), state.game);
+      if ($('friendsLobby').open) $('friendsLobby').close();
+    } else {
+      game = onlineGame(state);
+      game.phase = 'lobby';
+      game.players = state.players.map(name => ({name, chips:1000, hand:[]}));
+    }
+    $('friendsFields').hidden = $('friendsCreate').hidden = $('friendsJoin').hidden = true;
+    $('friendsLeave').hidden = false;
+    $('friendsStatus').textContent = 'Room ' + state.code + ' · ' + state.players.join(', ');
+    render();
+  });
+  return socket;
+}
+function onlineGame(state) {
+  return {board:[], log:[], handNumber:0, bigBlind:20, legal:() => state.game?.legalMove};
+}
+function leaveFriends(notify = true) {
+  if (notify) socket?.emit('table-leave');
+  sessionStorage.removeItem('holdem-private-seat');
+  if (online) game = practice;
+  online = null;
+  clearInterval(clock);
+  $('friendsFields').hidden = $('friendsCreate').hidden = $('friendsJoin').hidden = false;
+  $('friendsLeave').hidden = true;
+  $('friendsStatus').textContent = '';
+  render();
+}
+function requestRoom(create) {
+  const client = connectFriends();
+  if (!client.connected) {
+    $('friendsStatus').textContent = 'Connecting… Try again in a moment.';
+    return;
+  }
+  enableSound();
+  client.emit('table-join', {create, name:$('friendsName').value, code:$('friendsCode').value});
+}
 const sound = $('tableSound'), motion = $('tableMotion');
 function enableSound() {
   const Audio = globalThis.AudioContext || globalThis.webkitAudioContext;
@@ -47,11 +113,12 @@ function showRecap(awards) {
 const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
 function card(c,hidden=false){const n=el('span',undefined,'card'+(hidden?' back':!c?' empty':['♥','♦'].includes(c.suit)?' red':''));if(c&&!hidden){n.append(el('span',({11:'J',12:'Q',13:'K',14:'A'})[c.rank]||c.rank),el('span',c.suit));}n.setAttribute('aria-label',hidden?'Face-down card':c?(({'11':'Jack','12':'Queen','13':'King','14':'Ace'})[c.rank]||c.rank)+' '+c.suit:'Undealt community card');return n;}
 function button(text,fn,cls){const b=el('button',text,cls);b.onclick=()=>{enableSound();fn();};$('actions').append(b);}
-function act(type,target){if(!game.act(0,type,target)){$('error').textContent='That action is not available. Check the amount and try again.';return;}render();}
-function render(){clearTimeout(timer);$('error').textContent='';$('seats').replaceChildren();const showdown=game.phase==='over'&&game.board.length===5&&game.players.filter(p=>!p.folded).length>1;
-const newHand = game.handNumber > 0 && (previous?.game !== game || previous.hand !== game.handNumber);
+function act(type,target){if(online){socket.emit('table-act',{type,target,revision:online.revision});return;}if(!game.act(0,type,target)){$('error').textContent='That action is not available. Check the amount and try again.';return;}render();}
+function render(){clearTimeout(timer);if(clock)clearInterval(clock);$('error').textContent='';$('seats').replaceChildren();const showdown=game.phase==='over'&&game.board.length===5&&game.players.filter(p=>!p.folded).length>1;
+const identity = online?.code || game;
+const newHand = game.handNumber > 0 && (previous?.game !== identity || previous.hand !== game.handNumber);
 const motionEnabled = motion.checked !== false && !globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-const newCards = newHand || (previous?.game === game && game.board.length > previous.board);
+const newCards = newHand || (previous?.game === identity && game.board.length > previous.board);
 const awards = new Map();
 const winningCards = new Set();
 const results = game.phase === 'over' ? game.results : [];
@@ -72,7 +139,8 @@ game.players.forEach((player, i) => {
   const rank = showdown && !player.folded ? E.best([...player.hand, ...game.board]) : null;
   const bestCards = new Set(won && rank ? rank.cards : []);
   bestCards.forEach(c => winningCards.add(c));
-  const seat = el('article', undefined, 'seat s' + i +
+  const position = online ? Math.round(((i - online.seat + game.players.length) % game.players.length) * 10 / game.players.length) : i;
+  const seat = el('article', undefined, 'seat s' + position +
     (acting ? ' active' : '') + (player.folded ? ' folded' : '') + (won ? ' winner' : ''));
   const heading = el('h3');
   heading.append(el('span', player.name.slice(0,1), 'seat-emblem'), el('span', player.name));
@@ -84,7 +152,7 @@ game.players.forEach((player, i) => {
   });
   const hand = el('div', undefined, 'cards');
   player.hand.forEach((c, index) => {
-    const node = tableCard(c, i !== 0 && !rank, bestCards.has(c));
+    const node = tableCard(c, i !== seatOfUser() && !rank, bestCards.has(c));
     if (newHand && motionEnabled && node.style) {
       node.className += ' dealt-card';
       node.style.animationDelay = ((index * game.players.length + i) * 17) + 'ms';
@@ -93,7 +161,7 @@ game.players.forEach((player, i) => {
   });
   const status = won ? '+' + awards.get(i).toLocaleString() + (rank ? ' · ' + rank.name : '') :
     rank ? rank.name : player.folded ? (player.hand.length ? 'Folded' : 'Sitting out') :
-    player.chips === 0 ? 'All-in' : acting ? 'Acting' : ' ';
+    player.chips === 0 ? 'All-in' : acting ? 'Acting' : player.connected === false ? 'Disconnected' : ' ';
   seat.append(heading, hand,
     el('p', player.chips.toLocaleString() + ' chips' + (player.bet && !results.length ? ' · Bet ' + player.bet : '')),
     el('p', status, 'seat-status'));
@@ -106,7 +174,7 @@ $('board').replaceChildren(...Array.from({length:5}, (_, i) =>
     return node;
   }));
 const seats = $('seats').children;
-const previousHand = previous?.game === game && !newHand;
+const previousHand = previous?.game === identity && !newHand;
 const changedBets = previousHand ? game.players.map((p,i) => p.total > previous.totals[i] ? i : -1).filter(i => i >= 0) : [];
 const paid = results.length && (!previousHand || previous.phase !== 'over');
 if (motionEnabled) {
@@ -114,33 +182,50 @@ if (motionEnabled) {
   if (paid) awards.forEach((amount, i) => moveChip($('pot'), seats[i]));
 }
 if (newCards || changedBets.length || paid) playSound(newCards);
-previous = {game, hand:game.handNumber, board:game.board.length, phase:game.phase, totals:game.players.map(p=>p.total)};
-$('tableMode').textContent = (game.tournament ? 'Tournament · ' : 'Practice · ') +
+previous = {game:identity, hand:game.handNumber, board:game.board.length, phase:game.phase, totals:game.players.map(p=>p.total)};
+$('tableMode').textContent = (online ? 'Room ' + online.code + ' · ' : game.tournament ? 'Tournament · ' : 'Practice · ') +
   (game.bigBlind/2) + ' / ' + game.bigBlind;
 const pot = game.players.reduce((sum, player) => sum + player.total, 0);
 $('pot').textContent = (results.length ? 'AWARDED ' : 'POT ') + pot.toLocaleString();
 $('street').textContent = {ready:'Ready to deal', over:showdown ? 'Showdown' : 'Hand complete'}[game.phase] || game.phase;
 $('handNo').textContent = 'HAND ' + game.handNumber;
 const acting = game.players[game.turn];
-const call = acting && Math.min(game.legal(game.turn)?.call || 0, acting.chips);
+const call = acting && Math.min((online ? game.actingCall : game.legal(game.turn)?.call) || 0, acting.chips);
 $('message').textContent = results.length ? results.map(({winners, amount}, index) =>
   (index ? 'Side pot ' + index : 'Main pot') + ' ' + amount.toLocaleString() + ' · ' +
   winners.map(i => game.players[i].name).join(' & ')).join(' | ') :
-  acting ? (game.turn === 0 ? 'Your turn' : acting.name + ' to act') + (call ? ' · ' + call + ' to call' : ' · Check available') :
+  acting ? (game.turn === seatOfUser() ? 'Your turn' : acting.name + ' to act') + (call ? ' · ' + call + ' to call' : ' · Check available') :
   game.message || 'Pull up a chair. Start your first hand.';
 $('history').replaceChildren(...game.log.slice().reverse().map(s=>el('li',s)));
 $('actions').replaceChildren();
+if (online?.deadline && acting) {
+  const message = $('message').textContent;
+  const tick = () => {
+    if (socket.connected) $('message').textContent = message + ' · ' +
+      Math.max(0, Math.ceil((online.deadline - Date.now()) / 1000)) + 's';
+  };
+  tick();
+  clock = setInterval(tick, 250);
+}
+if (online && ['lobby','over'].includes(game.phase)) {
+  if (game.phase === 'lobby') $('message').textContent = 'Share room code ' + online.code +
+    (online.canDeal ? ' · Ready to deal' : ' · Waiting for friends');
+  if (online.canDeal) button(game.phase === 'lobby' ? 'Deal cards' : 'Next hand',
+    () => socket.emit('table-deal', online.revision), 'primary');
+  if (game.phase === 'over') button('Hand recap', () => showRecap(awards), 'recap-button');
+  return;
+}
 if(['ready','over'].includes(game.phase)){if(game.players.filter(p=>p.chips>0).length<2){button('New table',()=>reset(),'primary');$('message').textContent=game.players.find(p=>p.chips>0).name+' wins the table!';}else button(game.phase==='ready'?'Take a seat & deal':'Next hand',()=>{game.start();render();},'primary');if(game.phase==='over')button('Hand recap',()=>showRecap(awards),'recap-button');return;}
-const legal = game.legal(0);
+const legal = game.legal(seatOfUser());
 if (legal) {
   button('Fold', () => act('fold'), 'danger');
   button(call ? 'Call ' + call : 'Check', () => act(call ? 'call' : 'check'), 'primary');
   if (legal.canRaise && legal.max > game.currentBet) {
     addBetControls(legal, pot);
-  } else if (call && call === game.players[0].chips) {
+  } else if (call && call === game.players[seatOfUser()].chips) {
     button('All-in ' + call, () => act('call'), 'all-in');
   }
-} else if (acting) {
+} else if (acting && !online) {
   const current = game;
   timer = setTimeout(() => {
     if (current !== game) return;
@@ -181,11 +266,17 @@ function addBetControls(legal, pot) {
   button('All-in ' + legal.max, () => act('raise', legal.max), 'all-in');
 }
 function bot(){const i=game.turn,l=game.legal(i);if(!l)return;const p=game.players[i],r=p.hand.map(c=>c.rank),rank=game.board.length>=3?E.best([...p.hand,...game.board]).value[0]:r[0]===r[1]?2:Math.max(...r)>=12?1:0;const strength=rank+Math.random();if(l.call&&l.call>p.chips*.35&&strength<1.15){game.act(i,'fold');return;}if(l.canRaise&&l.max>=l.min&&strength>1.7&&Math.random()<.28){game.act(i,'raise',Math.min(l.max,Math.max(l.min,game.currentBet+40)));return;}game.act(i,l.call?'call':'check');}
-function reset(tournament=game.tournament){if(game.handNumber&&!confirm('Start a new table with 1,000 chips each?'))return;clearTimeout(timer);game=new E.Game(Math.random,10,tournament);render();return true;}$('reset').onclick=()=>reset();$('rulesBtn').onclick=()=>$('rules').showModal();$('closeRules').onclick=()=>$('rules').close();
+function reset(tournament=game.tournament){if(online)return false;if(game.handNumber&&!confirm('Start a new table with 1,000 chips each?'))return;clearTimeout(timer);game=new E.Game(Math.random,10,tournament);render();return true;}$('reset').onclick=()=>reset();$('rulesBtn').onclick=()=>$('rules').showModal();$('closeRules').onclick=()=>$('rules').close();
 $('tableOptions').onclick=()=>$('tableSettings').showModal();
 $('closeOptions').onclick=()=>$('tableSettings').close();
 $('closeRecap').onclick=()=>$('handRecap').close();
 $('practiceMode').onclick=()=>{if(reset(false))$('tableSettings').close();};
 $('tournamentMode').onclick=()=>{if(reset(true))$('tableSettings').close();};
+$('friendsButton').onclick=()=>{$('friendsLobby').showModal();connectFriends();};
+$('friendsClose').onclick=()=>$('friendsLobby').close();
+$('friendsCreate').onclick=()=>requestRoom(true);
+$('friendsJoin').onclick=()=>requestRoom(false);
+$('friendsLeave').onclick=()=>leaveFriends();
 sound.onchange=enableSound;
+if (globalThis.io && sessionStorage.getItem('holdem-private-seat')) connectFriends();
 render();})();

@@ -356,6 +356,7 @@ function newRoom(name,mode,target,socket,tieRule){
 
 require("./voice").installVoice(io,rooms);
 require("./three-cards-online").installThreeCards(io);
+require("./holdem-online").installHoldem(io);
 
 io.on("connection",socket=>{
  const payloadEvents=new Set(['create-room','join-public-table','join-room','join-spectator','reconnect-player','set-room-options','play-domino','choose-poser']);
