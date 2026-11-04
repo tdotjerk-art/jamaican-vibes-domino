@@ -166,7 +166,17 @@ body {
   #actions > .recap-button { grid-column:1/-1; }
 }
 
-#friendsButton { align-self:center; padding:4px 7px; margin-bottom:4px; font-size:9px; }
+#friendsButton {
+  align-self:center;
+  min-height:44px;
+  padding:7px 10px;
+  margin-bottom:5px;
+  border-color:#76d2a0;
+  background:linear-gradient(#237a4d,#155d3b);
+  color:#fff;
+  font-size:clamp(12px,1.65vw,16px);
+  line-height:1.15;
+}
 #friendsLobby { width:min(440px,90vw); max-height:85vh; overflow:auto; }
 #friendsFields label { justify-content:space-between; margin:8px 0; }
 #friendsFields input { width:min(180px,55%); font-size:16px; }
