@@ -11,7 +11,7 @@
   for(const [id,key] of [['jvAmbience','ambience'],['jvCrowd','crowd']]){const el=document.getElementById(id);if(el)el.checked=values[key]}
  }
  function set(kind,on){if(!(kind in labels))return;values[kind]=!!on;try{localStorage.setItem('jvSoundSettings',JSON.stringify(values))}catch(e){}sync();window.dispatchEvent(new Event('jv-sound-change'))}
- window.JVSound={enabled:kind=>{const on=master()&&values[kind]!==false;if(on&&['play','double','six'].includes(kind)&&window.jvDominoKnock){window.jvDominoKnock(kind,kind!=='play');return false}return on},get:kind=>values[kind],set};
+ window.JVSound={enabled:kind=>{const on=master()&&values[kind]!==false;if(on&&['play','double','six'].includes(kind)&&window.jvDominoKnock?.(kind,kind!=='play'))return false;return on},get:kind=>values[kind],set};
  document.addEventListener('DOMContentLoaded',()=>{
   const container=document.getElementById('jvSoundOptions');
   for(const [kind,label] of Object.entries(labels)){
@@ -37,7 +37,7 @@
    if(context.state==='suspended')context.resume().catch(()=>{});
    const now=context.currentTime;
    // Multiple game listeners may report the same placement.
-   if(now-lastImpact<.085&&lastImpact)return;lastImpact=now;
+   if(now-lastImpact<.085&&lastImpact)return true;lastImpact=now;
    const duration=heavy?.18:.12;
    const buffer=context.createBuffer(1,Math.ceil(context.sampleRate*duration),context.sampleRate);
    const data=buffer.getChannelData(0);
@@ -52,7 +52,8 @@
    gain.gain.value=heavy?.85:.65;
    source.connect(filter);filter.connect(gain);gain.connect(context.destination);
    source.onended=()=>{source.disconnect();filter.disconnect();gain.disconnect()};source.start(now);
-  }catch(e){}
+   return true;
+  }catch(e){return false}
  };
 })();
 
