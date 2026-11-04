@@ -496,3 +496,33 @@ body #modal.result-no-dim.show #card:has(button[onclick="openSetup()"]){
 body #modal.result-no-dim.show #card:has(button[onclick="openSetup()"]) :is(button[onclick="openSetup()"],.jv-local-rematch){
  font-size:clamp(9px,1.4vw,14px)!important;line-height:1.15!important;min-height:26px!important;padding:5px 7px!important;margin:0!important;max-width:100%!important;white-space:normal!important;pointer-events:auto!important
 }
+
+@media (max-width:650px), (max-height:650px) {
+  #jvLobby {
+    align-items:flex-start;
+    max-height:var(--fit-viewport-height,100dvh);
+    padding:max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom)) !important;
+    overflow-y:auto;
+  }
+  #jvLobby > .jv-card {
+    box-sizing:border-box;
+    max-height:none;
+    overflow:visible;
+    padding:10px !important;
+  }
+  #jvLobby .jv-title {font-size:22px !important;margin:0 0 5px}
+  #jvLobby .jv-roomcode {font-size:20px}
+  #jvLobby h3 {font-size:15px;margin:7px 0 3px}
+  #jvLobby .jv-seat {grid-template-columns:12px minmax(0,1fr) auto;gap:5px;padding:5px;margin:4px 0;font-size:13px;overflow-wrap:anywhere}
+  #jvLobby .jv-ready {font-size:11px}
+  #jvLobby .jv-lobby-progress {margin:5px 0;padding:4px;font-size:12px}
+  #jvLobby .jv-my-seat-info {margin:4px 0;font-size:12px}
+  #jvLobby .jv-start-hint {margin:3px 0}
+  #jvLobby .jv-btn {min-height:36px;padding:5px;margin:3px 0;font-size:13px}
+  #jvLobby .jv-select {padding:5px;margin:2px 0}
+  #jvLobbyOptions .jv-grid {gap:2px}
+  #jvLobbyActions {display:flex;gap:6px}
+  #jvVoiceLobby {padding:4px 6px;font-size:13px}
+  #jvVoiceLobby .jv-voice-buttons {display:inline-flex;margin:0 0 0 4px}
+  #jvVoiceLobby small:empty {display:none}
+}
