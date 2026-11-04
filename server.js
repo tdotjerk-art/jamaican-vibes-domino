@@ -249,7 +249,7 @@ function beginHand(r,poser=null){
  // Whoever is dealt double-six poses it automatically, regardless of seat.
  const freshOpening=r.doubleSixPoseAfterBruck || (r.handNo===1&&!Number.isInteger(poser));
  const tieDoubleSix=r.tiedCarry && (r.mode!=="individual" || tieRuleOf(r.tieRule)==="double-six-two" || !Number.isInteger(r.lastIndividualWinner));
- if(freshOpening || tieDoubleSix){
+ if(freshOpening || tieDoubleSix || (r.mode==="partner" && r.oneOnePlayTwo)){
    r.doubleSixPoseAfterBruck=false;
    r.tiedCarry=false;
    if(freshOpening)r.handValue=1;
