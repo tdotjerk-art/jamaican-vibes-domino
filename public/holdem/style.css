@@ -181,3 +181,20 @@ body {
 #friendsFields label { justify-content:space-between; margin:8px 0; }
 #friendsFields input { width:min(180px,55%); font-size:16px; }
 #friendsLobby [hidden] { display:none; }
+
+/* Jamaican flag palette */
+:root { --flag-green:#009b3a; --flag-gold:#fed100; --flag-black:#000; }
+body { background:radial-gradient(ellipse at top,#102218,var(--flag-black) 72%); }
+.felt {
+  background:radial-gradient(ellipse at 48% 36%,var(--flag-green),#005f28 72%,#00351a);
+  border-color:var(--flag-black);
+  box-shadow:0 0 0 2px var(--flag-gold),0 0 0 6px var(--flag-black),0 0 0 7px #927900,inset 0 0 34px #002b17;
+}
+.felt::before,.betting-line { border-color:#fed10066; }
+.controls,dialog { background:linear-gradient(#151a15,var(--flag-black)); border-color:#9b8000; }
+.seat { background:linear-gradient(#252825,#090b09); }
+.seat.active,.seat.winner,.seat.s0 { border-color:var(--flag-gold); }
+#pot,#tableMode { color:var(--flag-gold); }
+#friendsButton { background:linear-gradient(var(--flag-green),#00692a); border-color:var(--flag-gold); color:var(--flag-black); }
+#tableOptions { background:var(--flag-black); border-color:var(--flag-gold); color:var(--flag-gold); }
+.primary { background:linear-gradient(var(--flag-gold),#d3ae00); border-color:#ffe674; color:var(--flag-black); }
