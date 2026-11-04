@@ -51,9 +51,17 @@ test('Domino stops processing actions once the per-socket limit is reached',asyn
  const s=connect(`http://127.0.0.1:${server.address().port}`,{transports:['websocket'],forceNew:true});
  try{
   await wait(s,'connect');const initial=wait(s,'room-state');s.emit('create-room',{name:'A'});await initial;
-  let changes=0,blocked=0;s.on('room-state',()=>changes++);
-  const finished=wait(s,'action-error',()=>++blocked===6);
-  for(let n=0;n<35;n++)s.emit('toggle-ready');await finished;
+  let changes=0,blocked=0;
+  // Rejections can arrive before accepted actions finish emitting room updates.
+  const finished=new Promise((resolve,reject)=>{
+   const timer=setTimeout(()=>reject(Error('Timeout waiting for all action responses')),3000);
+   const received=()=>{if(changes+blocked===35){clearTimeout(timer);resolve();}};
+   s.on('room-state',()=>{changes++;received();});
+   s.on('action-error',()=>{blocked++;received();});
+  });
+  for(let n=0;n<35;n++)s.emit('toggle-ready');
+  await finished;
   assert.equal(changes,29);
+  assert.equal(blocked,6);
  }finally{s.disconnect();await new Promise(r=>io.close(r));}
 });
