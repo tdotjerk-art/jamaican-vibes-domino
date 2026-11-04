@@ -42,6 +42,29 @@
     });
     Array.from(host.children).forEach(el=>{if(!keep.has(el))el.remove();});
   }
+  function addEndChoiceCancel(){
+    const card=document.getElementById('card');
+    if(!card)return;
+    const observer=new MutationObserver(()=>{
+      if(!card.classList.contains('domino-end-choice'))return;
+      const row=card.querySelector('.row');
+      if(!row||row.querySelector('[data-end-choice-cancel]'))return;
+      const cancel=document.createElement('button');
+      cancel.type='button';
+      cancel.dataset.endChoiceCancel='';
+      cancel.textContent='Cancel';
+      cancel.onclick=()=>{
+        selectedHumanIndex=null;
+        document.querySelector('#hand1 .selected-domino')?.classList.remove('selected-domino');
+        root.closeModal();
+      };
+      row.appendChild(cancel);
+    });
+    observer.observe(card,{attributes:true,attributeFilter:['class']});
+  }
+  if(typeof document!=='undefined'){
+    document.addEventListener('DOMContentLoaded',addEndChoiceCancel,{once:true});
+  }
   root.JVDominoInput={bindActivation,renderHand};
   if(typeof module!=='undefined')module.exports={bindActivation,renderHand};
 })(typeof window!=='undefined'?window:globalThis);
