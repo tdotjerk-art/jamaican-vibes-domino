@@ -35,7 +35,7 @@ const addHistory=(r,s)=>{r.history.push(s);if(r.history.length>60)r.history.shif
 function clearTimer(r){if(r.timer){clearTimeout(r.timer);r.timer=null}}
 function publicPlayers(r){return r.players.map(p=>p?{name:p.name,seat:p.seat,connected:!!p.connected,ready:!!p.ready}:null)}
 function roomState(r){return {
- code:r.code,players:publicPlayers(r),hostSeat:r.hostSeat,mode:r.mode,target:r.target,tieRule:tieRuleOf(r.tieRule),phase:r.phase,
+ code:r.code,players:publicPlayers(r),hostSeat:r.hostSeat,mode:r.mode,target:r.target,tieRule:tieRuleOf(r.tieRule),phase:r.phase,publicTable:!!r.publicTable,
  message:r.message||"",spectatorCount:r.spectators.size,rematchVotes:[...r.rematchVotes]
 }}
 function gameBase(r){return {
@@ -326,7 +326,8 @@ function abandonSeat(r,seat){
  if(p.graceTimer)clearTimeout(p.graceTimer);
  r.players[seat]=null;r.ready=false;promoteHost(r);clearTimer(r);
  r.hands=[[],[],[],[]];r.board=[];r.turn=null;r.phase="waiting";r.revealHands=false;r.message="A seat opened. Waiting for four ready players.";
- r.players.forEach(x=>{if(x)x.ready=false});emitAll(r)
+ if(r.publicTable&&!r.players.some(Boolean)&&!r.spectators.size){clearTimeout(r.restartTimer);rooms.delete(r.code);return;}
+ r.players.forEach(x=>{if(x)x.ready=r.publicTable&&r.handNo===0&&x.connected});emitAll(r)
 }
 // A socket owns at most one seated or spectator role at a time.
 function seatedRoom(socket){
@@ -357,13 +358,53 @@ require("./voice").installVoice(io,rooms);
 require("./three-cards-online").installThreeCards(io);
 
 io.on("connection",socket=>{
- const payloadEvents=new Set(['create-room','join-room','join-spectator','reconnect-player','set-room-options','play-domino','choose-poser']);
+ const payloadEvents=new Set(['create-room','join-public-table','join-room','join-spectator','reconnect-player','set-room-options','play-domino','choose-poser']);
  socket.use(([event,data],next)=>{
    if(!actionAllowed(socket)){socket.emit('action-error','Too many actions. Please slow down.');return;}
    if(payloadEvents.has(event)&&(!data||typeof data!=='object'||Array.isArray(data))){socket.emit('room-error','Invalid room request.');return;}
    next();
  });
 
+ socket.on("join-public-table",({name})=>{
+   name=typeof name==="string"?name.trim().slice(0,20):"";
+   if(!name)return socket.emit("room-error","A name is required.");
+   const current=seatedRoom(socket);
+   if(current){
+     if(!current.publicTable)return socket.emit("room-error","Leave your private room before joining a public table.");
+     const player=current.players[socket.data.seat];
+     socket.emit("seat-assigned",{code:current.code,seat:player.seat,token:player.token});
+     emitAll(current);
+     return;
+   }
+
+   leaveCurrentRoom(socket);
+   // Map iteration is insertion ordered, so the oldest available table fills first.
+   let room;
+   for(const candidate of rooms.values()){
+     if(candidate.publicTable&&candidate.phase==="waiting"&&candidate.handNo===0&&candidate.players.some(player=>!player)){
+       room=candidate;
+       break;
+     }
+   }
+
+   let seat,token;
+   if(room){
+     seat=room.players.findIndex(player=>!player);
+     token=randToken();
+     room.players[seat]={id:socket.id,name,seat,token,connected:true,ready:true,graceTimer:null};
+   }else{
+     ({room,token}=newRoom(name,"partner",6,socket,"double-six-two"));
+     room.publicTable=true;
+     seat=0;
+     room.players[0].ready=true;
+   }
+   room.message="Waiting for four players. The public table starts automatically.";
+   socket.data.roomCode=room.code;
+   socket.data.seat=seat;
+   socket.join(room.code);
+   socket.emit("seat-assigned",{code:room.code,seat,token});
+   startIfReady(room);
+ });
  socket.on("create-room",({name,mode,target,tieRule})=>{
    name=String(name||"").trim().slice(0,20);if(!name)return socket.emit("room-error","A name is required.");
    leaveCurrentRoom(socket);
@@ -372,7 +413,7 @@ io.on("connection",socket=>{
  });
  socket.on("join-room",({name,code})=>{
    name=String(name||"").trim().slice(0,20);code=String(code||"").trim().toUpperCase();const r=rooms.get(code);
-   if(!r)return socket.emit("room-error","Room not found.");if(!name)return socket.emit("room-error","A name is required.");
+   if(!r)return socket.emit("room-error","Room not found.");if(r.publicTable)return socket.emit("room-error","Use Join Public Table to join public play.");if(!name)return socket.emit("room-error","A name is required.");
    if(r.phase!=="waiting"&&r.phase!=="paused")return socket.emit("room-error","That game has already started.");
    const seat=r.players.findIndex(p=>!p);if(seat<0)return socket.emit("room-error","That room is full.");
    leaveCurrentRoom(socket);
@@ -395,11 +436,11 @@ io.on("connection",socket=>{
    socket.data.roomCode=code;socket.data.seat=seat;socket.join(code);socket.emit("reconnect-ok",{code,seat,token});resumeIfPossible(r);emitAll(r)
  });
  socket.on("set-room-options",({mode,target,tieRule})=>{
-   const r=seatedRoom(socket),seat=socket.data.seat;if(!r||seat!==r.hostSeat||r.phase!=="waiting")return;
+   const r=seatedRoom(socket),seat=socket.data.seat;if(!r||r.publicTable||seat!==r.hostSeat||r.phase!=="waiting")return;
    r.mode=mode==="individual"?"individual":"partner";r.target=r.mode==="partner"?6:clampTarget(target);r.tieRule=tieRuleOf(tieRule);emitAll(r)
  });
  socket.on("toggle-ready",()=>{
-   const r=seatedRoom(socket),seat=socket.data.seat;if(!r)return socket.emit("action-error","Join a player seat first.");if(!Number.isInteger(seat)||r.phase!=="waiting")return;
+   const r=seatedRoom(socket),seat=socket.data.seat;if(!r)return socket.emit("action-error","Join a player seat first.");if(!Number.isInteger(seat)||r.phase!=="waiting"||(r.publicTable&&r.handNo===0&&r.players.some(p=>!p)))return;
    const p=r.players[seat];if(!p||!p.connected)return;p.ready=!p.ready;setEvent(r,"ready",`${p.name} is ${p.ready?"ready":"not ready"}.`);startIfReady(r)
  });
  socket.on("play-domino",({tileId,side})=>{
@@ -425,6 +466,7 @@ io.on("connection",socket=>{
    const r=rooms.get(socket.data.roomCode);if(!r)return;
    if(socket.data.spectator){r.spectators.delete(socket.id);emitAll(r);return}
    const seat=socket.data.seat,p=r.players[seat];if(!p||p.id!==socket.id)return;
+   if(r.publicTable&&r.phase==="waiting"&&r.handNo===0){abandonSeat(r,seat);return;}
    p.connected=false;p.id=null;p.ready=false;pauseForDisconnect(r);
    p.graceTimer=setTimeout(()=>abandonSeat(r,seat),GRACE_MS);
    // The reconnect grace period should not keep a shutting-down process alive.

@@ -5572,7 +5572,9 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     <select class="jv-select" id="jvTarget"><option value="6">First to 6</option></select>
   </div>
   <select class="jv-select" id="jvTieRule"><option value="double-six-two">Blocked tie: play for 2, double-six poses</option><option value="last-winner-one">Blocked tie: play for 1, previous winner poses</option></select>
-  <button class="jv-btn" id="jvCreate">CREATE ROOM</button>
+  <button class="jv-btn" id="jvPublicJoin">JOIN PUBLIC TABLE</button>
+  <p class="jv-small">Public tables seat players in arrival order and start with four players.</p>
+  <button class="jv-btn" id="jvCreate">CREATE PRIVATE ROOM</button>
   <hr style="border-color:#496">
   <input class="jv-input" id="jvCode" maxlength="8" placeholder="Room code">
   <button class="jv-btn" id="jvJoin">JOIN ROOM</button>
@@ -5779,7 +5781,11 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     });
 
     const me=mySeat!=null&&players?players[mySeat]:null;
-    $id('jvReady').style.display=spectator?'none':'block';
+    const waitingForPublicPlayers=state.publicTable&&connectedCount<4;
+    $id('jvReady').style.display=spectator||waitingForPublicPlayers?'none':'block';
+    $id('jvStartHint').textContent=waitingForPublicPlayers
+      ? 'The public table starts automatically when four players join.'
+      : 'The game starts automatically when all 4 players are connected and READY.';
 
     const progress=$id('jvLobbyProgress');
     if(progress){
@@ -5808,7 +5814,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     }
 
     const opt=$id('jvLobbyOptions');opt.innerHTML='';
-    if(!spectator && state.hostSeat===mySeat && state.phase==='waiting'){
+    if(!state.publicTable && !spectator && state.hostSeat===mySeat && state.phase==='waiting'){
       opt.innerHTML=`<div class="jv-grid">
        <select class="jv-select" id="jvHostMode"><option value="partner">Partner — Bruck & Start</option><option value="individual">Cut Throat — First to 6</option></select>
        <select class="jv-select" id="jvHostTieRule"><option value="double-six-two">Blocked tie: play for 2, double-six poses</option><option value="last-winner-one">Blocked tie: play for 1, previous winner poses</option></select>
@@ -5902,6 +5908,13 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
   $id('jvSettingsClose').onclick=()=>showScreen('jvHome');
   $id('jvBack').onclick=()=>showScreen('jvHome');
 
+  $id('jvPublicJoin').onclick=()=>{
+    const name=$id('jvName').value.trim();
+    if(!name)return toast('Enter your name.');
+    $id('jvSetupStatus').textContent='Finding a public table…';
+    window.gameConnectionMode='online';
+    ensureSocket().emit('join-public-table',{name});
+  };
   $id('jvCreate').onclick=()=>{
     const name=$id('jvName').value.trim();
     if(!name)return toast('Enter your name.');
