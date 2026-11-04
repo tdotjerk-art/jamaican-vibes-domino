@@ -141,3 +141,27 @@ body {
   #actions .bet-slider { grid-column:1/-1; }
   #actions > .all-in:last-child:nth-child(3) { grid-column:1/-1; }
 }
+
+/* Compact table options and hand recap. */
+.controls::before { display:none; }
+#tableOptions { align-self:center; padding:4px 7px; font-size:9px; }
+#tableMode { margin:4px 0 6px; color:#e5c98e; font-size:9px; }
+#tableSettings,#handRecap { width:min(440px,90vw); max-height:85vh; overflow:auto; }
+#tableSettings label { margin:8px 0; font-size:12px; }
+#tableSettings input { width:auto; accent-color:#e6bc66; }
+.option-buttons { display:flex; flex-wrap:wrap; gap:6px; }
+.option-buttons button,#closeRecap { padding:8px 10px; }
+.moving-chip {
+  position:fixed; z-index:10; pointer-events:none; width:12px; height:12px; border-radius:50%;
+  border:2px dashed #fff1cd; background:#ae7930; box-shadow:0 2px 4px #0009;
+}
+.dealt-card { animation:deal-card .28s ease-out both; }
+@keyframes deal-card {
+  from { opacity:0; transform:translateY(-12px) scale(.85); }
+  to { opacity:1; }
+}
+@media (prefers-reduced-motion:reduce) { .dealt-card { animation:none; } }
+@media (orientation:landscape) and (max-height:550px) and (max-width:1400px) {
+  .controls { overflow:auto; }
+  #actions > .recap-button { grid-column:1/-1; }
+}
