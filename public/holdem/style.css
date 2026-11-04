@@ -144,7 +144,7 @@ body {
 
 /* Compact table options and hand recap. */
 .controls::before { display:none; }
-#tableOptions { align-self:center; padding:4px 7px; font-size:9px; }
+#tableOptions { align-self:stretch; min-height:44px; padding:7px 9px; font-size:clamp(12px,1.65vw,16px); line-height:1.15; }
 #tableMode { margin:4px 0 6px; color:#e5c98e; font-size:9px; }
 #tableSettings,#handRecap { width:min(440px,90vw); max-height:85vh; overflow:auto; }
 #tableSettings label { margin:8px 0; font-size:12px; }
