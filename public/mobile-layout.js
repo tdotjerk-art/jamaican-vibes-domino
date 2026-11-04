@@ -143,6 +143,19 @@ function partnerWin(r,winnerSeat){
  return {team,count:0,won:false,bruck:true,oneOne:false};
 }
   function mount(){
+    const lobbyOptions=document.getElementById('jvLobbyOptions');
+    if(lobbyOptions){
+      const settings=document.createElement('details');
+      const summary=document.createElement('summary');
+      summary.textContent='Table settings';
+      lobbyOptions.before(settings);
+      settings.append(summary,lobbyOptions);
+      const ready=document.getElementById('jvReady');
+      const actions=document.createElement('div');
+      actions.id='jvLobbyActions';
+      ready.before(actions);
+      actions.append(ready,document.getElementById('jvLeave'));
+    }
     const app=document.querySelector('.app'),table=document.querySelector('.table');if(!app||!table)return;
     // Both local result paths use the actual value of the hand after a blocked tie.
     root.applyOfflineBruckAndStartWin=function(winner){
