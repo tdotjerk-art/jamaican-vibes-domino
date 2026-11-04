@@ -45,3 +45,17 @@ test('local partners see the newly dealt hand before the poser decision',()=>{
  }
  assert.doesNotMatch(html,/preparePartnerPoserChoice|setCountdownPoser\(/);
 });
+
+test('online 1–1 deals a two-point hand and automatically poses double-six',()=>{
+ const r=room(0);
+ Object.assign(r,{teamScores:[1,1],oneOnePlayTwo:true,nextPlayFor:2});
+ nextHand(r);
+ try{
+  assert.equal(r.phase,'playing');
+  assert.equal(r.handValue,2);
+  assert.deepEqual(r.poseOptions,[]);
+  assert.equal(r.board.length,1);
+  assert.deepEqual([r.board[0].a,r.board[0].b],[6,6]);
+  assert.equal(r.hands[r.board[0].player].length,6);
+ }finally{clearTimeout(r.timer);}
+});

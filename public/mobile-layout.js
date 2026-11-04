@@ -164,6 +164,7 @@ function partnerWin(r,winnerSeat){
       const result=partnerWin(state,winner);
       offlineBruckTeam=state.bruckStartTeam;offlineBruckCount=state.bruckStartCount;
       offlineOneOnePlayTwo=state.oneOnePlayTwo;offlineNextPlayFor=state.nextPlayFor;
+      if(result.oneOne)tiedCarry=true;
       scores[0]=state.teamScores[0];scores[1]=state.teamScores[1];
       return result;
     };
