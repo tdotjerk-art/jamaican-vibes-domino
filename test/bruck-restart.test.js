@@ -36,12 +36,14 @@ test('normal and blocked brucks reset to zero and automatically pose double-six'
   const r=room();finish(r);checkRestart(r);
  }
 });
-test('one-one still offers the winning partners their poser choice',()=>{
+test('one-one bypasses the winning partners’ poser choice',()=>{
  const r=room();r.bruckStartCount=1;r.teamScores=[1,0];
  finishWin(r,1);nextHand(r);
  assert.deepEqual(r.teamScores,[1,1]);
- assert.equal(r.phase,'choose-poser');
- assert.deepEqual(r.poseOptions,[1,3]);
+ assert.equal(r.phase,'playing');
+ assert.deepEqual(r.poseOptions,[]);
+ assert.equal(r.handValue,2);
+ clearTimeout(r.timer);
 });
 test('local bruck restart poses double-six from every seat without choosing a partner',()=>{
  const html=fs.readFileSync(require('node:path').join(__dirname,'../index.html'),'utf8');
