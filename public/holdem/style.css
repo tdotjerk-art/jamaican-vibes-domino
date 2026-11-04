@@ -29,3 +29,83 @@ html,body{height:100%;overflow:hidden}main{position:relative;display:grid;grid-t
   .seat.s2>.cards,.seat.s3>.cards{left:calc(100% + 13px)}
   .seat.s7>.cards,.seat.s8>.cards{left:auto;right:calc(100% + 5px)}
 }
+
+/* Tournament table presentation. Seat coordinates and card clearance are shared
+   with the responsive layouts above. */
+body {
+  background: radial-gradient(ellipse at 50% 10%, #243039, #11181e 52%, #090e13);
+  color: #f1f3ee;
+}
+.felt {
+  border-color: #22292e;
+  background: repeating-linear-gradient(125deg, #ffffff03 0 1px, transparent 1px 4px),
+    radial-gradient(ellipse at 50% 38%, #24735e, #134e40 66%, #092d28);
+  box-shadow: 0 0 0 2px #78857d, 0 0 0 5px #131a20,
+    0 0 0 6px #a48752, 0 12px 22px #0008, inset 0 0 28px #021b17b3;
+}
+.felt::before { border-color: #c4b28c45; }
+.betting-line { border-color: #bdcfad3d; }
+.centre > .eyebrow { color: #c7dfd1; font-weight: 700; }
+#pot {
+  background: #102820;
+  border-color: #bea46b80;
+  color: #f0d59a;
+  font-variant-numeric: tabular-nums;
+}
+#street { color: #c4dacd; font-weight: 700; }
+.card {
+  background: linear-gradient(145deg, #fff, #f0f0e8);
+  box-shadow: 0 2px 5px #0007;
+}
+.card.empty {
+  background: #071c194d;
+  border: 1px dashed #b2d2bf55;
+  box-shadow: inset 0 1px 3px #0004;
+}
+.card.back {
+  background: repeating-linear-gradient(135deg, #293e45 0 3px, #405962 3px 4px);
+  border-color: #d8bc7b;
+}
+.card.back::after { background: #202e34; }
+.seat {
+  background: linear-gradient(160deg, #28343b, #151d24 80%);
+  border-color: #617279;
+  border-radius: 7px;
+  box-shadow: 0 4px 9px #0007;
+}
+.seat h3 { color: #f3f5f3; }
+.seat p { color: #e8cb8a; font-variant-numeric: tabular-nums; }
+.seat p+p { color: #c6d7d7; }
+.seat.s0 { border-color: #ac9362; }
+.seat.active { border-color: #f0cc76; }
+.seat.active::after { height: 2px; }
+.seat.folded { opacity: .68; }
+.controls {
+  background: linear-gradient(165deg, #222e36, #10171d 80%);
+  border-color: #52616a;
+}
+.controls::before {
+  content: 'TABLE ACTION';
+  display: block;
+  margin-bottom: 8px;
+  color: #d3bb87;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .17em;
+  text-align: center;
+}
+#actions button:not(.primary):not(.danger) {
+  background: linear-gradient(#374852, #26333d);
+  border-color: #71828a;
+}
+#actions input { background: #111c23; border-color: #78858a; }
+@media (orientation: landscape) and (max-height: 550px) and (max-width: 1400px) {
+  .controls { padding: 7px 6px; }
+  #actions { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+  #actions > button { min-width: 0; padding-inline: 2px; font-size: 10px; }
+  #actions > button:only-child, #actions > label, #actions > button:last-child:nth-child(5) {
+    grid-column: 1 / -1;
+  }
+  .controls::before { margin-bottom: 6px; }
+  #message { margin-bottom: 7px; }
+}
