@@ -145,7 +145,7 @@ function installHoldem(io) {
       if (!cleanName) return fail('Enter your name first.');
       if (publicTable === true) {
         table = [...tables.values()].find(candidate =>
-          candidate.public && !candidate.game && candidate.members.length < 10 &&
+          candidate.public && !candidate.game && candidate.members.length < 8 &&
           candidate.members.some(member => member.socket));
       }
       if (create === true || (publicTable === true && !table)) {
@@ -155,7 +155,7 @@ function installHoldem(io) {
         tables.set(id, table);
       }
       if (!table || (table.public && publicTable !== true)) return fail('Room code not found.');
-      if (table.game || table.members.length >= 10) return fail('That table is full or has already started.');
+      if (table.game || table.members.length >= 8) return fail('That table is full or has already started.');
       const member = {name:cleanName, token:randomBytes(24).toString('hex')};
       table.members.push(member);
       bind(table, member);
