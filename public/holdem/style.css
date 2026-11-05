@@ -354,3 +354,19 @@ html { background: var(--flag-black); }
 @media (orientation: landscape) and (max-height: 550px) and (max-width: 1400px) {
   .centre { top: 32%; }
 }
+
+@media (orientation: landscape) and (max-height: 550px) and (max-width: 1400px) {
+  .centre { top: 29%; }
+  .seat.s0 > .cards { bottom: calc(100% + 2px); }
+  .controls { justify-content: flex-start; overflow-y: auto; }
+  #message {
+    flex-shrink: 0;
+    max-height: none;
+    overflow: visible;
+    white-space: normal;
+    line-height: 1.25;
+    margin-bottom: 6px;
+  }
+  #actions { flex-shrink: 0; gap: 4px; }
+  #friendsButton, #tableOptions { flex-shrink: 0; }
+}
