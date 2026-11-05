@@ -191,14 +191,7 @@ game.players.forEach((player, i) => {
   const position = tablePositions[Math.round(offset * tablePositions.length / game.players.length)];
   const seat = el('article', undefined, 'seat s' + position +
     (acting ? ' active' : '') + (player.folded ? ' folded' : '') + (won ? ' winner' : ''));
-  const heading = el('h3');
-  heading.append(el('span', player.name.slice(0,1), 'seat-emblem'), el('span', player.name));
-  const roles = [i === game.dealer && 'D', i === game.small && 'SB', i === game.big && 'BB'].filter(Boolean);
-  roles.forEach(role => {
-    const badge = el('span', role, 'seat-role');
-    badge.setAttribute('aria-label', { D:'Dealer', SB:'Small blind', BB:'Big blind' }[role]);
-    heading.append(badge);
-  });
+  const heading = el('h3', player.name);
   const hand = el('div', undefined, 'cards');
   player.hand.forEach((c, index) => {
     const node = tableCard(c, i !== seatOfUser() && !rank, bestCards.has(c));
@@ -208,14 +201,7 @@ game.players.forEach((player, i) => {
     }
     hand.append(node);
   });
-  const nextSeat = online?.seatStatuses?.[i];
-  const status = game.phase === 'over' && nextSeat?.status === 'Joined · plays next hand' ?
-    nextSeat.name + ' · joins next hand' : won ? '+' + awards.get(i).toLocaleString() + (rank ? ' · ' + rank.name : '') :
-    rank ? rank.name : player.folded ? (player.hand.length ? 'Folded' : 'Sitting out') :
-    player.chips === 0 ? 'All-in' : acting ? 'Acting' : player.connected === false ? 'Disconnected' : ' ';
-  seat.append(heading, hand,
-    el('p', player.chips.toLocaleString() + ' chips' + (player.bet && !results.length ? ' · Bet ' + player.bet : '')),
-    el('p', status + (player.lastAction ? ' · ' + player.lastAction : ''), 'seat-status'));
+  seat.append(heading, hand, el('p', player.chips.toLocaleString() + ' chips'));
   $('seats').append(seat);
 });
 $('board').replaceChildren(...Array.from({length:5}, (_, i) =>
