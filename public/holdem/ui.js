@@ -42,6 +42,8 @@ function connectFriends() {
     if (!state.game && (state.public || state.canDeal) && $('friendsLobby').open) $('friendsLobby').close();
     $('friendsFields').hidden = $('friendsCreate').hidden = $('friendsJoin').hidden = $('publicJoin').hidden = true;
     $('friendsLeave').hidden = false;
+    $('friendsInvite').hidden = state.public;
+    $('friendsSeats').replaceChildren(...(state.seatStatuses || []).map(({name,status}) => el('li', name + ' · ' + status)));
     $('friendsSit').hidden = !state.game;
     $('friendsSit').textContent = state.sittingOut ? 'Return next hand' : 'Sit out next hand';
     $('friendsStatus').textContent = (state.sittingOut ? 'Sitting out next hand · ' : '') + (state.public ? 'Public table' : 'Room ' + state.code) + ' · ' + state.players.join(', ');
@@ -60,6 +62,8 @@ function leaveFriends(notify = true) {
   clearInterval(clock);
   $('friendsFields').hidden = $('friendsCreate').hidden = $('friendsJoin').hidden = $('publicJoin').hidden = false;
   $('friendsLeave').hidden = true;
+  $('friendsInvite').hidden = true;
+  $('friendsSeats').replaceChildren();
   $('friendsSit').hidden = true;
   $('friendsStatus').textContent = '';
   render();
@@ -188,7 +192,9 @@ game.players.forEach((player, i) => {
     }
     hand.append(node);
   });
-  const status = won ? '+' + awards.get(i).toLocaleString() + (rank ? ' · ' + rank.name : '') :
+  const nextSeat = online?.seatStatuses?.[i];
+  const status = game.phase === 'over' && nextSeat?.status === 'Joined · plays next hand' ?
+    nextSeat.name + ' · joins next hand' : won ? '+' + awards.get(i).toLocaleString() + (rank ? ' · ' + rank.name : '') :
     rank ? rank.name : player.folded ? (player.hand.length ? 'Folded' : 'Sitting out') :
     player.chips === 0 ? 'All-in' : acting ? 'Acting' : player.connected === false ? 'Disconnected' : ' ';
   seat.append(heading, hand,
@@ -246,6 +252,9 @@ if (online?.deadline && acting) {
   clock = setInterval(tick, 250);
 }
 if (online && ['lobby','over'].includes(game.phase)) {
+  if (game.phase === 'over' && !online.canDeal) {
+    $('message').append(' · ' + (online.activeCount === 1 ? 'Waiting for one more active player' : 'Waiting for two active players'));
+  }
   if (game.phase === 'lobby') $('message').textContent = (online.public ? 'Public table' : 'Share room code ' + online.code) +
     (online.canDeal ? ' · Ready to deal' : ' · Waiting for another player');
   if (game.phase === 'lobby' && online.startAt) {
@@ -324,7 +333,23 @@ $('friendsCreate').onclick=()=>requestRoom(true);
 $('friendsJoin').onclick=()=>requestRoom(false);
 $('publicJoin').onclick=()=>requestRoom(false, true);
 $('friendsSit').onclick=()=>socket.emit('table-sit-out', !online.sittingOut);
+$('friendsInvite').onclick=async()=>{
+  const url = new URL(location.pathname, location.origin);
+  url.searchParams.set('room', online.code);
+  try {
+    await navigator.clipboard.writeText(url.href);
+    $('friendsStatus').textContent = 'Invite link copied.';
+  } catch {
+    $('friendsStatus').textContent = 'Invite link · ' + url.href;
+  }
+};
 $('friendsLeave').onclick=()=>leaveFriends();
 sound.onchange=enableSound;
 if (globalThis.io && sessionStorage.getItem('holdem-private-seat')) connectFriends();
-render();})();
+render();
+const invitedRoom = new URLSearchParams(location.search).get('room');
+if (/^[0-9a-f]{6}$/i.test(invitedRoom || '') && !sessionStorage.getItem('holdem-private-seat')) {
+  $('friendsCode').value = invitedRoom.toUpperCase();
+  $('friendsButton').click();
+}
+})();
