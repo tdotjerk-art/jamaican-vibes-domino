@@ -30,17 +30,20 @@ function connectFriends() {
     if (!online) practice = game;
     online = state;
     if (state.game) {
+      const startingHand = state.game.handNumber !== game.handNumber;
       game = Object.assign(onlineGame(state), state.game);
-      if ($('friendsLobby').open) $('friendsLobby').close();
+      if (startingHand && $('friendsLobby').open) $('friendsLobby').close();
     } else {
       game = onlineGame(state);
       game.phase = 'lobby';
       game.players = state.players.map(name => ({name, chips:1000, total:0, hand:[]}));
     }
-    if ((state.public || state.canDeal) && $('friendsLobby').open) $('friendsLobby').close();
+    if (!state.game && (state.public || state.canDeal) && $('friendsLobby').open) $('friendsLobby').close();
     $('friendsFields').hidden = $('friendsCreate').hidden = $('friendsJoin').hidden = $('publicJoin').hidden = true;
     $('friendsLeave').hidden = false;
-    $('friendsStatus').textContent = (state.public ? 'Public table' : 'Room ' + state.code) + ' · ' + state.players.join(', ');
+    $('friendsSit').hidden = !state.game;
+    $('friendsSit').textContent = state.sittingOut ? 'Return next hand' : 'Sit out next hand';
+    $('friendsStatus').textContent = (state.sittingOut ? 'Sitting out next hand · ' : '') + (state.public ? 'Public table' : 'Room ' + state.code) + ' · ' + state.players.join(', ');
     render();
   });
   return socket;
@@ -56,6 +59,7 @@ function leaveFriends(notify = true) {
   clearInterval(clock);
   $('friendsFields').hidden = $('friendsCreate').hidden = $('friendsJoin').hidden = $('publicJoin').hidden = false;
   $('friendsLeave').hidden = true;
+  $('friendsSit').hidden = true;
   $('friendsStatus').textContent = '';
   render();
 }
@@ -298,6 +302,7 @@ $('friendsClose').onclick=()=>$('friendsLobby').close();
 $('friendsCreate').onclick=()=>requestRoom(true);
 $('friendsJoin').onclick=()=>requestRoom(false);
 $('publicJoin').onclick=()=>requestRoom(false, true);
+$('friendsSit').onclick=()=>socket.emit('table-sit-out', !online.sittingOut);
 $('friendsLeave').onclick=()=>leaveFriends();
 sound.onchange=enableSound;
 if (globalThis.io && sessionStorage.getItem('holdem-private-seat')) connectFriends();
