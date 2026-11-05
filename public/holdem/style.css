@@ -424,3 +424,18 @@ html { background: var(--flag-black); }
 #publicTables { list-style: none; padding: 0; }
 #publicTables li { margin: 6px 0; }
 #publicTables button { width: 100%; white-space: normal; padding: 8px; }
+
+.seat h3 { position: relative; }
+.seat-countdown {
+  position: absolute;
+  left: calc(100% + 3px);
+  top: 50%;
+  transform: translateY(-50%);
+  color: #fed100;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  text-shadow: 0 1px 3px #000;
+}
+.seat-countdown.urgent { color: #ffb29d; }
