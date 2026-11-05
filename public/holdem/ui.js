@@ -269,9 +269,10 @@ if (online && ['lobby','over'].includes(game.phase)) {
   }
   if (game.phase === 'lobby') $('message').textContent = (online.public ? 'Public table' : 'Share room code ' + online.code) +
     (online.canDeal ? ' · Ready to deal' : ' · Waiting for another player');
-  if (game.phase === 'lobby' && online.startAt) {
+  if (online.startAt) {
+    const resultMessage = game.phase === 'over' ? $('message').textContent + ' · Next hand in ' : 'Public table · Starting in ';
     const tick = () => {
-      if (socket.connected) $('message').textContent = 'Public table · Starting in ' +
+      if (socket.connected) $('message').textContent = resultMessage +
         Math.max(0, Math.ceil((online.startAt - Date.now()) / 1000)) + 's';
     };
     tick();
@@ -279,7 +280,7 @@ if (online && ['lobby','over'].includes(game.phase)) {
   }
   if (online.rebuy) $('message').append(' · Rebuy ready for next hand');
   if (online.canRebuy) button('Rebuy 1,000 play chips', () => socket.emit('table-rebuy'), 'primary');
-  if (online.canDeal && !(online.public && game.phase === 'lobby')) button(game.phase === 'lobby' ? 'Deal cards' : 'Next hand',
+  if (online.canDeal && !online.public) button(game.phase === 'lobby' ? 'Deal cards' : 'Next hand',
     () => socket.emit('table-deal', online.revision), 'primary');
   if (game.phase === 'over') button('Hand recap', () => showRecap(awards), 'recap-button');
   return;
