@@ -8,6 +8,11 @@ function installHoldem(io) {
   const turnMs = 30000;
   const graceMs = 90000;
 
+  function available(table) {
+    return table.members.filter((member, seat) => member.socket && !member.sittingOut &&
+      (!table.game || table.game.players[seat].chips > 0));
+  }
+
   function deal(table, connected) {
     if (!table.game) {
       table.members.filter(m => !m.socket).forEach(m => clearTimeout(m.expiry));
@@ -15,18 +20,18 @@ function installHoldem(io) {
       table.game = new Game(() => randomInt(2 ** 32) / 2 ** 32, connected.length);
       connected.forEach((m, i) => { table.game.players[i].name = m.name; });
     }
-    if (table.game.start()) progress(table);
+    if (table.game.start(seat => connected.includes(table.members[seat]))) progress(table);
   }
 
   function publish(table) {
-    const ready = table.public && !table.game && table.members.filter(m => m.socket).length >= 2;
+    const ready = table.public && !table.game && available(table).length >= 2;
     if (ready && !table.startTimer) {
       table.startAt = Date.now() + 15000;
       table.startTimer = setTimeout(() => {
         table.startTimer = null;
         table.startAt = null;
         if (tables.get(table.code) !== table || table.game) return;
-        const connected = table.members.filter(m => m.socket);
+        const connected = available(table);
         if (connected.length >= 2) deal(table, connected);
       }, 15000);
       table.startTimer.unref();
@@ -54,8 +59,8 @@ function installHoldem(io) {
       member.socket.emit('table-state', {
         code:table.code, public:table.public === true, seat, players:table.members.map(m => m.name), game:view,
         revision:table.revision, deadline:table.deadline, startAt:table.startAt,
-        canDeal:table.members.filter(m => m.socket).length >= 2 &&
-          (!game || game.players.filter(p => p.chips > 0).length >= 2)
+        sittingOut:!!member.sittingOut,
+        canDeal:available(table).length >= 2
       });
     }
   }
@@ -158,10 +163,17 @@ function installHoldem(io) {
     socket.on('table-deal', revision => {
       const table = socket.data.table;
       if (!table || revision !== table.revision) return;
-      const connected = table.members.filter(m => m.socket);
+      const connected = available(table);
       if (connected.length < 2) return fail('Two connected players are needed to deal.');
       if (table.public && !table.game) return;
       deal(table, connected);
+    });
+    socket.on('table-sit-out', sittingOut => {
+      const table = socket.data.table;
+      const member = table?.members.find(m => m.socket === socket);
+      if (!table?.game || !member || typeof sittingOut !== 'boolean') return;
+      member.sittingOut = sittingOut;
+      publish(table);
     });
     socket.on('table-act', (input) => {
       const table = socket.data.table;
