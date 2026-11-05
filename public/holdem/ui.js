@@ -1,5 +1,5 @@
 (()=>{'use strict';const $=id=>document.getElementById(id),E=JVHoldem;let game=new E.Game(),timer;
-let previous, soundContext;
+let previous, soundContext, alertedTurn, warnedTurn;
 let socket, online, practice, clock;
 const tablePositions = [0, 1, 2, 4, 5, 6, 8, 9];
 const seatOfUser = () => online?.seat ?? 0;
@@ -246,6 +246,16 @@ $('pot').textContent = (results.length ? 'AWARDED ' : 'POT ') + pot.toLocaleStri
 $('street').textContent = {ready:'Ready to deal', over:showdown ? 'Showdown' : 'Hand complete'}[game.phase] || game.phase;
 $('handNo').textContent = 'HAND ' + game.handNumber;
 const acting = game.players[game.turn];
+const myTurn = !!acting && game.turn === seatOfUser() && (!online || socket.connected);
+$('message').classList.toggle('your-turn', myTurn);
+$('message').classList.remove('turn-warning');
+if (!myTurn) alertedTurn = warnedTurn = undefined;
+const turnKey = online ? online.code + ':' + game.handNumber + ':' + online.revision :
+  game.handNumber + ':' + game.phase + ':' + game.log.length;
+if (myTurn && alertedTurn !== turnKey) {
+  alertedTurn = turnKey;
+  playSound(false);
+}
 const call = acting && Math.min((online ? game.actingCall : game.legal(game.turn)?.call) || 0, acting.chips);
 $('message').textContent = results.length ? results.map(({winners, amount}, index) =>
   (index ? 'Side pot ' + index : 'Main pot') + ' ' + amount.toLocaleString() + ' · ' +
@@ -257,8 +267,18 @@ $('actions').replaceChildren();
 if (online?.deadline && acting) {
   const message = $('message').textContent;
   const tick = () => {
-    if (socket.connected) $('message').textContent = message + ' · ' +
-      Math.max(0, Math.ceil((online.deadline - Date.now()) / 1000)) + 's';
+    if (!socket.connected) {
+      $('message').classList.remove('your-turn', 'turn-warning');
+      return;
+    }
+    const seconds = Math.max(0, Math.ceil((online.deadline - Date.now()) / 1000));
+    $('message').textContent = message + ' · ' + seconds + 's' +
+      (myTurn && seconds <= 5 ? ' · Act now' : '');
+    $('message').classList.toggle('turn-warning', myTurn && seconds <= 5);
+    if (myTurn && seconds <= 5 && warnedTurn !== turnKey) {
+      warnedTurn = turnKey;
+      playSound(true);
+    }
   };
   tick();
   clock = setInterval(tick, 250);
