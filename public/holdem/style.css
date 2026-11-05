@@ -416,3 +416,11 @@ html { background: var(--flag-black); }
 
 /* The action buttons already show the amount needed to call. */
 #message.your-turn { display: none; }
+
+.four-colour-deck .card.clubs { color: #007b39; }
+.four-colour-deck .card.diamonds { color: #0759bf; }
+.four-colour-deck .card.hearts { color: #bb1024; }
+.four-colour-deck .card.spades { color: #101411; }
+#publicTables { list-style: none; padding: 0; }
+#publicTables li { margin: 6px 0; }
+#publicTables button { width: 100%; white-space: normal; padding: 8px; }
