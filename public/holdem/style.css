@@ -314,3 +314,14 @@ html { background: var(--flag-black); }
     transform: translateX(-50%);
   }
 }
+
+/* Rotate the two end seats inward, including their hands. */
+.seat.s2 { transform: translate(-50%, -50%) rotate(-90deg); }
+.seat.s8 { transform: translate(-50%, -50%) rotate(90deg); }
+.seat.s2 > .cards, .seat.s8 > .cards {
+  top: calc(100% + 4px);
+  bottom: auto;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+}
