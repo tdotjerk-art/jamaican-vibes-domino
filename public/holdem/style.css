@@ -288,3 +288,29 @@ html { background: var(--flag-black); }
 @media (orientation: landscape) and (max-height: 550px) and (max-width: 1400px) {
   .seat.s2 > .cards, .seat.s8 > .cards { top: 50%; }
 }
+
+/* Keep the same balanced eight-seat arrangement in both phone orientations. */
+@media (max-width: 700px) and (orientation: portrait) {
+  .felt { margin-inline: 19px; }
+  .seat.s4, .seat.s1 { left: 17%; }
+  .seat.s6, .seat.s9 { left: 83%; }
+  .seat.s4, .seat.s6 { top: 0; }
+  .seat.s1, .seat.s9 { top: 100%; }
+  .seat.s2, .seat.s8 { top: 50%; }
+  .seat.s1 > .cards, .seat.s9 > .cards {
+    top: auto;
+    bottom: calc(100% + 3px);
+  }
+  .centre { top: 43%; }
+  .centre .card { width: clamp(22px, 7.5vw, 32px); height: clamp(33px, 10.5vw, 46px); }
+}
+@media (orientation: landscape) and (max-height: 550px) and (max-width: 1400px) {
+  .seat.s1, .seat.s4 { left: 24%; }
+  .seat.s6, .seat.s9 { left: 76%; }
+  .seat.s2 > .cards, .seat.s8 > .cards {
+    top: calc(100% + 3px);
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+  }
+}
