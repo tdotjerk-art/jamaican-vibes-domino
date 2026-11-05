@@ -1,6 +1,8 @@
 (()=>{'use strict';const $=id=>document.getElementById(id),E=JVHoldem;let game=new E.Game(),timer;
 let previous, soundContext, alertedTurn, warnedTurn;
 let socket, online, practice, clock;
+let advanceAction;
+const advanceKey = () => [online?.code || 'practice', game.handNumber, game.phase].join(':');
 const tablePositions = [0, 1, 2, 4, 5, 6, 8, 9];
 const seatOfUser = () => online?.seat ?? 0;
 function connectFriends() {
@@ -21,6 +23,7 @@ function connectFriends() {
   });
   socket.on('connect_error', () => { $('friendsStatus').textContent = 'Could not connect. Trying again…'; });
   socket.on('disconnect', () => {
+    advanceAction = undefined;
     if (online) {
       $('actions').replaceChildren();
       $('friendsStatus').textContent = 'Reconnecting to your seat…';
@@ -56,6 +59,7 @@ function onlineGame(state) {
   return {board:[], log:[], handNumber:0, bigBlind:20, legal:() => state.game?.legalMove};
 }
 function leaveFriends(notify = true) {
+  advanceAction = undefined;
   if (notify) socket?.emit('table-leave');
   sessionStorage.removeItem('holdem-private-seat');
   if (online) game = practice;
@@ -156,7 +160,7 @@ const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefine
 function card(c,hidden=false){const n=el('span',undefined,'card'+(hidden?' back':!c?' empty':['♥','♦'].includes(c.suit)?' red':''));if(c&&!hidden){n.append(el('span',({11:'J',12:'Q',13:'K',14:'A'})[c.rank]||c.rank),el('span',c.suit));}n.setAttribute('aria-label',hidden?'Face-down card':c?(({'11':'Jack','12':'Queen','13':'King','14':'Ace'})[c.rank]||c.rank)+' '+c.suit:'Undealt community card');return n;}
 function button(text,fn,cls){const b=el('button',text,cls);b.onclick=()=>{enableSound();fn();};$('actions').append(b);}
 function act(type,target){if(online){socket.emit('table-act',{type,target,revision:online.revision});return;}if(!game.act(0,type,target)){$('error').textContent='That action is not available. Check the amount and try again.';return;}render();}
-function render(){clearTimeout(timer);if(clock)clearInterval(clock);$('error').textContent='';$('seats').replaceChildren();const showdown=game.phase==='over'&&game.board.length===5&&game.players.filter(p=>!p.folded).length>1;
+function render(){if (advanceAction !== advanceKey()) advanceAction = undefined;clearTimeout(timer);if(clock)clearInterval(clock);$('error').textContent='';$('seats').replaceChildren();const showdown=game.phase==='over'&&game.board.length===5&&game.players.filter(p=>!p.folded).length>1;
 const identity = online?.code || game;
 const newHand = game.handNumber > 0 && (previous?.game !== identity || previous.hand !== game.handNumber);
 const motionEnabled = motion.checked !== false && !globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -307,6 +311,20 @@ if (online && ['lobby','over'].includes(game.phase)) {
 }
 if(['ready','over'].includes(game.phase)){if(game.players.filter(p=>p.chips>0).length<2){button('New table',()=>reset(),'primary');$('message').textContent=game.players.find(p=>p.chips>0).name+' wins the table!';}else button(game.phase==='ready'?'Take a seat & deal':'Next hand',()=>{game.start();render();},'primary');if(game.phase==='over')button('Hand recap',()=>showRecap(awards),'recap-button');return;}
 const legal = game.legal(seatOfUser());
+if (legal && advanceAction === advanceKey()) {
+  advanceAction = undefined;
+  act(legal.call ? 'fold' : 'check');
+  return;
+}
+const waitingPlayer = game.players[seatOfUser()];
+if (!legal && acting && waitingPlayer && !waitingPlayer.folded && waitingPlayer.chips > 0 &&
+    (!online || socket.connected)) {
+  button(advanceAction ? 'Cancel advance Check/Fold' : 'Check/Fold in advance', () => {
+    advanceAction = advanceAction ? undefined : advanceKey();
+    render();
+  });
+  if (advanceAction) $('message').append(' · Will check if possible, otherwise fold');
+}
 if (legal) {
   button('Fold', () => act('fold'), 'danger');
   button(call ? 'Call ' + call : 'Check', () => act(call ? 'call' : 'check'), 'primary');
