@@ -339,3 +339,11 @@ html { background: var(--flag-black); }
   background: #822c13;
   border-color: #ffde54;
 }
+
+/* Show only each player's name and chip count beside their cards. */
+.seat {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+.seat h3, .seat p { text-shadow: 0 1px 3px #000; }
