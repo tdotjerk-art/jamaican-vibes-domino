@@ -198,3 +198,29 @@ body { background:radial-gradient(ellipse at top,#102218,var(--flag-black) 72%);
 #friendsButton { background:linear-gradient(var(--flag-green),#00692a); border-color:var(--flag-gold); color:var(--flag-black); }
 #tableOptions { background:var(--flag-black); border-color:var(--flag-gold); color:var(--flag-gold); }
 .primary { background:linear-gradient(var(--flag-gold),#d3ae00); border-color:#ffe674; color:var(--flag-black); }
+
+/* Jamaican Vibes deck and table trim. */
+.card:not(.back):not(.empty) {
+  background:
+    linear-gradient(90deg, var(--flag-black) 0 33%, var(--flag-gold) 33% 66%, var(--flag-green) 66%) bottom / 100% 3px no-repeat,
+    linear-gradient(135deg, #fffdf6, #f4ead2);
+}
+.card.back {
+  background:
+    linear-gradient(56deg, transparent 44%, var(--flag-gold) 45% 55%, transparent 56%),
+    linear-gradient(-56deg, transparent 44%, var(--flag-gold) 45% 55%, transparent 56%),
+    conic-gradient(from -34deg, #007b35 0deg 68deg, #101411 68deg 180deg, #007b35 180deg 248deg, #101411 248deg);
+  border-color: var(--flag-gold);
+}
+.card.back::after {
+  background: #101411;
+  border-color: var(--flag-gold);
+  color: #fff1a0;
+}
+.felt {
+  background:
+    repeating-linear-gradient(45deg, #ffffff04 0 1px, transparent 1px 4px),
+    radial-gradient(ellipse at 48% 36%, #087942, #00552e 72%, #00351a);
+}
+.table-brand { color: #f9d75f99; }
+.betting-line { border-style: dashed; }
