@@ -419,6 +419,11 @@ if (!online && pausedAt) {
   button('Resume game', () => $('pauseTable').click(), 'primary');
   return;
 }
+if (online?.recovering) {
+  $('message').textContent = 'Restoring table · Waiting for players to reconnect';
+  $('message').classList.remove('your-turn', 'turn-warning');
+  return;
+}
 if (turnDeadline && acting) {
   const message = $('message').textContent;
   const tick = () => {
