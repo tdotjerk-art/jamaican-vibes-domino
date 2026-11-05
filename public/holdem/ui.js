@@ -225,12 +225,36 @@ function moveChip(from, to) {
   ], {duration:340, easing:'ease-out'});
   animation.onfinish = () => chip.remove();
 }
+function potPayouts(results) {
+  const offset = seat => (seat - game.dealer - 1 + game.players.length) % game.players.length;
+  return results.map(({winners, amount}, index) => {
+    const order = [...winners].sort((a, b) => offset(a) - offset(b));
+    return {
+      label: index ? 'Side pot ' + index : 'Main pot', amount,
+      split: order.length > 1,
+      payouts: order.map((seat, i) => ({seat,
+        amount: Math.floor(amount / order.length) + Number(i < amount % order.length)}))
+    };
+  });
+}
+function payoutLine(pot) {
+  return pot.label + ' · ' + pot.amount.toLocaleString() + ' chips' + (pot.split ? ' · Split' : '') +
+    ' — ' + pot.payouts.map(({seat, amount}) => game.players[seat].name + ' +' + amount.toLocaleString()).join(' / ');
+}
 function showRecap(awards) {
   $('recapTitle').textContent = 'Hand ' + game.handNumber + ' recap';
   $('recapBoard').textContent = game.board.length ? 'Board · ' + game.board.map(c =>
     ({11:'J',12:'Q',13:'K',14:'A'}[c.rank] || c.rank) + c.suit).join('  ') : 'No community cards dealt';
   const payouts = [...awards].map(([seat, amount]) => game.players[seat].name + ' collected ' + amount.toLocaleString() + ' chips.');
   $('recapLog').replaceChildren(...[...game.handLog, ...payouts].map(line => el('li', line)));
+  $('potPayouts').replaceChildren(...potPayouts(game.results).map(pot => {
+    const section = el('section', undefined, 'pot-payout');
+    section.append(el('h3', pot.label + ' · ' + pot.amount.toLocaleString() + ' chips' + (pot.split ? ' · Split pot' : '')));
+    const list = el('ul');
+    pot.payouts.forEach(({seat, amount}) => list.append(el('li', game.players[seat].name + ' · +' + amount.toLocaleString() + ' chips')));
+    section.append(list);
+    return section;
+  }));
   $('recapWinners').replaceChildren(...[...awards].map(([seat, amount]) => {
     const player = game.players[seat];
     const details = el('details');
@@ -241,12 +265,9 @@ function showRecap(awards) {
       rank.cards.forEach(c => cards.append(card(c)));
       details.append(el('p', rank.name), cards);
     }
-    game.results.forEach(({winners, amount: pot}, index) => {
-      if (!winners.includes(seat)) return;
-      const offset = i => (i - game.dealer - 1 + game.players.length) % game.players.length;
-      const order = [...winners].sort((a,b) => offset(a) - offset(b));
-      const share = Math.floor(pot / order.length) + Number(order.indexOf(seat) < pot % order.length);
-      details.append(el('p', (index ? 'Side pot ' + index : 'Main pot') + ' · ' + share.toLocaleString() + ' chips'));
+    potPayouts(game.results).forEach(pot => {
+      const share = pot.payouts.find(payout => payout.seat === seat);
+      if (share) details.append(el('p', pot.label + ' · ' + share.amount.toLocaleString() + ' chips'));
     });
     return details;
   }));
@@ -313,19 +334,14 @@ const newCards = newHand || (previous?.game === identity && game.board.length > 
 const awards = new Map();
 const winningCards = new Set();
 const results = game.phase === 'over' ? game.results : [];
-results.forEach(({ winners, amount }) => {
-  // The engine awards odd chips clockwise, starting after the dealer.
-  const order = [...winners].sort((a,b) => clockwise(a) - clockwise(b));
-  order.forEach((seat, index) => {
-    const share = Math.floor(amount / order.length) + Number(index < amount % order.length);
-    awards.set(seat, (awards.get(seat) || 0) + share);
+const pots = potPayouts(results);
+pots.forEach(pot => {
+  pot.payouts.forEach(({seat, amount}) => {
+    awards.set(seat, (awards.get(seat) || 0) + amount);
   });
 });
 // A split pot can contain several different five-card combinations.
 const highlightedSeat = awards.has(seatOfUser()) ? seatOfUser() : awards.keys().next().value;
-function clockwise(seat) {
-  return (seat - game.dealer - 1 + game.players.length) % game.players.length;
-}
 game.players.forEach((player, i) => {
   const acting = game.turn === i;
   const won = awards.has(i);
@@ -352,7 +368,15 @@ game.players.forEach((player, i) => {
     }
     hand.append(node);
   });
-  seat.append(heading, hand, el('p', player.chips.toLocaleString() + ' chips'));
+  const stack = el('p', undefined, 'seat-stack');
+  stack.append(el('span', player.chips.toLocaleString() + ' chips', 'stack-value'));
+  if (won) {
+    const split = pots.some(pot => pot.split && pot.payouts.some(payout => payout.seat === i));
+    const badge = el('span', split ? 'SPLIT' : 'WIN', 'winner-badge');
+    badge.setAttribute('aria-label', player.name + ' collected ' + awards.get(i).toLocaleString() + ' chips' + (split ? ' including a split pot' : ''));
+    stack.append(badge);
+  }
+  seat.append(heading, hand, stack);
   $('seats').append(seat);
 });
 $('board').replaceChildren(...Array.from({length:5}, (_, i) =>
@@ -406,9 +430,7 @@ if (myTurn && alertedTurn !== turnKey) {
   playSound(false);
 }
 const call = acting && Math.min((online ? game.actingCall : game.legal(game.turn)?.call) || 0, acting.chips);
-$('message').textContent = results.length ? results.map(({winners, amount}, index) =>
-  (index ? 'Side pot ' + index : 'Main pot') + ' ' + amount.toLocaleString() + ' · ' +
-  winners.map(i => game.players[i].name).join(' & ')).join(' | ') :
+$('message').textContent = results.length ? pots.map(payoutLine).join(' | ') :
   acting ? (game.turn === seatOfUser() ? 'Your turn' : acting.name + ' to act') + (call ? ' · ' + call + ' to call' : ' · Check available') :
   game.message || 'Pull up a chair. Start your first hand.';
 $('history').replaceChildren(...game.log.slice().reverse().map(s=>el('li',s)));
