@@ -10,7 +10,7 @@ function installHoldem(io) {
 
   function available(table) {
     return table.members.filter((member, seat) => member.socket && !member.sittingOut &&
-      (!table.game || member.replacement || table.game.players[seat].chips > 0));
+      (!table.game || member.replacement || member.rebuy || table.game.players[seat].chips > 0));
   }
 
   function vacantSeat(table) {
@@ -27,9 +27,10 @@ function installHoldem(io) {
       connected.forEach((m, i) => { table.game.players[i].name = m.name; });
     }
     table.members.forEach((member, seat) => {
-      if (!member.replacement || !connected.includes(member)) return;
+      if (!(member.replacement || member.rebuy) || !connected.includes(member)) return;
       Object.assign(table.game.players[seat], {name:member.name, chips:1000});
       member.replacement = false;
+      member.rebuy = false;
     });
     if (table.game.start(seat => connected.includes(table.members[seat]))) progress(table);
   }
@@ -74,10 +75,12 @@ function installHoldem(io) {
           name:m.name,
           status:!m.socket ? (m.token ? 'Reconnecting' : 'Seat open') :
             m.sittingOut ? 'Sitting out' : m.replacement ? 'Joined · plays next hand' :
-            game && game.players[index].chips === 0 ? 'Out of chips' : 'Ready'
+            m.rebuy ? 'Rebuy ready' : game && game.players[index].chips === 0 ? 'Out of chips' : 'Ready'
         })),
         activeCount:available(table).length,
         sittingOut:!!member.sittingOut,
+        canRebuy:!!(table.public && game?.phase === 'over' && game.players[seat].chips === 0 && !member.replacement && !member.rebuy),
+        rebuy:!!member.rebuy,
         canDeal:available(table).length >= 2
       });
     }
@@ -193,6 +196,16 @@ function installHoldem(io) {
       if (connected.length < 2) return fail('Two connected players are needed to deal.');
       if (table.public && !table.game) return;
       deal(table, connected);
+    });
+    socket.on('table-rebuy', () => {
+      const table = socket.data.table;
+      const seat = table?.members.findIndex(m => m.socket === socket);
+      if (!table?.public || table.game?.phase !== 'over' || seat < 0) return;
+      const member = table.members[seat];
+      if (table.game.players[seat].chips !== 0 || member.replacement || member.rebuy) return;
+      member.rebuy = true;
+      member.sittingOut = false;
+      publish(table);
     });
     socket.on('table-sit-out', sittingOut => {
       const table = socket.data.table;
