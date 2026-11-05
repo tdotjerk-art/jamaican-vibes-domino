@@ -9,8 +9,20 @@ function connectFriends() {
   if (socket) return socket;
   socket = globalThis.io('/holdem');
   socket.on('connect', () => {
+    socket.emit('table-list');
     const saved = sessionStorage.getItem('holdem-private-seat');
     if (saved) socket.emit('table-join', JSON.parse(saved));
+  });
+  socket.on('table-list', tables => {
+    $('publicTables').replaceChildren(...tables.map(table => {
+      const row = el('li');
+      const join = el('button', table.code + ' · ' + table.players + '/8 players · ' + table.openSeats + ' open · ' + table.phase);
+      join.disabled = !table.joinable || !!online;
+      join.onclick = () => socket.emit('table-join', {publicTable:true, code:table.code, name:$('friendsName').value});
+      row.append(join);
+      return row;
+    }));
+    if (!tables.length) $('publicTables').append(el('li', 'No public tables yet. Use Join public table to start one.'));
   });
   socket.on('table-seat', seat => sessionStorage.setItem('holdem-private-seat', JSON.stringify(seat)));
   socket.on('table-error', message => {
@@ -81,17 +93,18 @@ function requestRoom(create, publicTable = false) {
     return;
   }
   enableSound();
-  client.emit('table-join', {create, publicTable, name:$('friendsName').value, code:$('friendsCode').value});
+  client.emit('table-join', {create, publicTable, name:$('friendsName').value, code:publicTable ? '' : $('friendsCode').value});
 }
-const sound = $('tableSound'), motion = $('tableMotion');
+const sound = $('tableSound'), motion = $('tableMotion'), fourColour = $('fourColourDeck');
 try {
   const saved = JSON.parse(localStorage.getItem('holdem-effects'));
   if (typeof saved?.sound === 'boolean') sound.checked = saved.sound;
   if (typeof saved?.motion === 'boolean') motion.checked = saved.motion;
+  if (typeof saved?.fourColour === 'boolean') fourColour.checked = saved.fourColour;
 } catch {}
 function saveEffects() {
   try {
-    localStorage.setItem('holdem-effects', JSON.stringify({sound:sound.checked, motion:motion.checked}));
+    localStorage.setItem('holdem-effects', JSON.stringify({sound:sound.checked, motion:motion.checked, fourColour:fourColour.checked}));
   } catch {}
 }
 function enableSound() {
@@ -183,10 +196,10 @@ function showRecap(awards) {
   $('handRecap').showModal();
 }
 const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
-function card(c,hidden=false){const n=el('span',undefined,'card'+(hidden?' back':!c?' empty':['♥','♦'].includes(c.suit)?' red':''));if(c&&!hidden){n.append(el('span',({11:'J',12:'Q',13:'K',14:'A'})[c.rank]||c.rank),el('span',c.suit));}n.setAttribute('aria-label',hidden?'Face-down card':c?(({'11':'Jack','12':'Queen','13':'King','14':'Ace'})[c.rank]||c.rank)+' '+c.suit:'Undealt community card');return n;}
+function card(c,hidden=false){const n=el('span',undefined,'card'+(hidden?' back':!c?' empty':['♥','♦'].includes(c.suit)?' red':''));if(c&&!hidden){n.append(el('span',({11:'J',12:'Q',13:'K',14:'A'})[c.rank]||c.rank),el('span',c.suit));}if (c && !hidden) n.classList.add({'♣':'clubs','♦':'diamonds','♥':'hearts','♠':'spades'}[c.suit]);n.setAttribute('aria-label',hidden?'Face-down card':c?(({'11':'Jack','12':'Queen','13':'King','14':'Ace'})[c.rank]||c.rank)+' '+c.suit:'Undealt community card');return n;}
 function button(text,fn,cls){const b=el('button',text,cls);b.onclick=()=>{enableSound();fn();};$('actions').append(b);}
 function act(type,target){if(online){socket.emit('table-act',{type,target,revision:online.revision});return;}if(!game.act(0,type,target)){$('error').textContent='That action is not available. Check the amount and try again.';return;}render();}
-function render(){if (advanceAction !== advanceKey()) advanceAction = undefined;clearTimeout(timer);if(clock)clearInterval(clock);$('error').textContent='';$('seats').replaceChildren();const showdown=game.phase==='over'&&game.board.length===5&&game.players.filter(p=>!p.folded).length>1;
+function render(){document.body.classList.toggle('four-colour-deck', fourColour.checked);if (advanceAction !== advanceKey()) advanceAction = undefined;clearTimeout(timer);if(clock)clearInterval(clock);$('error').textContent='';$('seats').replaceChildren();const showdown=game.phase==='over'&&game.board.length===5&&game.players.filter(p=>!p.folded).length>1;
 const identity = online?.code || game;
 const newHand = game.handNumber > 0 && (previous?.game !== identity || previous.hand !== game.handNumber);
 const motionEnabled = motion.checked !== false && !globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -399,7 +412,7 @@ $('closeOptions').onclick=()=>$('tableSettings').close();
 $('closeRecap').onclick=()=>$('handRecap').close();
 $('practiceMode').onclick=()=>{if(reset(false))$('tableSettings').close();};
 $('tournamentMode').onclick=()=>{if(reset(true))$('tableSettings').close();};
-$('friendsButton').onclick=()=>{$('friendsLobby').showModal();connectFriends();};
+$('friendsButton').onclick=()=>{$('friendsLobby').showModal();connectFriends().emit('table-list');};
 $('friendsClose').onclick=()=>$('friendsLobby').close();
 $('friendsCreate').onclick=()=>requestRoom(true);
 $('friendsJoin').onclick=()=>requestRoom(false);
@@ -419,6 +432,8 @@ $('friendsFind').onclick=()=>socket.emit('table-find');
 $('friendsLeave').onclick=()=>leaveFriends();
 sound.onchange=()=>{saveEffects();enableSound();};
 motion.onchange=saveEffects;
+fourColour.onchange=()=>{saveEffects();render();};
+$('refreshTables').onclick=()=>connectFriends().emit('table-list');
 if (globalThis.io && sessionStorage.getItem('holdem-private-seat')) connectFriends();
 render();
 const invitedRoom = new URLSearchParams(location.search).get('room');
