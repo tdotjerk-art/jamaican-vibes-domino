@@ -2,6 +2,7 @@
 let previous, soundContext, alertedTurn, warnedTurn;
 let socket, online, practice, clock;
 let localTurn, pausedAt = 0;
+let onlineSummary, onlineSummaryKey;
 const computerDelay = () => ({fast:1400, normal:3000, relaxed:6000}[computerSpeed.value] || 3000);
 let advanceAction;
 const advanceKey = () => [online?.code || 'practice', game.handNumber, game.phase].join(':');
@@ -238,6 +239,45 @@ const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefine
 function card(c,hidden=false){const n=el('span',undefined,'card'+(hidden?' back':!c?' empty':['♥','♦'].includes(c.suit)?' red':''));if(c&&!hidden){n.append(el('span',({11:'J',12:'Q',13:'K',14:'A'})[c.rank]||c.rank),el('span',c.suit));}if (c && !hidden) n.classList.add({'♣':'clubs','♦':'diamonds','♥':'hearts','♠':'spades'}[c.suit]);n.setAttribute('aria-label',hidden?'Face-down card':c?(({'11':'Jack','12':'Queen','13':'King','14':'Ace'})[c.rank]||c.rank)+' '+c.suit:'Undealt community card');return n;}
 function button(text,fn,cls){const b=el('button',text,cls);b.onclick=()=>{enableSound();fn();};$('actions').append(b);}
 function act(type,target){if(online){socket.emit('table-act',{type,target,revision:online.revision});return;}if(!game.act(0,type,target)){$('error').textContent='That action is not available. Check the amount and try again.';return;}render();}
+
+function updateSessionSummary() {
+  const player = game.players[seatOfUser()];
+  if (!player) return;
+  let stats;
+  if (online) {
+    const key = 'holdem-summary-' + sessionStorage.getItem('holdem-private-seat');
+    if (key !== onlineSummaryKey) {
+      onlineSummaryKey = key;
+      onlineSummary = null;
+      try { onlineSummary = JSON.parse(sessionStorage.getItem(key)); } catch {}
+      if (!onlineSummary || onlineSummary.version !== 1) onlineSummary = {version:1, hands:0, pots:0, net:0};
+    }
+    stats = onlineSummary;
+  } else {
+    game.sessionSummary ||= {version:1, hands:0, pots:0, net:0};
+    stats = game.sessionSummary;
+  }
+  if (game.handNumber > 0 && !['over','ready','lobby','finished'].includes(game.phase) &&
+      stats.hand !== game.handNumber) {
+    stats.hand = game.handNumber;
+    stats.start = player.chips + player.total;
+    stats.played = player.hand.length === 2;
+    stats.counted = false;
+  }
+  if (game.phase === 'over' && stats.hand === game.handNumber && stats.played && !stats.counted) {
+    stats.hands++;
+    stats.pots += game.results.filter(result => result.winners.includes(seatOfUser())).length;
+    stats.net += player.chips - stats.start;
+    stats.counted = true;
+  }
+  $('sessionHands').textContent = stats.hands;
+  $('sessionPots').textContent = stats.pots;
+  $('sessionNet').textContent = (stats.net > 0 ? '+' : '') + stats.net.toLocaleString();
+  if (online) {
+    try { sessionStorage.setItem(onlineSummaryKey, JSON.stringify(stats)); } catch {}
+  } else saveLocalGame();
+}
+
 function render(){document.body.classList.toggle('four-colour-deck', fourColour.checked);if (advanceAction !== advanceKey()) advanceAction = undefined;clearTimeout(timer);if(clock)clearInterval(clock);$('error').textContent='';$('seats').replaceChildren();
 const localKey = game.handNumber + ':' + game.phase + ':' + game.log.length + ':' + game.turn;
 if (!online && game.turn != null && (localTurn?.game !== game || localTurn.key !== localKey)) {
@@ -326,6 +366,7 @@ if (!online && game.tournament) {
     (level === 10 ? ' · Final blind level' : handsLeft === 0 ? ' · Blinds rise next hand' :
       ' · ' + handsLeft + (handsLeft === 1 ? ' hand' : ' hands') + ' to next level');
 }
+updateSessionSummary();
 const pot = game.players.reduce((sum, player) => sum + player.total, 0);
 $('pot').textContent = (results.length ? 'AWARDED ' : 'POT ') + pot.toLocaleString();
 const payouts = [...awards].map(([seat, amount]) =>
@@ -498,6 +539,8 @@ computerSpeed.onchange=()=>{
   render();
 };
 $('tableOptions').onclick=()=>$('tableSettings').showModal();
+$('showSessionSummary').onclick=()=>{updateSessionSummary();$('tableSettings').close();$('sessionSummary').showModal();};
+$('closeSessionSummary').onclick=()=>$('sessionSummary').close();
 $('closeOptions').onclick=()=>$('tableSettings').close();
 $('closeRecap').onclick=()=>$('handRecap').close();
 $('practiceMode').onclick=()=>{if(reset(false))$('tableSettings').close();};
