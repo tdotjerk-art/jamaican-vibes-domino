@@ -36,6 +36,7 @@ function connectFriends() {
   socket.on('connect_error', () => { $('friendsStatus').textContent = 'Could not connect. Trying again…'; });
   socket.on('disconnect', () => {
     advanceAction = undefined;
+    if ($('seatCountdown')) $('seatCountdown').hidden = true;
     if (online) {
       $('actions').replaceChildren();
       $('friendsStatus').textContent = 'Reconnecting to your seat…';
@@ -231,6 +232,12 @@ game.players.forEach((player, i) => {
   const seat = el('article', undefined, 'seat s' + position +
     (acting ? ' active' : '') + (player.folded ? ' folded' : '') + (won ? ' winner' : ''));
   const heading = el('h3', player.name);
+  if (acting && online?.deadline && socket.connected) {
+    const countdown = el('span', '', 'seat-countdown');
+    countdown.id = 'seatCountdown';
+    countdown.setAttribute('role', 'timer');
+    heading.append(countdown);
+  }
   const hand = el('div', undefined, 'cards');
   player.hand.forEach((c, index) => {
     const node = tableCard(c, i !== seatOfUser() && !rank, bestCards.has(c));
@@ -305,9 +312,16 @@ if (online?.deadline && acting) {
   const tick = () => {
     if (!socket.connected) {
       $('message').classList.remove('your-turn', 'turn-warning');
+      if ($('seatCountdown')) $('seatCountdown').hidden = true;
       return;
     }
     const seconds = Math.max(0, Math.ceil((online.deadline - Date.now()) / 1000));
+    const countdown = $('seatCountdown');
+    if (countdown) {
+      countdown.textContent = seconds + 's';
+      countdown.classList.toggle('urgent', seconds <= 5);
+      countdown.setAttribute('aria-label', seconds + ' seconds remaining');
+    }
     $('message').textContent = message + ' · ' + seconds + 's' +
       (myTurn && seconds <= 5 ? ' · Act now' : '');
     $('message').classList.toggle('turn-warning', myTurn && seconds <= 5);
