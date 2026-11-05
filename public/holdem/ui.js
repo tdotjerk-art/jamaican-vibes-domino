@@ -115,6 +115,25 @@ function showRecap(awards) {
     ({11:'J',12:'Q',13:'K',14:'A'}[c.rank] || c.rank) + c.suit).join('  ') : 'No community cards dealt';
   const payouts = [...awards].map(([seat, amount]) => game.players[seat].name + ' collected ' + amount.toLocaleString() + ' chips.');
   $('recapLog').replaceChildren(...[...game.handLog, ...payouts].map(line => el('li', line)));
+  $('recapWinners').replaceChildren(...[...awards].map(([seat, amount]) => {
+    const player = game.players[seat];
+    const details = el('details');
+    details.append(el('summary', player.name + ' · ' + amount.toLocaleString() + ' chips'));
+    if (game.board.length === 5 && player.hand.length === 2 && player.hand.every(Boolean)) {
+      const rank = E.best([...player.hand, ...game.board]);
+      const cards = el('div', undefined, 'cards');
+      rank.cards.forEach(c => cards.append(card(c)));
+      details.append(el('p', rank.name), cards);
+    }
+    game.results.forEach(({winners, amount: pot}, index) => {
+      if (!winners.includes(seat)) return;
+      const offset = i => (i - game.dealer - 1 + game.players.length) % game.players.length;
+      const order = [...winners].sort((a,b) => offset(a) - offset(b));
+      const share = Math.floor(pot / order.length) + Number(order.indexOf(seat) < pot % order.length);
+      details.append(el('p', (index ? 'Side pot ' + index : 'Main pot') + ' · ' + share.toLocaleString() + ' chips'));
+    });
+    return details;
+  }));
   $('handRecap').showModal();
 }
 const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;};
