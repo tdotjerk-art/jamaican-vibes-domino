@@ -1,6 +1,6 @@
 (()=>{'use strict';const $=id=>document.getElementById(id),E=JVHoldem;let game=new E.Game(),timer;
 let previous, soundContext, alertedTurn, warnedTurn;
-let socket, online, practice, clock;
+let socket, online, practice, clock, pendingRoom;
 let localTurn, pausedAt = 0;
 let onlineSummary, onlineSummaryKey;
 const computerDelay = () => ({fast:1400, normal:3000, relaxed:6000}[computerSpeed.value] || 3000);
@@ -13,15 +13,22 @@ function connectFriends() {
   socket = globalThis.io('/holdem');
   socket.on('connect', () => {
     socket.emit('table-list');
-    const saved = sessionStorage.getItem('holdem-private-seat');
-    if (saved) socket.emit('table-join', JSON.parse(saved));
+    if (pendingRoom) {
+      socket.emit('table-join', pendingRoom);
+      pendingRoom = undefined;
+    } else {
+      try {
+        const saved = sessionStorage.getItem('holdem-private-seat');
+        if (saved) socket.emit('table-join', JSON.parse(saved));
+      } catch { sessionStorage.removeItem('holdem-private-seat'); }
+    }
   });
   socket.on('table-list', tables => {
     $('publicTables').replaceChildren(...tables.map(table => {
       const row = el('li');
       const join = el('button', table.code + ' · ' + table.players + '/8 players · ' + table.openSeats + ' open · ' + table.phase);
       join.disabled = !table.joinable || !!online;
-      join.onclick = () => socket.emit('table-join', {publicTable:true, code:table.code, name:$('friendsName').value});
+      join.onclick = () => requestRoom(false, true, table.code);
       row.append(join);
       return row;
     }));
@@ -90,14 +97,24 @@ function leaveFriends(notify = true) {
   $('friendsStatus').textContent = '';
   render();
 }
-function requestRoom(create, publicTable = false) {
-  const client = connectFriends();
-  if (!client.connected) {
-    $('friendsStatus').textContent = 'Connecting… Try again in a moment.';
+function requestRoom(create, publicTable = false, selectedCode = '') {
+  const name = $('friendsName').value.trim();
+  if (!name) {
+    $('friendsStatus').textContent = 'Enter your name first.';
+    $('friendsName').focus();
     return;
   }
+  const input = {create, publicTable, name, code:publicTable ? selectedCode : $('friendsCode').value};
+  const client = connectFriends();
   enableSound();
-  client.emit('table-join', {create, publicTable, name:$('friendsName').value, code:publicTable ? '' : $('friendsCode').value});
+  if (!client.connected) {
+    pendingRoom = input;
+    $('friendsStatus').textContent = 'Connecting… You will join automatically.';
+    client.connect();
+    return;
+  }
+  $('friendsStatus').textContent = 'Joining table…';
+  client.emit('table-join', input);
 }
 const sound = $('tableSound'), motion = $('tableMotion'), fourColour = $('fourColourDeck'), computerSpeed = $('computerSpeed');
 try {
@@ -546,7 +563,7 @@ $('closeRecap').onclick=()=>$('handRecap').close();
 $('practiceMode').onclick=()=>{if(reset(false))$('tableSettings').close();};
 $('tournamentMode').onclick=()=>{if(reset(true))$('tableSettings').close();};
 $('friendsButton').onclick=()=>{$('friendsLobby').showModal();connectFriends().emit('table-list');};
-$('friendsClose').onclick=()=>$('friendsLobby').close();
+$('friendsClose').onclick=()=>{pendingRoom=undefined;$('friendsLobby').close();};
 $('friendsCreate').onclick=()=>requestRoom(true);
 $('friendsJoin').onclick=()=>requestRoom(false);
 $('publicJoin').onclick=()=>requestRoom(false, true);
