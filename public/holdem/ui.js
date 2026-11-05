@@ -1,6 +1,7 @@
 (()=>{'use strict';const $=id=>document.getElementById(id),E=JVHoldem;let game=new E.Game(),timer;
 let previous, soundContext, alertedTurn, warnedTurn;
 let socket, online, practice, clock;
+let localTurn;
 let advanceAction;
 const advanceKey = () => [online?.code || 'practice', game.handNumber, game.phase].join(':');
 const tablePositions = [0, 1, 2, 4, 5, 6, 8, 9];
@@ -200,7 +201,13 @@ const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!==undefine
 function card(c,hidden=false){const n=el('span',undefined,'card'+(hidden?' back':!c?' empty':['♥','♦'].includes(c.suit)?' red':''));if(c&&!hidden){n.append(el('span',({11:'J',12:'Q',13:'K',14:'A'})[c.rank]||c.rank),el('span',c.suit));}if (c && !hidden) n.classList.add({'♣':'clubs','♦':'diamonds','♥':'hearts','♠':'spades'}[c.suit]);n.setAttribute('aria-label',hidden?'Face-down card':c?(({'11':'Jack','12':'Queen','13':'King','14':'Ace'})[c.rank]||c.rank)+' '+c.suit:'Undealt community card');return n;}
 function button(text,fn,cls){const b=el('button',text,cls);b.onclick=()=>{enableSound();fn();};$('actions').append(b);}
 function act(type,target){if(online){socket.emit('table-act',{type,target,revision:online.revision});return;}if(!game.act(0,type,target)){$('error').textContent='That action is not available. Check the amount and try again.';return;}render();}
-function render(){document.body.classList.toggle('four-colour-deck', fourColour.checked);if (advanceAction !== advanceKey()) advanceAction = undefined;clearTimeout(timer);if(clock)clearInterval(clock);$('error').textContent='';$('seats').replaceChildren();const showdown=game.phase==='over'&&game.board.length===5&&game.players.filter(p=>!p.folded).length>1;
+function render(){document.body.classList.toggle('four-colour-deck', fourColour.checked);if (advanceAction !== advanceKey()) advanceAction = undefined;clearTimeout(timer);if(clock)clearInterval(clock);$('error').textContent='';$('seats').replaceChildren();
+const localKey = game.handNumber + ':' + game.phase + ':' + game.log.length + ':' + game.turn;
+if (!online && game.turn != null && (localTurn?.game !== game || localTurn.key !== localKey)) {
+  localTurn = {game, key:localKey, deadline:Date.now() + (game.turn === 0 ? 30000 : 1400)};
+}
+const turnDeadline = online ? online.deadline : game.turn != null ? localTurn?.deadline : null;
+const showdown=game.phase==='over'&&game.board.length===5&&game.players.filter(p=>!p.folded).length>1;
 const identity = online?.code || game;
 const newHand = game.handNumber > 0 && (previous?.game !== identity || previous.hand !== game.handNumber);
 const motionEnabled = motion.checked !== false && !globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -232,7 +239,7 @@ game.players.forEach((player, i) => {
   const seat = el('article', undefined, 'seat s' + position +
     (acting ? ' active' : '') + (player.folded ? ' folded' : '') + (won ? ' winner' : ''));
   const heading = el('h3', player.name);
-  if (acting && online?.deadline && socket.connected) {
+  if (acting && turnDeadline && (!online || socket.connected)) {
     const countdown = el('span', '', 'seat-countdown');
     countdown.id = 'seatCountdown';
     countdown.setAttribute('role', 'timer');
@@ -307,20 +314,25 @@ $('message').textContent = results.length ? results.map(({winners, amount}, inde
   game.message || 'Pull up a chair. Start your first hand.';
 $('history').replaceChildren(...game.log.slice().reverse().map(s=>el('li',s)));
 $('actions').replaceChildren();
-if (online?.deadline && acting) {
+if (turnDeadline && acting) {
   const message = $('message').textContent;
   const tick = () => {
-    if (!socket.connected) {
+    if (online && !socket.connected) {
       $('message').classList.remove('your-turn', 'turn-warning');
       if ($('seatCountdown')) $('seatCountdown').hidden = true;
       return;
     }
-    const seconds = Math.max(0, Math.ceil((online.deadline - Date.now()) / 1000));
+    const seconds = Math.max(0, Math.ceil((turnDeadline - Date.now()) / 1000));
     const countdown = $('seatCountdown');
     if (countdown) {
       countdown.textContent = seconds + 's';
       countdown.classList.toggle('urgent', seconds <= 5);
       countdown.setAttribute('aria-label', seconds + ' seconds remaining');
+    }
+    if (!online && game.turn === 0 && seconds === 0) {
+      const legal = game.legal(0);
+      if (legal) act(legal.call ? 'fold' : 'check');
+      return;
     }
     $('message').textContent = message + ' · ' + seconds + 's' +
       (myTurn && seconds <= 5 ? ' · Act now' : '');
@@ -385,7 +397,7 @@ if (legal) {
     if (current !== game) return;
     bot();
     render();
-  }, 1400);
+  }, Math.max(0, turnDeadline - Date.now()));
 }}
 function tableCard(value, hidden, winning) {
   const node = card(value, hidden);
