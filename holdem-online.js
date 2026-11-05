@@ -36,13 +36,13 @@ function installHoldem(io) {
   }
 
   function publish(table) {
-    const ready = table.public && !table.game && available(table).length >= 2;
+    const ready = table.public && (!table.game || table.game.phase === 'over') && available(table).length >= 2;
     if (ready && !table.startTimer) {
       table.startAt = Date.now() + 15000;
       table.startTimer = setTimeout(() => {
         table.startTimer = null;
         table.startAt = null;
-        if (tables.get(table.code) !== table || table.game) return;
+        if (tables.get(table.code) !== table || (table.game && table.game.phase !== 'over')) return;
         const connected = available(table);
         if (connected.length >= 2) deal(table, connected);
       }, 15000);
@@ -204,7 +204,7 @@ function installHoldem(io) {
       if (!table || revision !== table.revision) return;
       const connected = available(table);
       if (connected.length < 2) return fail('Two connected players are needed to deal.');
-      if (table.public && !table.game) return;
+      if (table.public) return;
       deal(table, connected);
     });
     socket.on('table-rebuy', () => {
