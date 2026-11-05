@@ -64,7 +64,7 @@ function installHoldem(io) {
         actingCall:game.turn == null ? 0 : game.legal(game.turn)?.call,
         players:game.players.map((p, index) => ({
           name:p.name, chips:p.chips, bet:p.bet, total:p.total, folded:p.folded,
-          connected:!!table.members[index].socket,
+          connected:!!table.members[index].socket, lastAction:p.lastAction,
           hand:(index === seat && !member.replacement) || (showdown && !p.folded) ? p.hand : p.hand.map(() => null)
         }))
       };
@@ -146,7 +146,8 @@ function installHoldem(io) {
       publish(table);
     }
     let lastEntry = -Infinity;
-    socket.on('table-join', (input) => {
+    socket.on('table-join', joinTable);
+    function joinTable(input) {
       if (socket.data.table) return;
       if (Date.now() - lastEntry < 500) return fail('Wait a moment and try again.');
       lastEntry = Date.now();
@@ -166,7 +167,7 @@ function installHoldem(io) {
       if (!cleanName) return fail('Enter your name first.');
       if (publicTable === true) {
         table = [...tables.values()].find(candidate =>
-          candidate.public && candidate.members.some(member => member.socket) &&
+          candidate.code !== input?.exclude && candidate.public && candidate.members.some(member => member.socket) &&
           (candidate.game ? candidate.game.phase === 'over' && vacantSeat(candidate) >= 0 : candidate.members.length < 8));
       }
       if (create === true || (publicTable === true && !table)) {
@@ -188,6 +189,15 @@ function installHoldem(io) {
         table.members.push(member);
       }
       bind(table, member);
+    }
+    socket.on('table-find', () => {
+      const table = socket.data.table;
+      const member = table?.members.find(m => m.socket === socket);
+      if (!table?.public || !member) return;
+      const name = member.name, exclude = table.code;
+      detach(socket, true);
+      lastEntry = -Infinity;
+      joinTable({name, exclude, publicTable:true});
     });
     socket.on('table-deal', revision => {
       const table = socket.data.table;
