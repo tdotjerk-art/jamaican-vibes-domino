@@ -278,3 +278,13 @@ html { background: var(--flag-black); }
     line-height: 13px;
   }
 }
+
+/* Eight seats: three on each side, plus the two end seats. */
+.seat.s2, .seat.s8 { top: 50%; }
+@media (max-width: 700px) and (orientation: portrait) {
+  .seat.s1, .seat.s9 { top: 82%; }
+  .seat.s4, .seat.s6 { top: 18%; }
+}
+@media (orientation: landscape) and (max-height: 550px) and (max-width: 1400px) {
+  .seat.s2 > .cards, .seat.s8 > .cards { top: 50%; }
+}
