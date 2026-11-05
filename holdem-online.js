@@ -10,16 +10,27 @@ function installHoldem(io) {
 
   function available(table) {
     return table.members.filter((member, seat) => member.socket && !member.sittingOut &&
-      (!table.game || table.game.players[seat].chips > 0));
+      (!table.game || member.replacement || table.game.players[seat].chips > 0));
+  }
+
+  function vacantSeat(table) {
+    return table.members.findIndex(member => !member.socket && !member.token);
   }
 
   function deal(table, connected) {
+    if (table.game && table.game.phase !== 'over') return;
+
     if (!table.game) {
       table.members.filter(m => !m.socket).forEach(m => clearTimeout(m.expiry));
       table.members = connected;
       table.game = new Game(() => randomInt(2 ** 32) / 2 ** 32, connected.length);
       connected.forEach((m, i) => { table.game.players[i].name = m.name; });
     }
+    table.members.forEach((member, seat) => {
+      if (!member.replacement || !connected.includes(member)) return;
+      Object.assign(table.game.players[seat], {name:member.name, chips:1000});
+      member.replacement = false;
+    });
     if (table.game.start(seat => connected.includes(table.members[seat]))) progress(table);
   }
 
@@ -53,7 +64,7 @@ function installHoldem(io) {
         players:game.players.map((p, index) => ({
           name:p.name, chips:p.chips, bet:p.bet, total:p.total, folded:p.folded,
           connected:!!table.members[index].socket,
-          hand:index === seat || (showdown && !p.folded) ? p.hand : p.hand.map(() => null)
+          hand:(index === seat && !member.replacement) || (showdown && !p.folded) ? p.hand : p.hand.map(() => null)
         }))
       };
       member.socket.emit('table-state', {
@@ -145,8 +156,8 @@ function installHoldem(io) {
       if (!cleanName) return fail('Enter your name first.');
       if (publicTable === true) {
         table = [...tables.values()].find(candidate =>
-          candidate.public && !candidate.game && candidate.members.length < 8 &&
-          candidate.members.some(member => member.socket));
+          candidate.public && candidate.members.some(member => member.socket) &&
+          (candidate.game ? candidate.game.phase === 'over' && vacantSeat(candidate) >= 0 : candidate.members.length < 8));
       }
       if (create === true || (publicTable === true && !table)) {
         let id;
@@ -155,9 +166,17 @@ function installHoldem(io) {
         tables.set(id, table);
       }
       if (!table || (table.public && publicTable !== true)) return fail('Room code not found.');
-      if (table.game || table.members.length >= 8) return fail('That table is full or has already started.');
       const member = {name:cleanName, token:randomBytes(24).toString('hex')};
-      table.members.push(member);
+      if (table.game) {
+        const seat = publicTable === true && table.game.phase === 'over' ? vacantSeat(table) : -1;
+        if (seat < 0) return fail('That table is full or has already started.');
+        clearTimeout(table.members[seat].expiry);
+        member.replacement = true;
+        table.members[seat] = member;
+      } else {
+        if (table.members.length >= 8) return fail('That table is full.');
+        table.members.push(member);
+      }
       bind(table, member);
     });
     socket.on('table-deal', revision => {
