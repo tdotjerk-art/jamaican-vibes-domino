@@ -26,7 +26,7 @@ function installHoldem(io) {
         }))
       };
       member.socket.emit('table-state', {
-        code:table.code, seat, players:table.members.map(m => m.name), game:view,
+        code:table.code, public:table.public === true, seat, players:table.members.map(m => m.name), game:view,
         revision:table.revision, deadline:table.deadline,
         canDeal:table.members.filter(m => m.socket).length >= 2 &&
           (!game || game.players.filter(p => p.chips > 0).length >= 2)
@@ -95,7 +95,7 @@ function installHoldem(io) {
       if (socket.data.table) return;
       if (Date.now() - lastEntry < 500) return fail('Wait a moment and try again.');
       lastEntry = Date.now();
-      const {code, name, token, create} = input || {};
+      const {code, name, token, create, publicTable} = input || {};
       const cleanCode = typeof code === 'string' ? code.trim().toUpperCase() : '';
       let table = tables.get(cleanCode);
       if (typeof token === 'string') {
@@ -109,13 +109,18 @@ function installHoldem(io) {
       }
       const cleanName = typeof name === 'string' ? name.trim().slice(0,20) : '';
       if (!cleanName) return fail('Enter your name first.');
-      if (create === true) {
+      if (publicTable === true) {
+        table = [...tables.values()].find(candidate =>
+          candidate.public && !candidate.game && candidate.members.length < 10 &&
+          candidate.members.some(member => member.socket));
+      }
+      if (create === true || (publicTable === true && !table)) {
         let id;
         do { id = randomBytes(3).toString('hex').toUpperCase(); } while (tables.has(id));
-        table = {code:id, members:[], revision:0, deadline:null};
+        table = {code:id, public:publicTable === true, members:[], revision:0, deadline:null};
         tables.set(id, table);
       }
-      if (!table) return fail('Room code not found.');
+      if (!table || (table.public && publicTable !== true)) return fail('Room code not found.');
       if (table.game || table.members.length >= 10) return fail('That table is full or has already started.');
       const member = {name:cleanName, token:randomBytes(24).toString('hex')};
       table.members.push(member);
