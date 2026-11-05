@@ -8,7 +8,33 @@ function installHoldem(io) {
   const turnMs = 30000;
   const graceMs = 90000;
 
+  function deal(table, connected) {
+    if (!table.game) {
+      table.members.filter(m => !m.socket).forEach(m => clearTimeout(m.expiry));
+      table.members = connected;
+      table.game = new Game(() => randomInt(2 ** 32) / 2 ** 32, connected.length);
+      connected.forEach((m, i) => { table.game.players[i].name = m.name; });
+    }
+    if (table.game.start()) progress(table);
+  }
+
   function publish(table) {
+    const ready = table.public && !table.game && table.members.filter(m => m.socket).length >= 2;
+    if (ready && !table.startTimer) {
+      table.startAt = Date.now() + 15000;
+      table.startTimer = setTimeout(() => {
+        table.startTimer = null;
+        table.startAt = null;
+        if (tables.get(table.code) !== table || table.game) return;
+        const connected = table.members.filter(m => m.socket);
+        if (connected.length >= 2) deal(table, connected);
+      }, 15000);
+      table.startTimer.unref();
+    } else if (!ready && table.startTimer) {
+      clearTimeout(table.startTimer);
+      table.startTimer = null;
+      table.startAt = null;
+    }
     const game = table.game;
     const showdown = game?.phase === 'over' && game.players.filter(p => !p.folded).length > 1;
     for (const [seat, member] of table.members.entries()) {
@@ -27,7 +53,7 @@ function installHoldem(io) {
       };
       member.socket.emit('table-state', {
         code:table.code, public:table.public === true, seat, players:table.members.map(m => m.name), game:view,
-        revision:table.revision, deadline:table.deadline,
+        revision:table.revision, deadline:table.deadline, startAt:table.startAt,
         canDeal:table.members.filter(m => m.socket).length >= 2 &&
           (!game || game.players.filter(p => p.chips > 0).length >= 2)
       });
@@ -60,7 +86,10 @@ function installHoldem(io) {
     clearTimeout(member.expiry);
     if (!table.game && leaving) {
       table.members.splice(table.members.indexOf(member), 1);
-      if (!table.members.length) tables.delete(table.code);
+      if (!table.members.length) {
+        clearTimeout(table.startTimer);
+        tables.delete(table.code);
+      }
       else publish(table);
       return;
     }
@@ -131,13 +160,8 @@ function installHoldem(io) {
       if (!table || revision !== table.revision) return;
       const connected = table.members.filter(m => m.socket);
       if (connected.length < 2) return fail('Two connected players are needed to deal.');
-      if (!table.game) {
-        table.members.filter(m => !m.socket).forEach(m => clearTimeout(m.expiry));
-        table.members = connected;
-        table.game = new Game(() => randomInt(2 ** 32) / 2 ** 32, connected.length);
-        connected.forEach((m, i) => { table.game.players[i].name = m.name; });
-      }
-      if (table.game.start()) progress(table);
+      if (table.public && !table.game) return;
+      deal(table, connected);
     });
     socket.on('table-act', (input) => {
       const table = socket.data.table;
