@@ -239,3 +239,42 @@ html { background: var(--flag-black); }
   .seat > p:first-of-type { font-size: clamp(8px, 1.24vw, 12px); }
   .centre { top: 37%; }
 }
+
+/* In portrait, each side seat shares a vertical lane with three neighbors. */
+@media (max-width: 700px) and (orientation: portrait) {
+  .seat:not(.s0):not(.s5) {
+    min-height: 0;
+    padding: 2px;
+  }
+  .seat:not(.s0):not(.s5) h3 {
+    line-height: 11px;
+    margin-bottom: 1px;
+  }
+  .seat:not(.s0):not(.s5) p {
+    line-height: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .seat:not(.s0):not(.s5) p+p {
+    min-height: 0;
+    line-height: 8px;
+  }
+  .seat:not(.s0):not(.s5) > .cards {
+    top: calc(100% + 2px);
+    bottom: auto;
+    gap: 4px;
+  }
+  .seat:not(.s0):not(.s5) .card {
+    width: 18px;
+    height: 25px;
+  }
+  .seat:not(.s0):not(.s5) .card > span:first-child {
+    font-size: 10px;
+    line-height: 10px;
+  }
+  .seat:not(.s0):not(.s5) .card > span:last-child {
+    font-size: 13px;
+    line-height: 13px;
+  }
+}
