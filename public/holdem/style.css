@@ -413,3 +413,6 @@ html { background: var(--flag-black); }
   #potSummary { max-width: 65px; }
   #winnerNotice { font-size: 9px; }
 }
+
+/* The action buttons already show the amount needed to call. */
+#message.your-turn { display: none; }
