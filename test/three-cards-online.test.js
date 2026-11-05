@@ -24,7 +24,7 @@ test('online consensus, private hands, turn enforcement, reconnect and session e
   const expected=callResult(hands,hands.flatMap((hand,i)=>evaluateCall(hand)?[i]:[]));
   const summary=a.current.game.callSummary;assert(summary);
   assert.deepEqual(summary.deltas,expected.deltas);assert.deepEqual(summary.winners,expected.winners);
-  assert.deepEqual(summary.calls,hands.map(evaluateCall).map(call=>call?{name:call.name,points:call.points}:null));
+  assert.deepEqual(summary.calls,hands.map((hand,i)=>expected.winners.includes(i)?{name:expected.call.name,points:expected.call.points}:null));
   for(let i=0;i<4;i++)assert.equal(a.current.game.players[i].score,(i===dealer?a.current.game.bonus:0)+summary.deltas[i]);
   assert.deepEqual(b.current.game.callSummary,summary);assert.deepEqual(summary.hands,[]);
   assert.deepEqual(a.current.game.players[1].hand,[]);
