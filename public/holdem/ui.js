@@ -265,6 +265,8 @@ if (online && ['lobby','over'].includes(game.phase)) {
     tick();
     clock = setInterval(tick, 250);
   }
+  if (online.rebuy) $('message').append(' · Rebuy ready for next hand');
+  if (online.canRebuy) button('Rebuy 1,000 play chips', () => socket.emit('table-rebuy'), 'primary');
   if (online.canDeal && !(online.public && game.phase === 'lobby')) button(game.phase === 'lobby' ? 'Deal cards' : 'Next hand',
     () => socket.emit('table-deal', online.revision), 'primary');
   if (game.phase === 'over') button('Hand recap', () => showRecap(awards), 'recap-button');
