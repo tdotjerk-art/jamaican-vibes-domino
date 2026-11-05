@@ -404,3 +404,12 @@ html { background: var(--flag-black); }
 @media (orientation: landscape) and (max-height: 550px) and (max-width: 1400px) {
   .seat.s2 { left: clamp(30px, 5vw, 52px); }
 }
+
+#potSummary { grid-column: 2; grid-row: 1; min-width: 0; max-width: 100px; }
+#winnerNotice { margin: 5px 0 0; color: #fff1a0; font-size: 11px; line-height: 1.25; overflow-wrap: anywhere; }
+#rules { max-height: 85dvh; overflow-y: auto; }
+#rules li { margin-bottom: 8px; line-height: 1.4; }
+@media (max-width: 700px) and (orientation: portrait) {
+  #potSummary { max-width: 65px; }
+  #winnerNotice { font-size: 9px; }
+}
