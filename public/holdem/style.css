@@ -205,3 +205,26 @@ body { background:radial-gradient(ellipse at top,#102218,var(--flag-black) 72%);
   .seat.s3 > .cards, .seat.s7 > .cards { top: calc(50% + 15px); }
   .seat.s2 > .cards, .seat.s8 > .cards { top: calc(50% - 15px); }
 }
+
+/* Let the felt reach the viewport edges while keeping seat labels inside. */
+@media (min-width: 701px) and (min-height: 551px) {
+  main { max-width: none; }
+  .felt { height: clamp(490px, calc(100dvh - 255px), 900px); }
+}
+@media (orientation: landscape) and (max-height: 550px) and (max-width: 1400px) {
+  main { grid-template-columns: minmax(0, 1fr) clamp(96px, 12vw, 140px); gap: 5px; }
+  .felt { margin-inline: 10px; }
+  .seat.s2, .seat.s3 { left: clamp(30px, 5vw, 52px); }
+  .seat.s7, .seat.s8 { left: calc(100% - clamp(30px, 5vw, 52px)); }
+}
+
+/* Extend the felt into unused iPhone landscape space on the table side. */
+html { background: var(--flag-black); }
+@media (orientation: landscape) and (max-height: 550px) and (max-width: 1400px) {
+  .felt {
+    margin-left: calc(10px - max(0px, env(safe-area-inset-left) - 7px));
+  }
+  .seat.s2, .seat.s3 {
+    left: calc(clamp(30px, 5vw, 52px) + max(0px, env(safe-area-inset-left) - 7px));
+  }
+}
