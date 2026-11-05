@@ -439,3 +439,14 @@ html { background: var(--flag-black); }
   text-shadow: 0 1px 3px #000;
 }
 .seat-countdown.urgent { color: #ffb29d; }
+
+/* Put live betting above the lobby and table settings on short screens. */
+@media (orientation: landscape) and (max-height: 550px) and (max-width: 1400px) {
+  .controls #actions { order: -4; }
+  .controls #error { order: -3; }
+  .controls #message { order: -2; }
+  .controls #tableMode { order: -1; }
+  .controls #friendsButton { order: 3; }
+  .controls #pauseTable { order: 1; flex-shrink: 0; }
+  .controls #tableOptions { order: 2; }
+}
