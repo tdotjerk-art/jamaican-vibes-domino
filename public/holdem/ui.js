@@ -66,7 +66,7 @@ function connectFriends() {
       game.players = state.players.map(name => ({name, chips:1000, total:0, hand:[]}));
     }
     if (!state.game && (state.public || state.canDeal) && $('friendsLobby').open) $('friendsLobby').close();
-    $('friendsFields').hidden = $('friendsCreate').hidden = $('friendsJoin').hidden = $('publicJoin').hidden = true;
+    $('friendsFields').hidden = $('friendsCreate').hidden = $('friendsTournament').hidden = $('friendsJoin').hidden = $('publicJoin').hidden = true;
     $('friendsLeave').hidden = false;
     $('friendsInvite').hidden = state.public;
     $('friendsFind').hidden = !state.public;
@@ -88,7 +88,7 @@ function leaveFriends(notify = true) {
   if (online) game = practice;
   online = null;
   clearInterval(clock);
-  $('friendsFields').hidden = $('friendsCreate').hidden = $('friendsJoin').hidden = $('publicJoin').hidden = false;
+  $('friendsFields').hidden = $('friendsCreate').hidden = $('friendsTournament').hidden = $('friendsJoin').hidden = $('publicJoin').hidden = false;
   $('friendsLeave').hidden = true;
   $('friendsInvite').hidden = true;
   $('friendsFind').hidden = true;
@@ -97,14 +97,14 @@ function leaveFriends(notify = true) {
   $('friendsStatus').textContent = '';
   render();
 }
-function requestRoom(create, publicTable = false, selectedCode = '') {
+function requestRoom(create, publicTable = false, selectedCode = '', tournament = false) {
   const name = $('friendsName').value.trim();
   if (!name) {
     $('friendsStatus').textContent = 'Enter your name first.';
     $('friendsName').focus();
     return;
   }
-  const input = {create, publicTable, name, code:publicTable ? selectedCode : $('friendsCode').value};
+  const input = {create, publicTable, tournament, name, code:publicTable ? selectedCode : $('friendsCode').value};
   const client = connectFriends();
   enableSound();
   if (!client.connected) {
@@ -396,9 +396,9 @@ if (motionEnabled) {
 if (changedBets.length || paid) playChipSound();
 else if (newCards) playSound(true);
 previous = {game:identity, hand:game.handNumber, board:game.board.length, phase:game.phase, totals:game.players.map(p=>p.total)};
-$('tableMode').textContent = (online ? (online.public ? 'Public table' : 'Room ' + online.code) + ' · ' : game.tournament ? 'Tournament · ' : 'Practice · ') +
+$('tableMode').textContent = (online ? (online.public ? 'Public table' : (online.tournament ? 'Tournament ' : 'Room ') + online.code) + ' · ' : game.tournament ? 'Tournament · ' : 'Practice · ') +
   (game.bigBlind/2) + ' / ' + game.bigBlind;
-if (!online && game.tournament) {
+if (game.tournament) {
   const hand = Math.max(1, game.handNumber);
   const level = Math.min(10, Math.floor((hand - 1) / 5));
   const handsLeft = 5 - (hand - 1) % 5 - Number(game.phase === 'over');
@@ -478,6 +478,11 @@ if (turnDeadline && acting) {
   clock = setInterval(tick, 250);
 }
 if (online && ['lobby','over'].includes(game.phase)) {
+  if (game.tournament && game.phase === 'over' && game.players.filter(p => p.chips > 0).length === 1) {
+    $('message').textContent = game.players.find(p => p.chips > 0).name + ' wins the tournament!';
+    button('Hand recap', () => showRecap(awards), 'recap-button');
+    return;
+  }
   if (game.phase === 'over' && !online.canDeal) {
     $('message').append(' · ' + (online.activeCount === 1 ? 'Waiting for one more active player' : 'Waiting for two active players'));
   }
@@ -592,6 +597,7 @@ $('tournamentMode').onclick=()=>{if(reset(true))$('tableSettings').close();};
 $('friendsButton').onclick=()=>{$('friendsLobby').showModal();connectFriends().emit('table-list');};
 $('friendsClose').onclick=()=>{pendingRoom=undefined;$('friendsLobby').close();};
 $('friendsCreate').onclick=()=>requestRoom(true);
+$('friendsTournament').onclick=()=>requestRoom(true, false, '', true);
 $('friendsJoin').onclick=()=>requestRoom(false);
 $('publicJoin').onclick=()=>requestRoom(false, true);
 $('friendsSit').onclick=()=>socket.emit('table-sit-out', !online.sittingOut);
