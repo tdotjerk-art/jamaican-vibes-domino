@@ -15,7 +15,7 @@ function installHoldem(io, options = {}) {
   function persist() {
     if (!stateFile) return;
     const rooms = [...tables.values()].map(t => ({
-      code:t.code, public:t.public, revision:t.revision, game:t.game,
+      code:t.code, public:t.public, tournament:!!t.tournament, revision:t.revision, game:t.game,
       members:t.members.map(m => ({name:m.name, token:m.token, sittingOut:m.sittingOut,
         replacement:m.replacement, rebuy:m.rebuy}))
     }));
@@ -79,7 +79,7 @@ function installHoldem(io, options = {}) {
     if (!table.game) {
       table.members.filter(m => !m.socket).forEach(m => clearTimeout(m.expiry));
       table.members = connected;
-      table.game = new Game(() => randomInt(2 ** 32) / 2 ** 32, connected.length);
+      table.game = new Game(() => randomInt(2 ** 32) / 2 ** 32, connected.length, !!table.tournament);
       connected.forEach((m, i) => { table.game.players[i].name = m.name; });
     }
     table.members.forEach((member, seat) => {
@@ -117,7 +117,7 @@ function installHoldem(io, options = {}) {
         phase:game.phase, board:game.board, turn:game.turn, dealer:game.dealer,
         small:game.small, big:game.big, bigBlind:game.bigBlind, currentBet:game.currentBet,
         handNumber:game.handNumber, results:game.results, log:game.log, handLog:game.handLog,
-        message:game.message, tournament:false, legalMove:game.legal(seat),
+        message:game.message, tournament:!!table.tournament, legalMove:game.legal(seat),
         actingCall:game.turn == null ? 0 : game.legal(game.turn)?.call,
         players:game.players.map((p, index) => ({
           name:p.name, chips:p.chips, bet:p.bet, total:p.total, folded:p.folded,
@@ -126,7 +126,7 @@ function installHoldem(io, options = {}) {
         }))
       };
       member.socket.emit('table-state', {
-        code:table.code, public:table.public === true, seat, players:table.members.map(m => m.name), game:view,
+        code:table.code, public:table.public === true, tournament:!!table.tournament, seat, players:table.members.map(m => m.name), game:view,
         recovering:!!table.recovering, revision:table.revision, deadline:table.deadline, startAt:table.startAt,
         seatStatuses:table.members.map((m, index) => ({
           name:m.name,
@@ -221,7 +221,7 @@ function installHoldem(io, options = {}) {
       if (socket.data.table) return;
       if (Date.now() - lastEntry < 500) return fail('Wait a moment and try again.');
       lastEntry = Date.now();
-      const {code, name, token, create, publicTable} = input || {};
+      const {code, name, token, create, publicTable, tournament} = input || {};
       const cleanCode = typeof code === 'string' ? code.trim().toUpperCase() : '';
       let table = tables.get(cleanCode);
       if (typeof token === 'string') {
@@ -245,7 +245,7 @@ function installHoldem(io, options = {}) {
       if (create === true || (publicTable === true && !cleanCode && !table)) {
         let id;
         do { id = randomBytes(3).toString('hex').toUpperCase(); } while (tables.has(id));
-        table = {code:id, public:publicTable === true, members:[], revision:0, deadline:null};
+        table = {code:id, public:publicTable === true, tournament:create === true && publicTable !== true && tournament === true, members:[], revision:0, deadline:null};
         tables.set(id, table);
       }
       if (!table || (table.public && publicTable !== true)) return fail('Room code not found.');
