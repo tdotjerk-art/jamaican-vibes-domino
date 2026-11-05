@@ -131,6 +131,8 @@ results.forEach(({ winners, amount }) => {
     awards.set(seat, (awards.get(seat) || 0) + share);
   });
 });
+// A split pot can contain several different five-card combinations.
+const highlightedSeat = awards.has(seatOfUser()) ? seatOfUser() : awards.keys().next().value;
 function clockwise(seat) {
   return (seat - game.dealer - 1 + game.players.length) % game.players.length;
 }
@@ -138,7 +140,7 @@ game.players.forEach((player, i) => {
   const acting = game.turn === i;
   const won = awards.has(i);
   const rank = showdown && !player.folded ? E.best([...player.hand, ...game.board]) : null;
-  const bestCards = new Set(won && rank ? rank.cards : []);
+  const bestCards = new Set(i === highlightedSeat && rank ? rank.cards : []);
   bestCards.forEach(c => winningCards.add(c));
   const position = online ? Math.round(((i - online.seat + game.players.length) % game.players.length) * 10 / game.players.length) : i;
   const seat = el('article', undefined, 'seat s' + position +
