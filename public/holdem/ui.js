@@ -1,6 +1,7 @@
 (()=>{'use strict';const $=id=>document.getElementById(id),E=JVHoldem;let game=new E.Game(),timer;
 let previous, soundContext;
 let socket, online, practice, clock;
+const tablePositions = [0, 1, 2, 4, 5, 6, 8, 9];
 const seatOfUser = () => online?.seat ?? 0;
 function connectFriends() {
   if (socket) return socket;
@@ -147,7 +148,8 @@ game.players.forEach((player, i) => {
   const rank = showdown && !player.folded ? E.best([...player.hand, ...game.board]) : null;
   const bestCards = new Set(i === highlightedSeat && rank ? rank.cards : []);
   bestCards.forEach(c => winningCards.add(c));
-  const position = online ? Math.round(((i - online.seat + game.players.length) % game.players.length) * 10 / game.players.length) : i;
+  const offset = (i - seatOfUser() + game.players.length) % game.players.length;
+  const position = tablePositions[Math.round(offset * tablePositions.length / game.players.length)];
   const seat = el('article', undefined, 'seat s' + position +
     (acting ? ' active' : '') + (player.folded ? ' folded' : '') + (won ? ' winner' : ''));
   const heading = el('h3');
@@ -291,7 +293,7 @@ function addBetControls(legal, pot) {
   button('All-in ' + legal.max, () => act('raise', legal.max), 'all-in');
 }
 function bot(){const i=game.turn,l=game.legal(i);if(!l)return;const p=game.players[i],r=p.hand.map(c=>c.rank),rank=game.board.length>=3?E.best([...p.hand,...game.board]).value[0]:r[0]===r[1]?2:Math.max(...r)>=12?1:0;const strength=rank+Math.random();if(l.call&&l.call>p.chips*.35&&strength<1.15){game.act(i,'fold');return;}if(l.canRaise&&l.max>=l.min&&strength>1.7&&Math.random()<.28){game.act(i,'raise',Math.min(l.max,Math.max(l.min,game.currentBet+40)));return;}game.act(i,l.call?'call':'check');}
-function reset(tournament=game.tournament){if(online)return false;if(game.handNumber&&!confirm('Start a new table with 1,000 chips each?'))return;clearTimeout(timer);game=new E.Game(Math.random,10,tournament);render();return true;}$('reset').onclick=()=>reset();$('rulesBtn').onclick=()=>$('rules').showModal();$('closeRules').onclick=()=>$('rules').close();
+function reset(tournament=game.tournament){if(online)return false;if(game.handNumber&&!confirm('Start a new table with 1,000 chips each?'))return;clearTimeout(timer);game=new E.Game(Math.random,8,tournament);render();return true;}$('reset').onclick=()=>reset();$('rulesBtn').onclick=()=>$('rules').showModal();$('closeRules').onclick=()=>$('rules').close();
 $('tableOptions').onclick=()=>$('tableSettings').showModal();
 $('closeOptions').onclick=()=>$('tableSettings').close();
 $('closeRecap').onclick=()=>$('handRecap').close();
