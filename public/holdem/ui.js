@@ -35,8 +35,9 @@ function connectFriends() {
     } else {
       game = onlineGame(state);
       game.phase = 'lobby';
-      game.players = state.players.map(name => ({name, chips:1000, hand:[]}));
+      game.players = state.players.map(name => ({name, chips:1000, total:0, hand:[]}));
     }
+    if ((state.public || state.canDeal) && $('friendsLobby').open) $('friendsLobby').close();
     $('friendsFields').hidden = $('friendsCreate').hidden = $('friendsJoin').hidden = $('publicJoin').hidden = true;
     $('friendsLeave').hidden = false;
     $('friendsStatus').textContent = (state.public ? 'Public table' : 'Room ' + state.code) + ' · ' + state.players.join(', ');
@@ -222,7 +223,15 @@ if (online?.deadline && acting) {
 if (online && ['lobby','over'].includes(game.phase)) {
   if (game.phase === 'lobby') $('message').textContent = (online.public ? 'Public table' : 'Share room code ' + online.code) +
     (online.canDeal ? ' · Ready to deal' : ' · Waiting for another player');
-  if (online.canDeal) button(game.phase === 'lobby' ? 'Deal cards' : 'Next hand',
+  if (game.phase === 'lobby' && online.startAt) {
+    const tick = () => {
+      if (socket.connected) $('message').textContent = 'Public table · Starting in ' +
+        Math.max(0, Math.ceil((online.startAt - Date.now()) / 1000)) + 's';
+    };
+    tick();
+    clock = setInterval(tick, 250);
+  }
+  if (online.canDeal && !(online.public && game.phase === 'lobby')) button(game.phase === 'lobby' ? 'Deal cards' : 'Next hand',
     () => socket.emit('table-deal', online.revision), 'primary');
   if (game.phase === 'over') button('Hand recap', () => showRecap(awards), 'recap-button');
   return;
