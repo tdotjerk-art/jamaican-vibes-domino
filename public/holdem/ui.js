@@ -260,6 +260,12 @@ if (!online && game.tournament) {
 }
 const pot = game.players.reduce((sum, player) => sum + player.total, 0);
 $('pot').textContent = (results.length ? 'AWARDED ' : 'POT ') + pot.toLocaleString();
+const payouts = [...awards].map(([seat, amount]) =>
+  game.players[seat].name + (awards.size === 1 ? ' wins ' : ' · ') + amount.toLocaleString());
+$('winnerNotice').textContent = payouts.length > 1 ?
+  (results.some(result => result.winners.length > 1) ? 'Split pot · ' : 'Payouts · ') + payouts.join(' / ') :
+  payouts.join('');
+$('winnerNotice').hidden = !payouts.length;
 $('street').textContent = {ready:'Ready to deal', over:showdown ? 'Showdown' : 'Hand complete'}[game.phase] || game.phase;
 $('handNo').textContent = 'HAND ' + game.handNumber;
 const acting = game.players[game.turn];
