@@ -2,11 +2,67 @@
 
 const {randomBytes, randomInt} = require('node:crypto');
 const {Game} = require('./public/holdem/engine');
+const fs = require('node:fs');
+const path = require('node:path');
 
-function installHoldem(io) {
+function installHoldem(io, options = {}) {
   const tables = new Map();
   const turnMs = 30000;
   const graceMs = 90000;
+  const stateFile = options.stateFile || process.env.HOLDEM_STATE_FILE ||
+    (fs.existsSync('/var/data') ? '/var/data/holdem-rooms.json' : null);
+
+  function persist() {
+    if (!stateFile) return;
+    const rooms = [...tables.values()].map(t => ({
+      code:t.code, public:t.public, revision:t.revision, game:t.game,
+      members:t.members.map(m => ({name:m.name, token:m.token, sittingOut:m.sittingOut,
+        replacement:m.replacement, rebuy:m.rebuy}))
+    }));
+    fs.mkdirSync(path.dirname(stateFile), {recursive:true});
+    const temporary = stateFile + '.tmp';
+    const descriptor = fs.openSync(temporary, 'w', 0o600);
+    try {
+      fs.writeFileSync(descriptor, JSON.stringify({version:1, rooms}));
+      fs.fsyncSync(descriptor);
+    } finally { fs.closeSync(descriptor); }
+    fs.renameSync(temporary, stateFile);
+  }
+
+  function removeTable(table) {
+    clearTimeout(table.turnTimer);
+    clearTimeout(table.startTimer);
+    clearTimeout(table.recoveryTimer);
+    table.members.forEach(m => clearTimeout(m.expiry));
+    tables.delete(table.code);
+    persist();
+  }
+
+  if (stateFile && fs.existsSync(stateFile)) {
+    const saved = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
+    if (saved.version !== 1 || !Array.isArray(saved.rooms)) throw Error('Invalid Hold’em room snapshot');
+    for (const room of saved.rooms) {
+      if (!room.members.some(m => m.token)) continue;
+      const table = {...room, deadline:null, startAt:null, recovering:true};
+      if (room.game) {
+        table.game = Object.assign(new Game(), room.game);
+        table.game.random = () => randomInt(2 ** 32) / 2 ** 32;
+      }
+      table.revision++;
+      tables.set(table.code, table);
+      table.recoveryTimer = setTimeout(() => {
+        table.members.forEach(m => { if (!m.socket) m.token = null; });
+        table.recovering = false;
+        if (!table.members.some(m => m.socket)) return removeTable(table);
+        if (!table.game) table.members = table.members.filter(m => m.socket);
+        if (table.game?.turn != null) progress(table);
+        else publish(table);
+      }, graceMs);
+      table.recoveryTimer.unref();
+    }
+  }
+
+  if (stateFile) console.log('Hold’em durable room storage enabled; restored ' + tables.size + ' rooms.');
 
   function available(table) {
     return table.members.filter((member, seat) => member.socket && !member.sittingOut &&
@@ -36,7 +92,8 @@ function installHoldem(io) {
   }
 
   function publish(table) {
-    const ready = table.public && (!table.game || table.game.phase === 'over') && available(table).length >= 2;
+    persist();
+    const ready = !table.recovering && table.public && (!table.game || table.game.phase === 'over') && available(table).length >= 2;
     if (ready && !table.startTimer) {
       table.startAt = Date.now() + 15000;
       table.startTimer = setTimeout(() => {
@@ -70,7 +127,7 @@ function installHoldem(io) {
       };
       member.socket.emit('table-state', {
         code:table.code, public:table.public === true, seat, players:table.members.map(m => m.name), game:view,
-        revision:table.revision, deadline:table.deadline, startAt:table.startAt,
+        recovering:!!table.recovering, revision:table.revision, deadline:table.deadline, startAt:table.startAt,
         seatStatuses:table.members.map((m, index) => ({
           name:m.name,
           status:!m.socket ? (m.token ? 'Reconnecting' : 'Seat open') :
@@ -114,7 +171,7 @@ function installHoldem(io) {
       table.members.splice(table.members.indexOf(member), 1);
       if (!table.members.length) {
         clearTimeout(table.startTimer);
-        tables.delete(table.code);
+        removeTable(table);
       }
       else publish(table);
       return;
@@ -125,14 +182,14 @@ function installHoldem(io) {
       if (!table.game && index !== -1) table.members.splice(index, 1);
       if (!table.members.some(m => m.socket || m.token)) {
         clearTimeout(table.turnTimer);
-        tables.delete(table.code);
+        removeTable(table);
       } else publish(table);
     }, graceMs);
     member.expiry.unref();
     if (leaving && !table.members.some(m => m.socket || m.token)) {
       clearTimeout(member.expiry);
       clearTimeout(table.turnTimer);
-      tables.delete(table.code);
+      removeTable(table);
     } else publish(table);
   }
 
@@ -143,6 +200,11 @@ function installHoldem(io) {
       clearTimeout(member.expiry);
       socket.data.table = table;
       socket.emit('table-seat', {code:table.code, token:member.token});
+      if (table.recovering && table.members.every(m => !m.token || m.socket)) {
+        table.recovering = false;
+        clearTimeout(table.recoveryTimer);
+        if (table.game?.turn != null) return progress(table);
+      }
       publish(table);
     }
     socket.on('table-list', () => {
@@ -211,7 +273,7 @@ function installHoldem(io) {
     });
     socket.on('table-deal', revision => {
       const table = socket.data.table;
-      if (!table || revision !== table.revision) return;
+      if (!table || table.recovering || revision !== table.revision) return;
       const connected = available(table);
       if (connected.length < 2) return fail('Two connected players are needed to deal.');
       if (table.public) return;
@@ -237,7 +299,7 @@ function installHoldem(io) {
     socket.on('table-act', (input) => {
       const table = socket.data.table;
       const {type, target, revision} = input || {};
-      if (!table?.game || revision !== table.revision) return;
+      if (!table?.game || table.recovering || revision !== table.revision) return;
       const seat = table.members.findIndex(m => m.socket === socket);
       if (!['check','fold','call','raise'].includes(type) || !table.game.act(seat, type, target)) {
         return fail('That action is not available.');
