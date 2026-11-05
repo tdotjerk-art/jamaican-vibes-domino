@@ -1,7 +1,8 @@
 (()=>{'use strict';const $=id=>document.getElementById(id),E=JVHoldem;let game=new E.Game(),timer;
 let previous, soundContext, alertedTurn, warnedTurn;
 let socket, online, practice, clock;
-let localTurn;
+let localTurn, pausedAt = 0;
+const computerDelay = () => ({fast:1400, normal:3000, relaxed:6000}[computerSpeed.value] || 3000);
 let advanceAction;
 const advanceKey = () => [online?.code || 'practice', game.handNumber, game.phase].join(':');
 const tablePositions = [0, 1, 2, 4, 5, 6, 8, 9];
@@ -45,7 +46,7 @@ function connectFriends() {
     }
   });
   socket.on('table-state', state => {
-    if (!online) practice = game;
+    if (!online) { practice = game; pausedAt = 0; localTurn = undefined; }
     online = state;
     if (state.game) {
       const startingHand = state.game.handNumber !== game.handNumber;
@@ -97,16 +98,17 @@ function requestRoom(create, publicTable = false) {
   enableSound();
   client.emit('table-join', {create, publicTable, name:$('friendsName').value, code:publicTable ? '' : $('friendsCode').value});
 }
-const sound = $('tableSound'), motion = $('tableMotion'), fourColour = $('fourColourDeck');
+const sound = $('tableSound'), motion = $('tableMotion'), fourColour = $('fourColourDeck'), computerSpeed = $('computerSpeed');
 try {
   const saved = JSON.parse(localStorage.getItem('holdem-effects'));
   if (typeof saved?.sound === 'boolean') sound.checked = saved.sound;
+  if (['fast','normal','relaxed'].includes(saved?.computerSpeed)) computerSpeed.value = saved.computerSpeed;
   if (typeof saved?.motion === 'boolean') motion.checked = saved.motion;
   if (saved?.deckVersion === 2 && typeof saved.fourColour === 'boolean') fourColour.checked = saved.fourColour;
 } catch {}
 function saveEffects() {
   try {
-    localStorage.setItem('holdem-effects', JSON.stringify({sound:sound.checked, motion:motion.checked, fourColour:fourColour.checked, deckVersion:2}));
+    localStorage.setItem('holdem-effects', JSON.stringify({sound:sound.checked, motion:motion.checked, fourColour:fourColour.checked, deckVersion:2, computerSpeed:computerSpeed.value}));
   } catch {}
 }
 function enableSound() {
@@ -204,8 +206,11 @@ function act(type,target){if(online){socket.emit('table-act',{type,target,revisi
 function render(){document.body.classList.toggle('four-colour-deck', fourColour.checked);if (advanceAction !== advanceKey()) advanceAction = undefined;clearTimeout(timer);if(clock)clearInterval(clock);$('error').textContent='';$('seats').replaceChildren();
 const localKey = game.handNumber + ':' + game.phase + ':' + game.log.length + ':' + game.turn;
 if (!online && game.turn != null && (localTurn?.game !== game || localTurn.key !== localKey)) {
-  localTurn = {game, key:localKey, deadline:Date.now() + (game.turn === 0 ? 30000 : 1400)};
+  localTurn = {game, key:localKey, deadline:Date.now() + (game.turn === 0 ? 30000 : computerDelay())};
 }
+$('pauseTable').hidden = !!online;
+$('pauseTable').disabled = game.turn == null;
+$('pauseTable').textContent = pausedAt ? 'Resume' : 'Pause';
 const turnDeadline = online ? online.deadline : game.turn != null ? localTurn?.deadline : null;
 const showdown=game.phase==='over'&&game.board.length===5&&game.players.filter(p=>!p.folded).length>1;
 const identity = online?.code || game;
@@ -240,7 +245,7 @@ game.players.forEach((player, i) => {
     (acting ? ' active' : '') + (player.folded ? ' folded' : '') + (won ? ' winner' : ''));
   const heading = el('h3', player.name);
   if (acting && turnDeadline && (!online || socket.connected)) {
-    const countdown = el('span', '', 'seat-countdown');
+    const countdown = el('span', pausedAt ? 'Paused' : '', 'seat-countdown');
     countdown.id = 'seatCountdown';
     countdown.setAttribute('role', 'timer');
     heading.append(countdown);
@@ -314,6 +319,12 @@ $('message').textContent = results.length ? results.map(({winners, amount}, inde
   game.message || 'Pull up a chair. Start your first hand.';
 $('history').replaceChildren(...game.log.slice().reverse().map(s=>el('li',s)));
 $('actions').replaceChildren();
+if (!online && pausedAt) {
+  $('message').textContent = 'Paused';
+  $('message').classList.remove('your-turn', 'turn-warning');
+  button('Resume game', () => $('pauseTable').click(), 'primary');
+  return;
+}
 if (turnDeadline && acting) {
   const message = $('message').textContent;
   const tick = () => {
@@ -432,7 +443,24 @@ function addBetControls(legal, pot) {
   button('All-in ' + legal.max, () => act('raise', legal.max), 'all-in');
 }
 function bot(){const i=game.turn,l=game.legal(i);if(!l)return;const p=game.players[i],r=p.hand.map(c=>c.rank),rank=game.board.length>=3?E.best([...p.hand,...game.board]).value[0]:r[0]===r[1]?2:Math.max(...r)>=12?1:0;const strength=rank+Math.random();if(l.call&&l.call>p.chips*.35&&strength<1.15){game.act(i,'fold');return;}if(l.canRaise&&l.max>=l.min&&strength>1.7&&Math.random()<.28){game.act(i,'raise',Math.min(l.max,Math.max(l.min,game.currentBet+40)));return;}game.act(i,l.call?'call':'check');}
-function reset(tournament=game.tournament){if(online)return false;if(game.handNumber&&!confirm('Start a new table with 1,000 chips each?'))return;clearTimeout(timer);game=new E.Game(Math.random,8,tournament);render();return true;}$('reset').onclick=()=>reset();$('rulesBtn').onclick=()=>$('rules').showModal();$('closeRules').onclick=()=>$('rules').close();
+function reset(tournament=game.tournament){if(online)return false;if(game.handNumber&&!confirm('Start a new table with 1,000 chips each?'))return;clearTimeout(timer);pausedAt=0;localTurn=undefined;game=new E.Game(Math.random,8,tournament);render();return true;}$('reset').onclick=()=>reset();$('rulesBtn').onclick=()=>$('rules').showModal();$('closeRules').onclick=()=>$('rules').close();
+$('pauseTable').onclick=()=>{
+  if (online || game.turn == null) return;
+  if (pausedAt) {
+    if (localTurn?.game === game) localTurn.deadline += Date.now() - pausedAt;
+    pausedAt = 0;
+  } else {
+    pausedAt = Date.now();
+  }
+  render();
+};
+computerSpeed.onchange=()=>{
+  saveEffects();
+  if (!online && game.turn != null && game.turn !== 0 && localTurn?.game === game) {
+    localTurn.deadline = (pausedAt || Date.now()) + computerDelay();
+  }
+  render();
+};
 $('tableOptions').onclick=()=>$('tableSettings').showModal();
 $('closeOptions').onclick=()=>$('tableSettings').close();
 $('closeRecap').onclick=()=>$('handRecap').close();
