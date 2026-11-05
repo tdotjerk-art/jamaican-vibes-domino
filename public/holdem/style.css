@@ -228,3 +228,14 @@ html { background: var(--flag-black); }
     left: calc(clamp(30px, 5vw, 52px) + max(0px, env(safe-area-inset-left) - 7px));
   }
 }
+
+/* Keep landscape nameplates, hands and the pot in separate spaces. */
+@media (orientation: landscape) and (max-height: 550px) and (max-width: 1400px) {
+  .seat.s1, .seat.s4 { left: 25%; }
+  .seat.s6, .seat.s9 { left: 75%; }
+  .seat.s5 { top: 0; }
+  .seat p { line-height: 1.1; }
+  .seat p+p { min-height: 0; line-height: 1.1; }
+  .seat > p:first-of-type { font-size: clamp(8px, 1.24vw, 12px); }
+  .centre { top: 37%; }
+}
