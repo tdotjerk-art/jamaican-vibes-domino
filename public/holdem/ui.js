@@ -113,6 +113,32 @@ function playSound(deal) {
   tone.start(now);
   tone.stop(now + .11);
 }
+function playChipSound() {
+  if (!sound.checked || soundContext?.state !== 'running') return;
+  const now = soundContext.currentTime;
+  // Several short, bright impacts give a stack of chips its dry clatter.
+  for (let hit = 0; hit < 3; hit++) {
+    const duration = .045;
+    const buffer = soundContext.createBuffer(1, Math.ceil(soundContext.sampleRate * duration), soundContext.sampleRate);
+    const samples = buffer.getChannelData(0);
+    for (let i = 0; i < samples.length; i++) samples[i] = Math.random() * 2 - 1;
+    const source = soundContext.createBufferSource();
+    const filter = soundContext.createBiquadFilter();
+    const gain = soundContext.createGain();
+    const start = now + hit * .032;
+    source.buffer = buffer;
+    filter.type = 'bandpass';
+    filter.frequency.value = 2600 + hit * 450;
+    filter.Q.value = 2.5;
+    gain.gain.setValueAtTime(.0001, start);
+    gain.gain.exponentialRampToValueAtTime(.3 / (hit + 1), start + .001);
+    gain.gain.exponentialRampToValueAtTime(.0001, start + duration);
+    source.connect(filter).connect(gain).connect(soundContext.destination);
+    source.onended = () => { source.disconnect(); filter.disconnect(); gain.disconnect(); };
+    source.start(start);
+    source.stop(start + duration);
+  }
+}
 function moveChip(from, to) {
   if (!from?.getBoundingClientRect || !to?.getBoundingClientRect || !document.body) return;
   const chip = el('span', undefined, 'moving-chip');
@@ -218,7 +244,8 @@ if (motionEnabled) {
   changedBets.forEach(i => moveChip(seats[i], $('pot')));
   if (paid) awards.forEach((amount, i) => moveChip($('pot'), seats[i]));
 }
-if (newCards || changedBets.length || paid) playSound(newCards);
+if (changedBets.length || paid) playChipSound();
+else if (newCards) playSound(true);
 previous = {game:identity, hand:game.handNumber, board:game.board.length, phase:game.phase, totals:game.players.map(p=>p.total)};
 $('tableMode').textContent = (online ? (online.public ? 'Public table' : 'Room ' + online.code) + ' · ' : game.tournament ? 'Tournament · ' : 'Practice · ') +
   (game.bigBlind/2) + ' / ' + game.bigBlind;
