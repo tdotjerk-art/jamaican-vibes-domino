@@ -400,9 +400,9 @@ html { background: var(--flag-black); }
   #pot { max-width: 65px; font-size: 10px; padding: 4px; }
 }
 
-/* Match the inward clearance of the two rotated end seats on iPhone. */
+/* Bring the left end player's name and chips farther inside the felt. */
 @media (orientation: landscape) and (max-height: 550px) and (max-width: 1400px) {
-  .seat.s8 {
-    left: calc(100% - clamp(30px, 5vw, 52px) - max(0px, env(safe-area-inset-left) - 7px));
+  .seat.s2 {
+    left: calc(clamp(30px, 5vw, 52px) + max(0px, env(safe-area-inset-left) - 7px) + 18px);
   }
 }
