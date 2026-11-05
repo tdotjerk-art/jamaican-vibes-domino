@@ -370,3 +370,32 @@ html { background: var(--flag-black); }
   #actions { flex-shrink: 0; gap: 4px; }
   #friendsButton, #tableOptions { flex-shrink: 0; }
 }
+
+/* Put the pot beside the board, with a separate row for the betting round. */
+.centre {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) max-content;
+  align-items: center;
+  justify-content: center;
+  column-gap: 10px;
+  row-gap: 4px;
+  width: 80%;
+}
+#board { grid-column: 1; grid-row: 1; min-width: 0; }
+#pot {
+  grid-column: 2;
+  grid-row: 1;
+  margin: 0;
+  max-width: 100px;
+  padding: 6px 8px;
+  white-space: normal;
+}
+#street { grid-column: 1 / -1; grid-row: 2; }
+@media (orientation: landscape) and (max-height: 550px) and (max-width: 1400px) {
+  .centre { top: 42%; width: 70%; }
+  #pot { margin: 0; padding: 5px 7px; max-width: 90px; }
+}
+@media (max-width: 700px) and (orientation: portrait) {
+  .centre { column-gap: 5px; }
+  #pot { max-width: 65px; font-size: 10px; padding: 4px; }
+}
