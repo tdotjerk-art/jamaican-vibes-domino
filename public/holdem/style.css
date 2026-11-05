@@ -347,3 +347,10 @@ html { background: var(--flag-black); }
   box-shadow: none !important;
 }
 .seat h3, .seat p { text-shadow: 0 1px 3px #000; }
+
+/* Keep the complete name and stack on the felt, clear of the raised rim. */
+.seat.s4, .seat.s5, .seat.s6 { top: 7%; }
+.seat.s0, .seat.s1, .seat.s9 { top: 93%; }
+@media (orientation: landscape) and (max-height: 550px) and (max-width: 1400px) {
+  .centre { top: 32%; }
+}
