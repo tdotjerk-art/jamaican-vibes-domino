@@ -70,6 +70,13 @@ function installHoldem(io) {
       member.socket.emit('table-state', {
         code:table.code, public:table.public === true, seat, players:table.members.map(m => m.name), game:view,
         revision:table.revision, deadline:table.deadline, startAt:table.startAt,
+        seatStatuses:table.members.map((m, index) => ({
+          name:m.name,
+          status:!m.socket ? (m.token ? 'Reconnecting' : 'Seat open') :
+            m.sittingOut ? 'Sitting out' : m.replacement ? 'Joined · plays next hand' :
+            game && game.players[index].chips === 0 ? 'Out of chips' : 'Ready'
+        })),
+        activeCount:available(table).length,
         sittingOut:!!member.sittingOut,
         canDeal:available(table).length >= 2
       });
