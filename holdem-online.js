@@ -145,6 +145,14 @@ function installHoldem(io) {
       socket.emit('table-seat', {code:table.code, token:member.token});
       publish(table);
     }
+    socket.on('table-list', () => {
+      socket.emit('table-list', [...tables.values()].filter(t => t.public && t.members.some(m => m.socket)).map(t => ({
+        code:t.code, players:t.members.filter(m => m.socket).length,
+        openSeats:t.game ? t.members.filter(m => !m.socket && !m.token).length : 8 - t.members.length,
+        phase:!t.game ? 'Waiting' : t.game.phase === 'over' ? 'Between hands' : 'Playing',
+        joinable:!t.game ? t.members.length < 8 : t.game.phase === 'over' && vacantSeat(t) >= 0
+      })));
+    });
     let lastEntry = -Infinity;
     socket.on('table-join', joinTable);
     function joinTable(input) {
@@ -165,12 +173,14 @@ function installHoldem(io) {
       }
       const cleanName = typeof name === 'string' ? name.trim().slice(0,20) : '';
       if (!cleanName) return fail('Enter your name first.');
-      if (publicTable === true) {
+      if (publicTable === true && cleanCode) {
+        if (!table?.public) return fail('Public table not found. Refresh the list.');
+      } else if (publicTable === true) {
         table = [...tables.values()].find(candidate =>
           candidate.code !== input?.exclude && candidate.public && candidate.members.some(member => member.socket) &&
           (candidate.game ? candidate.game.phase === 'over' && vacantSeat(candidate) >= 0 : candidate.members.length < 8));
       }
-      if (create === true || (publicTable === true && !table)) {
+      if (create === true || (publicTable === true && !cleanCode && !table)) {
         let id;
         do { id = randomBytes(3).toString('hex').toUpperCase(); } while (tables.has(id));
         table = {code:id, public:publicTable === true, members:[], revision:0, deadline:null};
