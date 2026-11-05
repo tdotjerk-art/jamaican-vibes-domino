@@ -111,6 +111,41 @@ function saveEffects() {
     localStorage.setItem('holdem-effects', JSON.stringify({sound:sound.checked, motion:motion.checked, fourColour:fourColour.checked, deckVersion:2, computerSpeed:computerSpeed.value}));
   } catch {}
 }
+
+const localSaveKey = 'holdem-local-game-v1';
+function saveLocalGame() {
+  if (online) return;
+  try {
+    const remaining = localTurn?.game === game ?
+      Math.max(0, localTurn.deadline - (pausedAt || Date.now())) : null;
+    localStorage.setItem(localSaveKey, JSON.stringify({version:1, game, remaining}));
+  } catch {}
+}
+function restoreLocalGame() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(localSaveKey));
+    const state = saved?.game;
+    if (saved?.version !== 1 || !state || !Array.isArray(state.players) ||
+        state.players.length !== 8 || !Array.isArray(state.board) || !Array.isArray(state.log) ||
+        !['ready','preflop','flop','turn','river','over','finished'].includes(state.phase) ||
+        !state.players.every(p => Number.isFinite(p.chips) && p.chips >= 0 && Array.isArray(p.hand))) return;
+    game = Object.assign(new E.Game(), state);
+    game.random = Math.random;
+    if (game.turn != null) {
+      if (!Number.isInteger(game.turn) || !game.players[game.turn] || !Array.isArray(game.deck)) {
+        game = new E.Game();
+        return;
+      }
+      pausedAt = Date.now();
+      const duration = game.turn === 0 ? 30000 : computerDelay();
+      const remaining = Number.isFinite(saved.remaining) ? Math.min(duration, Math.max(0, saved.remaining)) : duration;
+      localTurn = {game, key:game.handNumber + ':' + game.phase + ':' + game.log.length + ':' + game.turn,
+        deadline:pausedAt + remaining};
+    }
+  } catch { game = new E.Game(); }
+}
+globalThis.addEventListener('pagehide', saveLocalGame);
+
 function enableSound() {
   const Audio = globalThis.AudioContext || globalThis.webkitAudioContext;
   if (!sound.checked || !Audio) return;
@@ -211,6 +246,7 @@ if (!online && game.turn != null && (localTurn?.game !== game || localTurn.key !
 $('pauseTable').hidden = !!online;
 $('pauseTable').disabled = game.turn == null;
 $('pauseTable').textContent = pausedAt ? 'Resume' : 'Pause';
+saveLocalGame();
 const turnDeadline = online ? online.deadline : game.turn != null ? localTurn?.deadline : null;
 const showdown=game.phase==='over'&&game.board.length===5&&game.players.filter(p=>!p.folded).length>1;
 const identity = online?.code || game;
@@ -488,6 +524,7 @@ sound.onchange=()=>{saveEffects();enableSound();};
 motion.onchange=saveEffects;
 fourColour.onchange=()=>{saveEffects();render();};
 $('refreshTables').onclick=()=>connectFriends().emit('table-list');
+restoreLocalGame();
 if (globalThis.io && sessionStorage.getItem('holdem-private-seat')) connectFriends();
 render();
 const invitedRoom = new URLSearchParams(location.search).get('room');
