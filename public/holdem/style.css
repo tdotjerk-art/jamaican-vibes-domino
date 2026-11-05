@@ -325,3 +325,17 @@ html { background: var(--flag-black); }
   right: auto;
   transform: translateX(-50%);
 }
+
+#message.your-turn {
+  color: #fff4a3;
+  background: #005b2c;
+  border: 2px solid #fed100;
+  border-radius: 7px;
+  padding: 5px;
+  font-weight: 700;
+}
+#message.turn-warning {
+  color: #fff;
+  background: #822c13;
+  border-color: #ffde54;
+}
