@@ -80,6 +80,16 @@ function requestRoom(create, publicTable = false) {
   client.emit('table-join', {create, publicTable, name:$('friendsName').value, code:$('friendsCode').value});
 }
 const sound = $('tableSound'), motion = $('tableMotion');
+try {
+  const saved = JSON.parse(localStorage.getItem('holdem-effects'));
+  if (typeof saved?.sound === 'boolean') sound.checked = saved.sound;
+  if (typeof saved?.motion === 'boolean') motion.checked = saved.motion;
+} catch {}
+function saveEffects() {
+  try {
+    localStorage.setItem('holdem-effects', JSON.stringify({sound:sound.checked, motion:motion.checked}));
+  } catch {}
+}
 function enableSound() {
   const Audio = globalThis.AudioContext || globalThis.webkitAudioContext;
   if (!sound.checked || !Audio) return;
@@ -349,7 +359,8 @@ $('friendsInvite').onclick=async()=>{
 };
 $('friendsFind').onclick=()=>socket.emit('table-find');
 $('friendsLeave').onclick=()=>leaveFriends();
-sound.onchange=enableSound;
+sound.onchange=()=>{saveEffects();enableSound();};
+motion.onchange=saveEffects;
 if (globalThis.io && sessionStorage.getItem('holdem-private-seat')) connectFriends();
 render();
 const invitedRoom = new URLSearchParams(location.search).get('room');
