@@ -43,6 +43,7 @@ function connectFriends() {
     $('friendsFields').hidden = $('friendsCreate').hidden = $('friendsJoin').hidden = $('publicJoin').hidden = true;
     $('friendsLeave').hidden = false;
     $('friendsInvite').hidden = state.public;
+    $('friendsFind').hidden = !state.public;
     $('friendsSeats').replaceChildren(...(state.seatStatuses || []).map(({name,status}) => el('li', name + ' · ' + status)));
     $('friendsSit').hidden = !state.game;
     $('friendsSit').textContent = state.sittingOut ? 'Return next hand' : 'Sit out next hand';
@@ -63,6 +64,7 @@ function leaveFriends(notify = true) {
   $('friendsFields').hidden = $('friendsCreate').hidden = $('friendsJoin').hidden = $('publicJoin').hidden = false;
   $('friendsLeave').hidden = true;
   $('friendsInvite').hidden = true;
+  $('friendsFind').hidden = true;
   $('friendsSeats').replaceChildren();
   $('friendsSit').hidden = true;
   $('friendsStatus').textContent = '';
@@ -199,7 +201,7 @@ game.players.forEach((player, i) => {
     player.chips === 0 ? 'All-in' : acting ? 'Acting' : player.connected === false ? 'Disconnected' : ' ';
   seat.append(heading, hand,
     el('p', player.chips.toLocaleString() + ' chips' + (player.bet && !results.length ? ' · Bet ' + player.bet : '')),
-    el('p', status, 'seat-status'));
+    el('p', status + (player.lastAction ? ' · ' + player.lastAction : ''), 'seat-status'));
   $('seats').append(seat);
 });
 $('board').replaceChildren(...Array.from({length:5}, (_, i) =>
@@ -345,6 +347,7 @@ $('friendsInvite').onclick=async()=>{
     $('friendsStatus').textContent = 'Invite link · ' + url.href;
   }
 };
+$('friendsFind').onclick=()=>socket.emit('table-find');
 $('friendsLeave').onclick=()=>leaveFriends();
 sound.onchange=enableSound;
 if (globalThis.io && sessionStorage.getItem('holdem-private-seat')) connectFriends();
