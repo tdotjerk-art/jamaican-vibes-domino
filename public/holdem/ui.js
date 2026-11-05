@@ -100,11 +100,11 @@ try {
   const saved = JSON.parse(localStorage.getItem('holdem-effects'));
   if (typeof saved?.sound === 'boolean') sound.checked = saved.sound;
   if (typeof saved?.motion === 'boolean') motion.checked = saved.motion;
-  if (typeof saved?.fourColour === 'boolean') fourColour.checked = saved.fourColour;
+  if (saved?.deckVersion === 2 && typeof saved.fourColour === 'boolean') fourColour.checked = saved.fourColour;
 } catch {}
 function saveEffects() {
   try {
-    localStorage.setItem('holdem-effects', JSON.stringify({sound:sound.checked, motion:motion.checked, fourColour:fourColour.checked}));
+    localStorage.setItem('holdem-effects', JSON.stringify({sound:sound.checked, motion:motion.checked, fourColour:fourColour.checked, deckVersion:2}));
   } catch {}
 }
 function enableSound() {
