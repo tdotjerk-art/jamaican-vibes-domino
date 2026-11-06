@@ -5,7 +5,9 @@ const crypto=require("crypto");
 
 const app=express(),server=http.createServer(app),io=new Server(server,{cors:{origin:"*"}});
 app.use("/api/draff",require("./draff-online").createDraffRouter());
-app.use("/api/ludi",require("./ludi-online").createLUDIRouter());
+const ludiRouter=require("./ludi-online").createLUDIRouter();
+app.use("/api/ludi",ludiRouter);
+server.on("close",()=>ludiRouter.close());
 app.use(express.static("public"));
 app.get("/",(req,res)=>res.sendFile(__dirname + "/index.html"));
 app.get("/health",(req,res)=>res.status(200).send("ok"));
