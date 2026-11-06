@@ -1,4 +1,5 @@
 (()=>{'use strict';const $=id=>document.getElementById(id),E=JVHoldem;let game=new E.Game(),timer;
+let selectedWinner, selectedWinnerGame, selectedWinnerHand;
 let previous, soundContext, alertedTurn, warnedTurn;
 let socket, online, practice, clock, pendingRoom;
 let localTurn, pausedAt = 0;
@@ -341,7 +342,22 @@ pots.forEach(pot => {
   });
 });
 // A split pot can contain several different five-card combinations.
-const highlightedSeat = awards.has(seatOfUser()) ? seatOfUser() : awards.keys().next().value;
+if (selectedWinnerGame !== identity || selectedWinnerHand !== game.handNumber) {
+  selectedWinner = undefined;
+  selectedWinnerGame = identity;
+  selectedWinnerHand = game.handNumber;
+}
+const highlightedSeat = awards.has(selectedWinner) ? selectedWinner :
+  awards.has(seatOfUser()) ? seatOfUser() : awards.keys().next().value;
+function winnerChoice(seat, label, className) {
+  const choice = el('button', label, className);
+  choice.type = 'button';
+  choice.setAttribute('aria-label', 'Show ' + game.players[seat].name + "'s winning five cards");
+  choice.setAttribute('aria-pressed', String(seat === highlightedSeat));
+  choice.title = 'Show winning five cards';
+  choice.onclick = () => { selectedWinner = seat; render(); };
+  return choice;
+}
 game.players.forEach((player, i) => {
   const acting = game.turn === i;
   const won = awards.has(i);
@@ -372,8 +388,8 @@ game.players.forEach((player, i) => {
   stack.append(el('span', player.chips.toLocaleString() + ' chips', 'stack-value'));
   if (won) {
     const split = pots.some(pot => pot.split && pot.payouts.some(payout => payout.seat === i));
-    const badge = el('span', split ? 'SPLIT' : 'WIN', 'winner-badge');
-    badge.setAttribute('aria-label', player.name + ' collected ' + awards.get(i).toLocaleString() + ' chips' + (split ? ' including a split pot' : ''));
+    const badge = showdown && awards.size > 1 ? winnerChoice(i, split ? 'SPLIT' : 'WIN', 'winner-badge') : el('span', split ? 'SPLIT' : 'WIN', 'winner-badge');
+    if (badge.tagName !== 'BUTTON') badge.setAttribute('aria-label', player.name + ' collected ' + awards.get(i).toLocaleString() + ' chips' + (split ? ' including a split pot' : ''));
     stack.append(badge);
   }
   seat.append(heading, hand, stack);
@@ -415,6 +431,12 @@ const payouts = [...awards].map(([seat, amount]) =>
 $('winnerNotice').textContent = payouts.length > 1 ?
   (results.some(result => result.winners.length > 1) ? 'Split pot · ' : 'Payouts · ') + payouts.join(' / ') :
   payouts.join('');
+if (showdown && awards.size > 1) {
+  $('winnerNotice').replaceChildren(el('span', 'View winning five: '));
+  awards.forEach((amount, seat) => {
+    $('winnerNotice').append(winnerChoice(seat, game.players[seat].name + ' · ' + amount.toLocaleString(), 'winner-choice'));
+  });
+}
 $('winnerNotice').hidden = !payouts.length;
 $('street').textContent = {ready:'Ready to deal', over:showdown ? 'Showdown' : 'Hand complete'}[game.phase] || game.phase;
 $('handNo').textContent = 'HAND ' + game.handNumber;
