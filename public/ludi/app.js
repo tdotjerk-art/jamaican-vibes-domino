@@ -1,8 +1,9 @@
 (()=>{
  'use strict';
  const E=JVLUDI,L=JVLudiLayout,$=id=>document.getElementById(id),svgNS='http://www.w3.org/2000/svg';
- const seatKey='jv-ludi-room-v1',nameKey='jv-draff-player-name-v1',profileKey='jv-ludi-player-v1',T=JVLudiTutorial;
+ const seatKey='jv-ludi-room-v1',nameKey='jv-draff-player-name-v1',profileKey='jv-ludi-player-v1',T=JVLudiTutorial,R=JVLudiReport,reportKey='jv-ludi-last-report-v1';
  let local=null,room=null,token=null,version=-1,busy=false,epoch=0,poll=null,aiTimer=null,message='',selectedDie=null,rolling=false,rollTimer=null,shownRollNo=0,autoRollTimer=null,autoRollKey='',autoRollDeadline=0;
+ let trace=[],traceSignature='',lastAttempt=null,reportDraft=null,reportBusy=false,reportSaved=false,reportId='',lastReportState=null;
  let tutorial=null,tutorialMode='ai',profile=null,profileStats=null,profileTask=null;
  let clockTimer=null,clockTargets=[],aiDeadline=0,serverOffset=0,connectionState='connected',backOnlineUntil=0,refreshing=false,winnerShown='';
  function saved(){try{const r=JSON.parse(localStorage.getItem(seatKey)||'null');return r&&/^[A-F0-9]{8}$/.test(r.code)&&/^[a-f0-9]{64}$/.test(r.token)?r:null}catch{return null}}
@@ -12,6 +13,47 @@
  function node(tag,text,cls){const el=document.createElement(tag);if(text!==undefined)el.textContent=text;if(cls)el.className=cls;return el}
  function svg(tag,attrs,parent=$('board'),text){const el=document.createElementNS(svgNS,tag);for(const [k,v]of Object.entries(attrs))el.setAttribute(k,String(v));if(text!==undefined)el.textContent=text;parent.append(el);return el}
  function snapshot(){return local||room?.state||null}
+ function feedback(text){$('moveFeedback').textContent=text;$('moveFeedback').hidden=!text}
+ function remember(g){
+  if(!g)return;const signature=JSON.stringify(g);if(signature===traceSignature)return;traceSignature=signature;feedback('');
+  trace.push({at:Date.now(),revision:room?.version??null,state:R.state(g)});trace=trace.slice(-8);
+ }
+ function newTrace(){trace=[];traceSignature='';lastAttempt=null;feedback('')}
+ function inspectMove(g,piece,die,seat=g.turn){
+  const reason=E.explainMove(g,seat,piece,die);lastAttempt={at:Date.now(),type:'move',piece,die,reason};feedback(reason);return reason;
+ }
+ function dieReason(g,die){
+  if(!g.remaining.includes(die))return 'That die has already been used. Choose the remaining die.';
+  const player=g.players[g.turn],reasons=player.tokens.map((_,piece)=>E.explainMove(g,g.turn,piece,die));
+  return reasons.find(reason=>reason.startsWith('Use both dice'))||reasons.find((reason,piece)=>player.tokens[piece]>=0&&player.tokens[piece]<E.HOME)||reasons.find(reason=>reason.includes('six'))||'This die has no legal move.';
+ }
+ function reportControls(){
+  $('reportProblem').hidden=!snapshot();$('lastReport').hidden=!lastReportState;
+  $('sendReport').disabled=reportBusy||reportSaved;$('reportDescription').disabled=reportBusy||reportSaved;
+ }
+ function openReport(previous=false){
+  try{
+   if(previous&&lastReportState){reportDraft=R.clean(lastReportState.report);reportId=lastReportState.id||'';reportSaved=!!reportId}
+   else{const g=snapshot();if(!g)return;reportDraft=R.clean({build:R.VERSION,capturedAt:Date.now(),mode:tutorial?'tutorial':room?(room.publicTable?'public':'private'):$('mode').value,roomCode:room?.code,revision:room?.version,selectedDie,state:g,trace,lastAttempt,device:{width:globalThis.innerWidth||0,height:globalThis.innerHeight||0,userAgent:navigator.userAgent||''}});reportSaved=false;reportId=''}
+   reportBusy=false;$('reportDescription').value=reportDraft.description;$('reportPanel').hidden=false;$('reportCopy').hidden=true;
+   $('reportMessage').textContent=reportSaved?'Saved report: '+reportId:'Snapshot captured. Describe the problem, then save or download it.';
+   reportControls();$('reportTitle').focus?.();
+  }catch(e){$('error').textContent=e.message}
+ }
+ function reportPayload(){return R.clean({...reportDraft,description:$('reportDescription').value})}
+ function keepReport(payload){lastReportState={report:payload,id:reportId};try{localStorage.setItem(reportKey,JSON.stringify(lastReportState))}catch{}reportControls()}
+ async function saveProblem(e){
+  e?.preventDefault();if(!reportDraft||reportBusy||reportSaved)return;
+  const draft=reportDraft,payload=reportPayload();reportBusy=true;keepReport(payload);$('reportMessage').textContent='Saving report…';reportControls();
+  try{const receipt=await communityRequest('reports',payload,null,room?.code===payload.roomCode?{Authorization:'Bearer '+token}:{});if(reportDraft!==draft)return;if(receipt.saved!==true||!/^[a-f0-9]{24}$/.test(receipt.id))throw Error('The report was not confirmed.');reportId=receipt.id;reportSaved=true;keepReport(payload);$('reportMessage').textContent='Report saved: '+reportId+'. Download or copy it to share the details.'}
+  catch(error){if(reportDraft===draft)$('reportMessage').textContent='Could not save online. Download or copy this snapshot, or try again.'}
+  finally{if(reportDraft===draft){reportBusy=false;reportControls()}}
+ }
+ function reportText(){const payload=reportPayload();keepReport(payload);return JSON.stringify({id:reportId||null,report:payload},null,2)}
+ $('reportProblem').onclick=()=>openReport();$('lastReport').onclick=()=>openReport(true);$('reportForm').onsubmit=saveProblem;
+ $('closeReport').onclick=()=>{reportDraft=null;reportBusy=false;$('reportPanel').hidden=true};
+ $('copyReport').onclick=async()=>{const text=reportText();try{await navigator.clipboard.writeText(text);$('reportMessage').textContent='Report copied. Paste it when describing the problem.'}catch{$('reportCopy').value=text;$('reportCopy').hidden=false;$('reportMessage').textContent='Select and copy the report text below.'}};
+ $('downloadReport').onclick=()=>{const text=reportText();try{const url=URL.createObjectURL(new Blob([text],{type:'application/json'})),link=document.createElement('a');link.href=url;link.download='ludi-report-'+(reportId||reportDraft.capturedAt)+'.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1500);$('reportMessage').textContent='Report download started. Keep the file to share with the problem details.'}catch{$('reportCopy').value=text;$('reportCopy').hidden=false;$('reportMessage').textContent='Download unavailable. Copy the report text below.'}};
  function yourTurn(g){return !!g&&!busy&&!rolling&&(local?($('mode').value==='local'||g.turn===0):connectionState==='connected'&&room.you===g.turn)}
  function connection(ok){
   if(ok){if(connectionState==='reconnecting')backOnlineUntil=Date.now()+5000;connectionState='connected'}
@@ -96,8 +138,9 @@
    let [x,y]=piece.pos;const group=pieces.filter(other=>other.pos[0]===x&&other.pos[1]===y),n=group.length,index=group.indexOf(piece);
    let radius=piece.progress<0?(piece.p.color===0||piece.p.color===3?15.4:14.5):piece.progress===E.HOME?9:13;
    if(n>1){const cols=n===2?2:Math.ceil(Math.sqrt(n)),rows=Math.ceil(n/cols);const gap=n>4?10:12;x+=(index%cols-(cols-1)/2)*gap;y+=(Math.floor(index/cols)-(rows-1)/2)*gap;radius=n>4?5:n>2?7:10}
-   const playable=!!g&&g.turn===piece.seat&&allowed.includes(piece.piece),team=E.TEAMS[piece.p.color];
-   const tokenNode=svg('g',{class:'ludi-token'+(playable?' playable':''),role:'button',tabindex:playable?0:-1,'aria-disabled':!playable,'aria-label':piece.p.name+', piece '+(piece.piece+1)+(piece.progress<0?', in yard':piece.progress===E.HOME?', home':', on board')});
+   const interactive=!!g&&g.phase!=='over'&&yourTurn(g)&&g.turn===piece.seat;
+   const playable=interactive&&allowed.includes(piece.piece),reason=interactive?E.explainMove(g,piece.seat,piece.piece,selectedDie):'';
+   const tokenNode=svg('g',{class:'ludi-token'+(playable?' playable':''),role:'button',tabindex:interactive?0:-1,'aria-disabled':!interactive,'aria-description':interactive?(reason||'Move this piece using the selected die.'):'Wait for this player’s turn.','aria-label':piece.p.name+', piece '+(piece.piece+1)+(piece.progress<0?', in yard':piece.progress===E.HOME?', home':', on board')});
    svg('circle',{cx:x,cy:y+2,r:radius,fill:'#0008'},tokenNode);
    svg('circle',{cx:x,cy:y,r:radius,fill:'url(#ludi-gem-'+piece.p.color+')',stroke:'#eee7ce','stroke-width':1},tokenNode);
    for(let facet=0;facet<8;facet++){
@@ -105,7 +148,7 @@
     svg('path',{d:`M${x} ${y}L${x+Math.cos(a)*radius} ${y+Math.sin(a)*radius}L${x+Math.cos(b)*radius} ${y+Math.sin(b)*radius}Z`,fill:facet%2?'#000':'#fff',opacity:facet%2?.16:.1},tokenNode);
    }
    svg('circle',{cx:x-radius*.2,cy:y-radius*.25,r:radius*.35,fill:'#fff',opacity:.07},tokenNode);
-   if(playable){tokenNode.onclick=()=>action({type:'move',piece:piece.piece,die:selectedDie});tokenNode.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();action({type:'move',piece:piece.piece,die:selectedDie})}}}
+   if(interactive){const activate=()=>{if(!inspectMove(g,piece.piece,selectedDie,piece.seat))action({type:'move',piece:piece.piece,die:selectedDie})};tokenNode.onclick=activate;tokenNode.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();activate()}}}
   }
  }
  function moveButtons(parent,g){
@@ -129,8 +172,8 @@
    const button=$('tableDie'+die),value=g?.dice?.[die],used=!!value&&!g.remaining.includes(die),selectable=!!g&&yourTurn(g)&&E.legal(g,die).length>0,higher=!!value&&!rolling&&g.remaining.includes(die)&&E.legal(g,die).length>0;
    button.style.background=E.TEAMS[color].color;button.style.color=ink;button.style.borderColor=ink;
    button.replaceChildren();button.className='table-die'+(higher?' higher':'')+(used?' used':'')+(g?.phase==='move'&&selectedDie===die?' chosen':'');
-   button.disabled=!selectable;button.setAttribute('aria-pressed',String(g?.phase==='move'&&selectedDie===die));
-   button.setAttribute('aria-description',higher?'Play this die next.':'');
+   button.disabled=!g||!yourTurn(g)||g.phase!=='move';button.setAttribute('aria-pressed',String(g?.phase==='move'&&selectedDie===die));
+   button.setAttribute('aria-description',selectable?'Play this die next.':g&&g.phase==='move'?dieReason(g,die):'Roll the dice to begin.');
    button.setAttribute('aria-label','Die '+(die+1)+(value?': '+value:' not rolled')+(used?', used':''));
    const face=node('span',undefined,'die-face');face.setAttribute('aria-hidden','true');
    for(let dot=0;dot<9;dot++)face.append(node('i',undefined,'pip'+((pips[value||0]||[]).includes(dot)?' on':'')));
@@ -175,7 +218,7 @@
   },10000);
  }
  function render(){
-  clearTimeout(aiTimer);const g=snapshot(),active=!!(local||room);syncRoll(g);const choices=g?E.legal(g):[];if(!choices.some(m=>m.die===selectedDie))selectedDie=choices[0]?.die??null;document.body.classList.toggle('in-game',!!g);
+  clearTimeout(aiTimer);const g=snapshot(),active=!!(local||room);remember(g);syncRoll(g);const choices=g?E.legal(g):[];if(!choices.some(m=>m.die===selectedDie))selectedDie=choices[0]?.die??null;document.body.classList.toggle('in-game',!!g);
   $('setup').hidden=active;$('gamePanel').hidden=!active;$('joinControls').hidden=$('mode').value!=='online';$('begin').textContent=$('mode').value==='public'?'Play online':$('mode').value==='online'?'Create online room':'Start game ↗';$('resume').hidden=!saved();
   $('begin').disabled=busy||!!profileTask;$('publicPlay').disabled=busy||!!profileTask;$('publicPlay').hidden=$('mode').value==='public';$('learn').disabled=busy||!!profileTask;$('join').disabled=busy;$('resume').disabled=busy;$('leave').disabled=busy;
   $('roomInfo').hidden=!room||room.publicTable;$('roomCode').textContent=room?.code||'';$('modeLabel').textContent=tutorial?'GUIDED PRACTICE':room?(room.publicTable?'PUBLIC TABLE':'PRIVATE TABLE'):$('mode').value==='local'?'SAME DEVICE':'VS COMPUTERS';
@@ -199,7 +242,7 @@
   board(g);scheduleAutoRoll(g);scheduleComputer();winner(g);renderTutorial();
   if(active&&!clockTimer)clockTimer=setInterval(updateIndicators,250);
   else if(!active){clearInterval(clockTimer);clockTimer=null}
-  updateIndicators();
+  updateIndicators();reportControls();$('moveHelp').hidden=!g||g.phase!=='move'||!yourTurn(g);
  }
  function scheduleComputer(){
   aiDeadline=0;const g=local;if(tutorial||!g||rolling||$('mode').value!=='ai'||g.turn===0||g.phase==='over')return;
@@ -214,11 +257,11 @@
    render();
   },delay);
  }
- function action(a){const g=snapshot();if(!g||!yourTurn(g))return;if(local){try{
+ function action(a){const g=snapshot();if(!g||!yourTurn(g))return;lastAttempt={at:Date.now(),type:a.type,piece:a.piece,die:a.die};if(local){try{
   let draw=0;local=E.act(local,local.turn,a,tutorial?()=>[6,3][draw++]:undefined);
   if(tutorial){const next=T.advance(tutorial.step,local);if(next!==tutorial.step){tutorial.step=next;if(next>=2&&next<5){local=T.scenario(next);shownRollNo=local.rollNo;clearTimeout(rollTimer);rolling=false}}}
   $('error').textContent='';render()
- }catch(e){$('error').textContent=e.message}}else return send(a)}
+ }catch(e){$('error').textContent=e.message;lastAttempt.reason=e.message;feedback(e.message)}}else return send(a)}
  async function request(a,credentials=room?{code:room.code,token}:null){
   const sentAt=Date.now(),controller=typeof AbortController==='undefined'?null:new AbortController();
   const timeout=controller?setTimeout(()=>controller.abort(),8000):null;
@@ -228,7 +271,7 @@
    r.clockOffset=Number.isFinite(r.serverNow)?r.serverNow-(sentAt+Date.now())/2:0;return r;
   }finally{clearTimeout(timeout)}
  }
- function receive(r,newToken){if(room&&r.code===room.code&&r.version<version)return;if(connectionState==='reconnecting')$('error').textContent='';connection(true);serverOffset=r.clockOffset||0;room=r;$('mode').value=r.publicTable?'public':'online';version=r.version;if(newToken)token=newToken;render()}
+ function receive(r,newToken){if(room&&r.code===room.code&&r.version<version)return;if(!room||room.code!==r.code)newTrace();if(connectionState==='reconnecting')$('error').textContent='';connection(true);serverOffset=r.clockOffset||0;room=r;$('mode').value=r.publicTable?'public':'online';version=r.version;if(newToken)token=newToken;render()}
  function terminal(e){if([401,403,404].includes(e.status)){epoch++;room=null;token=null;version=-1;busy=false;refreshing=false;clearInterval(poll);save(null);message='';$('error').textContent=e.message;render();return true}return false}
  function polling(){clearInterval(poll);poll=setInterval(refresh,1500)}
  async function refresh(){
@@ -262,11 +305,11 @@
   try{const r=await request(null,credentials);if(generation!==epoch)return;$('mode').value='online';token=credentials.token;version=-1;message='';receive(r,credentials.token);polling()}
   catch(e){if(generation===epoch&&!terminal(e))$('error').textContent=e.message}finally{if(generation===epoch){busy=false;render()}}
  }
- function startLocal(){const n=count(),player=name();shownRollNo=0;winnerShown='';connectionState='connected';local=E.fresh(Array.from({length:n},(_,i)=>i===0?player:$('mode').value==='ai'?'Computer '+(i+1):'Player '+(i+1)));render()}
+ function startLocal(){const n=count(),player=name();newTrace();shownRollNo=0;winnerShown='';connectionState='connected';local=E.fresh(Array.from({length:n},(_,i)=>i===0?player:$('mode').value==='ai'?'Computer '+(i+1):'Player '+(i+1)));render()}
 
- async function communityRequest(route,body,credentials=profile){
+ async function communityRequest(route,body,credentials=profile,extraHeaders={}){
   const controller=typeof AbortController==='undefined'?null:new AbortController(),timeout=controller?setTimeout(()=>controller.abort(),8000):null;
-  try{const response=await fetch('/api/ludi/'+route,{method:body?'POST':'GET',headers:{'Content-Type':'application/json',...(credentials?{'x-ludi-profile-token':credentials.token}:{})},...(body?{body:JSON.stringify(body)}:{}),...(controller?{signal:controller.signal}:{})});const data=await response.json();if(!response.ok){const e=Error(data.error||'Unable to load player records.');e.status=response.status;throw e}return data}finally{clearTimeout(timeout)}
+  try{const response=await fetch('/api/ludi/'+route,{method:body?'POST':'GET',headers:{'Content-Type':'application/json',...(credentials?{'x-ludi-profile-token':credentials.token}:{}),...extraHeaders},...(body?{body:JSON.stringify(body)}:{}),...(controller?{signal:controller.signal}:{})});const data=await response.json();if(!response.ok){const e=Error(data.error||'Unable to load player records.');e.status=response.status;throw e}return data}finally{clearTimeout(timeout)}
  }
  function renderProfile(){
   $('playerSummary').textContent=profileStats?profileStats.name+' · '+profileStats.wins+' wins · '+profileStats.games+' games · '+profileStats.winRate+'% wins':'Save a player profile to keep your online wins and games played.';
@@ -296,7 +339,7 @@
   $('tutorialText').textContent=done?'You entered, used both dice, captured, avoided a barrier and finished exactly. Now try a full game.':step.text;
   $('tutorialPractice').hidden=!done;
  }
- function startTutorial(){if(busy||profileTask||local||room)return;tutorialMode=$('mode').value;tutorial={step:0};$('mode').value='local';local=T.scenario(0);shownRollNo=0;message='';$('error').textContent='';render();$('tutorialTitle').focus?.()}
+ function startTutorial(){if(busy||profileTask||local||room)return;newTrace();tutorialMode=$('mode').value;tutorial={step:0};$('mode').value='local';local=T.scenario(0);shownRollNo=0;message='';$('error').textContent='';render();$('tutorialTitle').focus?.()}
  function exitTutorial(){tutorial=null;$('mode').value=tutorialMode;resetTable()}
  $('learn').onclick=startTutorial;$('tutorialExit').onclick=exitTutorial;
  $('tutorialPractice').onclick=()=>{exitTutorial();$('mode').value='ai';if(!E.cleanName($('name').value))$('name').value='Player';startLocal()};
@@ -311,10 +354,10 @@
  $('setupForm').onsubmit=e=>{e.preventDefault();if(['online','public'].includes($('mode').value))enter($('mode').value==='public'?'find':'create');else try{startLocal();$('error').textContent=''}catch(error){$('error').textContent=error.message}};
  $('mode').onchange=()=>{message='';$('error').textContent='';render()};$('join').onclick=()=>enter('join');$('resume').onclick=resume;
  $('startOnline').onclick=()=>send({type:'start'});$('roll').onclick=$('quickRoll').onclick=$('tableRoll').onclick=()=>action({type:'roll'});
- for(let die=0;die<2;die++)$('tableDie'+die).onclick=()=>{const g=snapshot();if(g&&yourTurn(g)&&E.legal(g,die).length){selectedDie=die;render()}};
+ for(let die=0;die<2;die++)$('tableDie'+die).onclick=()=>{const g=snapshot();if(!g||!yourTurn(g)||g.phase!=='move')return;if(E.legal(g,die).length){selectedDie=die;feedback('');render()}else{const reason=dieReason(g,die);lastAttempt={at:Date.now(),type:'select-die',die,reason};feedback(reason)}};
  function rematch(){if(room)return send({type:'rematch'});if(snapshot()?.phase==='over'||confirm('Start a new LUDI game? The current board will be cleared.'))startLocal()}
  $('newGame').onclick=$('rematch').onclick=rematch;
- function resetTable(){epoch++;clearTimeout(aiTimer);clearTimeout(rollTimer);clearTimeout(autoRollTimer);autoRollKey='';rolling=false;clearInterval(poll);local=null;room=null;token=null;version=-1;busy=false;refreshing=false;connectionState='connected';backOnlineUntil=0;message='';$('error').textContent='';render()}
+ function resetTable(){newTrace();epoch++;clearTimeout(aiTimer);clearTimeout(rollTimer);clearTimeout(autoRollTimer);autoRollKey='';rolling=false;clearInterval(poll);local=null;room=null;token=null;version=-1;busy=false;refreshing=false;connectionState='connected';backOnlineUntil=0;message='';$('error').textContent='';render()}
  $('leave').onclick=async()=>{
   if(tutorial)return exitTutorial();
   if(room?.publicTable&&!room.state){
@@ -325,6 +368,7 @@
   if(confirm('Leave this table? Online players can return using this browser’s saved room.'))resetTable();
  };
  $('copy').onclick=async()=>{if(!room)return;const link=new URL('/ludi/',location.origin);link.searchParams.set('room',room.code);try{await navigator.clipboard.writeText(link.href);message='Invite link copied.'}catch{message='Share room code: '+room.code}render()};
+ try{const storedReport=JSON.parse(localStorage.getItem(reportKey)||'null');if(storedReport?.report)lastReportState={report:R.clean(storedReport.report),id:/^[a-f0-9]{24}$/.test(storedReport.id)?storedReport.id:''}}catch{}
  try{const savedPlayer=JSON.parse(localStorage.getItem(profileKey)||'null');if(savedPlayer&&/^[a-f0-9]{32}$/.test(savedPlayer.id)&&/^[a-f0-9]{64}$/.test(savedPlayer.token))profile=savedPlayer}catch{}
  renderProfile();if(profile)refreshProfile();
  try{$('name').value=E.cleanName(localStorage.getItem(nameKey))}catch{}

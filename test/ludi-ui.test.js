@@ -1,11 +1,11 @@
 const test=require('node:test'),A=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),E=require('../public/ludi/engine');
 function element(){return {children:[],style:{},value:'',hidden:false,disabled:false,textContent:'',attributes:{},append(...els){this.children.push(...els)},replaceChildren(...els){this.children=els},setAttribute(k,v){this.attributes[k]=v},classList:{toggle(){}}};}
 function boot(die=[6,1]){
- const nodes={},timeouts=new Map(),intervals=new Map(),storage=new Map([['jv-draff-player-name-v1','Junior']]);let next=0,response,lastBody,now=100000;const events={};
+ const nodes={},timeouts=new Map(),intervals=new Map(),storage=new Map([['jv-draff-player-name-v1','Junior']]);let next=0,response,lastBody,now=100000,copied='';const events={};
  const get=id=>nodes[id]||(nodes[id]=element());get('mode').value='ai';get('count').value='2';get('name').value='Junior';
- const context=vm.createContext({Date:class extends Date{static now(){return now}},addEventListener:(name,fn)=>events[name]=fn,JVLudiTutorial:require('../public/ludi/tutorial'),JVLudiLayout:require('../public/ludi/layout'),JVLUDI:{...E,act:(g,seat,a)=>{let next=0;const pair=typeof die==='function'?die(g,seat,a):die;return E.act(g,seat,a,()=>Array.isArray(pair)?pair[next++]:pair)}},document:{getElementById:get,createElement:element,createElementNS:element,body:element(),addEventListener(){},hidden:false},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},setTimeout:(fn,ms)=>{timeouts.set(++next,{fn,ms});return next},clearTimeout:id=>timeouts.delete(id),setInterval:(fn,ms)=>{fn.ms=ms;intervals.set(++next,fn);return next},clearInterval:id=>intervals.delete(id),location:{origin:'https://game.test',href:'https://game.test/ludi/'},URL,navigator:{clipboard:{writeText:async()=>{}}},confirm:()=>true,fetch:async(url,options)=>{if(url.startsWith('/api/ludi/profile'))return {ok:true,json:async()=>({profile:{id:'b'.repeat(32),name:'Junior',wins:0,games:0,winRate:0},token:'c'.repeat(64)})};lastBody=options.body?JSON.parse(options.body):null;if(response instanceof Error)throw response;return typeof response==='function'?response():response}});
+ const context=vm.createContext({Date:class extends Date{static now(){return now}},addEventListener:(name,fn)=>events[name]=fn,JVLudiReport:require('../public/ludi/report'),JVLudiTutorial:require('../public/ludi/tutorial'),JVLudiLayout:require('../public/ludi/layout'),JVLUDI:{...E,act:(g,seat,a)=>{let next=0;const pair=typeof die==='function'?die(g,seat,a):die;return E.act(g,seat,a,()=>Array.isArray(pair)?pair[next++]:pair)}},document:{getElementById:get,createElement:element,createElementNS:element,body:element(),addEventListener(){},hidden:false},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},setTimeout:(fn,ms)=>{timeouts.set(++next,{fn,ms});return next},clearTimeout:id=>timeouts.delete(id),setInterval:(fn,ms)=>{fn.ms=ms;intervals.set(++next,fn);return next},clearInterval:id=>intervals.delete(id),location:{origin:'https://game.test',href:'https://game.test/ludi/'},URL,navigator:{userAgent:'Ludi test browser',clipboard:{writeText:async text=>{copied=text}}},confirm:()=>true,fetch:async(url,options)=>{if(url.startsWith('/api/ludi/profile'))return {ok:true,json:async()=>({profile:{id:'b'.repeat(32),name:'Junior',wins:0,games:0,winRate:0},token:'c'.repeat(64)})};lastBody=options.body?JSON.parse(options.body):null;if(response instanceof Error)throw response;return typeof response==='function'?response():response}});
  vm.runInContext(fs.readFileSync('public/ludi/app.js','utf8'),context);
- return {get,timeouts,intervals,storage,events,advance:ms=>now+=ms,now:()=>now,poll:()=>[...intervals.values()].find(fn=>fn.ms===1500)?.(),indicators:()=>[...intervals.values()].find(fn=>fn.ms===250)?.(),setResponse:r=>response=r,lastBody:()=>lastBody,start:()=>get('setupForm').onsubmit({preventDefault(){}}),tick(){const [id,job]=timeouts.entries().next().value;timeouts.delete(id);job.fn();return job.ms;}};
+ return {get,timeouts,intervals,storage,events,copied:()=>copied,advance:ms=>now+=ms,now:()=>now,poll:()=>[...intervals.values()].find(fn=>fn.ms===1500)?.(),indicators:()=>[...intervals.values()].find(fn=>fn.ms===250)?.(),setResponse:r=>response=r,lastBody:()=>lastBody,start:()=>get('setupForm').onsubmit({preventDefault(){}}),tick(){const [id,job]=timeouts.entries().next().value;timeouts.delete(id);job.fn();return job.ms;}};
 }
 test('two dice tumble on the table before moves unlock; computer rolls and moves pause separately',()=>{
  const ui=boot((g,seat)=>seat===0&&g.rollNo===3?[1,1]:[6,1]);ui.get('name').value=' ';ui.start();A.match(ui.get('error').textContent,/name/);A.equal(ui.get('gamePanel').hidden,true);
@@ -58,7 +58,7 @@ test('both dice match all four players and keep the actual roller color until th
 
 test('a 5 and 6 select and highlight the six first, then unlock and highlight the five',()=>{
  const ui=boot([5,6]);ui.get('mode').value='local';ui.start();ui.get('tableRoll').onclick();ui.tick();
- A.equal(ui.get('tableDie0').disabled,true);A.equal(ui.get('tableDie1').attributes['aria-pressed'],'true');A.match(ui.get('tableDie1').className,/higher/);A.doesNotMatch(ui.get('tableDie0').className,/higher/);
+ A.equal(ui.get('tableDie0').disabled,false);A.match(ui.get('tableDie0').attributes['aria-description'],/six/);A.equal(ui.get('tableDie1').attributes['aria-pressed'],'true');A.match(ui.get('tableDie1').className,/higher/);A.doesNotMatch(ui.get('tableDie0').className,/higher/);
  ui.get('tableDie0').onclick();A.equal(ui.get('tableDie1').attributes['aria-pressed'],'true');ui.get('moves').children[0].onclick();
  A.equal(ui.get('tableDie0').disabled,false);A.equal(ui.get('tableDie0').attributes['aria-pressed'],'true');A.match(ui.get('tableDie0').className,/higher/);A.doesNotMatch(ui.get('tableDie1').className,/higher/);
  ui.get('moves').children[0].onclick();A.equal(ui.get('tableRoll').disabled,false);
@@ -158,4 +158,27 @@ test('red computer uses both dice around captures, including when another piece 
   ui.tick();history=ui.get('history').children.map(p=>p.textContent).join('\n');
   A.match(history,/Computer 2 used die 1 \(2\)/);A.match(history,/Computer 2 used die 2 \(3\)/);
  }
+});
+
+test('tapping blocked pieces and dice explains the reason without playing or restarting the clock',()=>{
+ const ui=boot([6,3]);ui.get('mode').value='local';ui.start();const token=()=>ui.get('board').children.find(n=>n.attributes?.['aria-label']==='Junior, piece 2, in yard');
+ token().onclick();A.match(ui.get('moveFeedback').textContent,/Roll both/);ui.get('roll').onclick();ui.tick();ui.get('moves').children[0].onclick();
+ const board=ui.get('board').children[0],timer=[...ui.timeouts.keys()][0],history=ui.get('history').children.map(p=>p.textContent).join();
+ token().onkeydown({key:'Enter',preventDefault(){}});A.match(ui.get('moveFeedback').textContent,/six/);A.equal(ui.get('board').children[0],board);A.equal([...ui.timeouts.keys()][0],timer);A.equal(ui.get('history').children.map(p=>p.textContent).join(),history);
+ ui.get('tableDie0').onclick();A.match(ui.get('moveFeedback').textContent,/already been used/);A.equal([...ui.timeouts.keys()][0],timer);
+});
+
+test('problem report freezes evidence at opening, keeps it through later moves and exports no credentials',async()=>{
+ const ui=boot([6,3]);await ui.get('saveProfile').onclick();ui.get('mode').value='local';ui.start();ui.get('reportProblem').onclick();ui.get('reportDescription').value='A move was skipped.';
+ ui.get('roll').onclick();ui.tick();ui.get('moves').children[0].onclick();
+ ui.setResponse({ok:true,json:async()=>({saved:true,id:'d'.repeat(24)})});await ui.get('reportForm').onsubmit({preventDefault(){}});
+ const payload=ui.lastBody();A.equal(payload.state.rollNo,0);A.equal(payload.state.phase,'roll');A.equal(payload.description,'A move was skipped.');A.equal(payload.trace.length,1);A.equal(ui.get('sendReport').disabled,true);A.match(ui.get('reportMessage').textContent,/Report saved/);
+ await ui.get('copyReport').onclick();A.ok(!ui.copied().includes('c'.repeat(64)));A.ok(!/"token"\s*:/.test(ui.copied()));A.equal(JSON.parse(ui.copied()).report.state.rollNo,0);
+ ui.get('closeReport').onclick();ui.get('leave').onclick();ui.get('lastReport').onclick();A.equal(ui.get('reportPanel').hidden,false);A.equal(ui.get('reportDescription').value,'A move was skipped.');A.match(ui.get('reportMessage').textContent,/Saved report/);
+});
+
+test('a report stays available for copying and retrying when saving online fails',async()=>{
+ const ui=boot();ui.start();ui.get('reportProblem').onclick();ui.setResponse(Error('Offline'));await ui.get('reportForm').onsubmit({preventDefault(){}});
+ A.match(ui.get('reportMessage').textContent,/Could not save online/);A.equal(ui.get('sendReport').disabled,false);A.ok(ui.storage.has('jv-ludi-last-report-v1'));
+ await ui.get('copyReport').onclick();A.equal(JSON.parse(ui.copied()).report.state.players[0].name,'Junior');A.equal(JSON.parse(ui.copied()).id,null);
 });

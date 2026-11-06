@@ -1,16 +1,16 @@
 const express=require('express'),crypto=require('node:crypto'),E=require('./public/ludi/engine');
 const fs=require('node:fs'),{createLudiStorage}=require('./ludi-storage');
 const {createCommunity,idOK}=require('./ludi-community');
+const {createReports}=require('./ludi-reports'),Report=require('./public/ludi/report');
 const digest=token=>crypto.createHash('sha256').update(token).digest('hex');
 function createLUDIRouter({rollDie=()=>crypto.randomInt(1,7),storageDir=process.env.LUDI_STATE_DIR||(fs.existsSync('/var/data')?'/var/data/ludi-rooms':null)}={}){
  const router=express.Router(),rooms=new Map(),rates=new Map(),day=86400000;
- const storage=createLudiStorage(storageDir),community=createCommunity(storageDir);
+ const storage=createLudiStorage(storageDir),community=createCommunity(storageDir),reports=createReports(storageDir);
  function archive(r){for(const result of r.results||[])community.record(result)}
  // Fail startup on unreadable or damaged saves instead of erasing saved games.
  for(const r of storage.load({keepExpired:true})){archive(r);if(r.expires<=Date.now()){storage.remove(r.code);continue}if(r.publicTable&&!r.game)r.seats=r.seats.map(p=>({...p,lastSeen:Date.now()}));rooms.set(r.code,r)}
  router.storageEnabled=storage.enabled;router.restoredRooms=rooms.size;
  if(storage.enabled)console.log('LUDI durable room storage enabled; restored '+rooms.size+' rooms.');
- router.use(express.json({limit:'4kb'}));
  router.use((req,res,next)=>{
   res.set('Cache-Control','no-store');
   if(req.method==='POST'){
@@ -22,6 +22,14 @@ function createLUDIRouter({rollDie=()=>crypto.randomInt(1,7),storageDir=process.
   }
   next();
  });
+ router.post('/reports',express.json({limit:'96kb'}),(req,res)=>{
+  let report;try{report=Report.clean(req.body)}catch(error){return res.status(400).json({error:error.message})}
+  const r=rooms.get(report.roomCode),token=(req.get('authorization')||'').replace(/^Bearer /,'');
+  const authorized=r&&r.expires>Date.now()&&/^[a-f0-9]{64}$/.test(token)&&r.seats.some(p=>p.key===digest(token));
+  try{const receipt=reports.save(report,authorized&&r.game?{revision:r.version,state:r.game}:null);console.log('LUDI problem report saved: '+receipt.id);res.json(receipt)}
+  catch(error){console.error('LUDI problem report could not be saved:',error);res.status(503).json({error:'The report could not be saved online. Download a copy and try again later.'})}
+ });
+ router.use(express.json({limit:'4kb'}));
  function cleanup(){pruneQueues();const now=Date.now();for(const [code,r]of rooms){archive(r);if(r.expires<=now){storage.remove(code);clearTimeout(r.rollTimer);rooms.delete(code)}};for(const [key,r]of rates)if(now-r.start>=60000)rates.delete(key)}
  const timer=setInterval(()=>{try{cleanup()}catch(error){console.error('LUDI room cleanup failed:',error)}},15000);timer.unref?.();
  function commit(r,{advance=true}={}){
