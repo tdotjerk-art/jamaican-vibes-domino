@@ -431,13 +431,21 @@ const payouts = [...awards].map(([seat, amount]) =>
 $('winnerNotice').textContent = payouts.length > 1 ?
   (results.some(result => result.winners.length > 1) ? 'Split pot · ' : 'Payouts · ') + payouts.join(' / ') :
   payouts.join('');
+let choices = $('winnerChoices');
+if (!choices) {
+  choices = el('div');
+  choices.id = 'winnerChoices';
+  document.querySelector('.controls').append(choices);
+}
+choices.replaceChildren();
+choices.hidden = !(showdown && awards.size > 1);
 if (showdown && awards.size > 1) {
-  $('winnerNotice').replaceChildren(el('span', 'View winning five: '));
+  choices.replaceChildren(el('span', 'View winning five: '));
   awards.forEach((amount, seat) => {
-    $('winnerNotice').append(winnerChoice(seat, game.players[seat].name + ' · ' + amount.toLocaleString(), 'winner-choice'));
+    choices.append(winnerChoice(seat, game.players[seat].name + ' · ' + amount.toLocaleString(), 'winner-choice'));
   });
 }
-$('winnerNotice').hidden = !payouts.length;
+$('winnerNotice').hidden = !payouts.length || (showdown && awards.size > 1);
 $('street').textContent = {ready:'Ready to deal', over:showdown ? 'Showdown' : 'Hand complete'}[game.phase] || game.phase;
 $('handNo').textContent = 'HAND ' + game.handNumber;
 const acting = game.players[game.turn];
