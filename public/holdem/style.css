@@ -538,3 +538,13 @@ html { background: var(--flag-black); }
 @media (max-width: 700px) and (orientation: portrait) {
   .seat.winner .stack-value { font-size: 9px; }
 }
+
+/* Select one showdown winner's five cards at a time. */
+#winnerNotice .winner-choice {
+  display:inline-block; margin:3px 2px; padding:4px 5px; min-height:28px;
+  font:inherit; color:#fff1a0; background:#003f20; border:1px solid #9b8000;
+  border-radius:4px; box-shadow:none; white-space:normal;
+}
+#winnerNotice .winner-choice[aria-pressed="true"],
+button.winner-badge[aria-pressed="true"] { border-color:#fff3ad; outline:1px solid #fed100; }
+button.winner-badge { cursor:pointer; min-height:0; box-shadow:none; }
