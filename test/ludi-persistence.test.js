@@ -24,6 +24,7 @@ async function start(directory){
   }
  };
 }
+const stable=view=>{const {serverNow,...rest}=view;return rest};
 async function ok(server,action,seat){const r=await server.call(action,seat);A.equal(r.status,200,JSON.stringify(r.data));return r.data}
 const temporary=()=>fs.mkdtempSync(path.join(os.tmpdir(),'ludi-persistence-'));
 
@@ -52,7 +53,7 @@ test('SIGKILL restart restores 2–4 player lobbies, partial dice, authenticated
    A.equal(fs.statSync(path.join(directory,filename)).mode&0o777,0o600);
   }
   await server.stop();server=await start(directory);A.equal(server.restored,4);
-  A.deepEqual(await ok(server,null,lobby),lobbyBefore);
+  A.deepEqual(stable(await ok(server,null,lobby)),stable(lobbyBefore));
   A.equal((await ok(server,null,lobbyGuest)).you,1);
   for(const {host,seats,before}of cases){
    const recovered=await ok(server,null,host);A.deepEqual(recovered.state,before.state);A.equal(recovered.version,before.version);A.deepEqual(recovered.votes,[0]);
@@ -95,7 +96,7 @@ test('a failed save returns 503 without advancing the board or revision',async()
   let h=(await call({type:'create',name:'Junior',total:2})).data;await call({type:'join',code:h.code,name:'Andre'});
   Object.assign(h,(await call(null,h)).data);Object.assign(h,(await call({type:'start'},h)).data);const before=(await call(null,h)).data;
   const file=path.join(directory,h.code+'.json');fs.renameSync(file,file+'.backup');fs.mkdirSync(file);
-  const failed=await call({type:'roll'},h);A.equal(failed.status,503);A.match(failed.data.error,/save/);A.deepEqual((await call(null,h)).data,before);
+  const failed=await call({type:'roll'},h);A.equal(failed.status,503);A.match(failed.data.error,/save/);A.deepEqual(stable((await call(null,h)).data),stable(before));
   fs.rmdirSync(file);fs.renameSync(file+'.backup',file);
   const retry=await call({type:'roll'},h);A.equal(retry.status,200);A.equal(retry.data.version,h.version+1);A.deepEqual(retry.data.state.dice,[6,6]);
  }finally{router.close();server.closeAllConnections();await new Promise(r=>server.close(r));fs.rmSync(directory,{recursive:true,force:true})}

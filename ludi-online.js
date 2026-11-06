@@ -54,7 +54,7 @@ function createLUDIRouter({rollDie=()=>crypto.randomInt(1,7),storageDir=process.
   },Math.max(0,(r.deadline||Date.now()+10000)-Date.now()));
   r.rollTimer.unref?.();
  }
- const view=(r,you,token)=>({code:r.code,you,...(token?{token}:{}),version:r.version,total:r.total,players:r.seats.map(p=>p.name),state:r.game,votes:r.votes});
+ const view=(r,you,token)=>({code:r.code,you,...(token?{token}:{}),version:r.version,total:r.total,players:r.seats.map(p=>p.name),state:r.game,votes:r.votes,deadline:r.deadline,serverNow:Date.now()});
  router.route('/').get(handle).post(handle);
  function handle(req,res){try{
   const a=req.method==='POST'?req.body:{};
