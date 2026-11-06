@@ -16,6 +16,33 @@
   const n=progress-OUTER_LAST;return player.color===0?[6,n]:player.color===1?[n,6]:player.color===2?[6,12-n]:[12-n,6];
  }
  function occupants(g,index){return g.players.flatMap((p,seat)=>p.tokens.flatMap((progress,piece)=>ring(p,progress)===index?[{seat,piece}]:[]));}
+ function barrierOnPath(g,from,to){
+  const player=g.players[g.turn];
+  for(let step=from<0?0:from+1;step<=Math.min(to,OUTER_LAST);step++){
+   const on=occupants(g,ring(player,step));
+   if(g.players.some((_,seat)=>seat!==g.turn&&on.filter(t=>t.seat===seat).length>=2))return true;
+  }
+  return false;
+ }
+ function explainMove(g,seat,piece,die){
+  if(!g)return 'Start a game first.';
+  if(g.phase==='over')return 'This game is finished. Start another game.';
+  if(seat!==g.turn)return 'Choose one of '+g.players[g.turn].name+'’s pieces. It is their turn.';
+  if(g.phase!=='move')return 'Roll both dice before choosing a piece.';
+  const player=g.players[seat],from=player.tokens[piece];
+  if(!Number.isInteger(piece)||from===undefined)return 'Choose one of your four pieces.';
+  if(from===HOME)return 'This piece is already home.';
+  if(g.capturedThisRoll.includes(piece))return 'This piece already captured this roll. Use the other die on a different piece.';
+  if(die!==0&&die!==1)return 'Choose an unused die first.';
+  if(!g.remaining.includes(die))return 'That die has already been used. Choose the remaining die.';
+  const value=g.dice[die];
+  if(from<0&&value!==6)return 'You need a six to bring this piece out.';
+  const to=from<0?0:from+value;
+  if(to>HOME)return 'You need an exact roll to finish. This die moves past home.';
+  if(barrierOnPath(g,from,to))return 'A protected barrier blocks this move. You cannot land on it or pass it.';
+  if(!legal(g,die).some(move=>move.piece===piece))return 'Use both dice. This move would waste the other die; choose a highlighted piece or try the other die.';
+  return '';
+ }
  function movesFor(g,die){
   const player=g.players[g.turn];
   return player.tokens.flatMap((from,piece)=>{
@@ -23,10 +50,7 @@
    if(g.capturedThisRoll.includes(piece))return [];
    if(from===HOME||from<0&&die!==6)return [];
    const to=from<0?0:from+die;if(to>HOME)return [];
-   for(let step=from<0?0:from+1;step<=Math.min(to,OUTER_LAST);step++){
-    const index=ring(player,step),on=occupants(g,index);
-    if(g.players.some((_,seat)=>seat!==g.turn&&on.filter(t=>t.seat===seat).length>=2))return [];
-   }
+   if(barrierOnPath(g,from,to))return [];
    return [{piece,from,to}];
   });
  }
@@ -116,6 +140,6 @@
   else next(g);
   return g;
  }
- const api={TEAMS,TRACK,HOME,OUTER_LAST,cleanName,fresh,ring,coordinate,legal,act};
+ const api={TEAMS,TRACK,HOME,OUTER_LAST,cleanName,fresh,ring,coordinate,legal,explainMove,act};
  if(typeof module!=='undefined')module.exports=api;else root.JVLUDI=api;
 })(globalThis);
