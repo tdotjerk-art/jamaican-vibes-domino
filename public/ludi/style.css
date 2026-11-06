@@ -30,3 +30,25 @@
  .board-frame{padding:5px}
  #board{width:100%;height:auto;aspect-ratio:1}
 }
+
+/* Status stays beside the table on narrow screens; ticking never redraws the board. */
+.turn-strip{display:flex;align-items:stretch;gap:8px;margin-bottom:16px;min-width:0}
+.turn-strip .turn-banner{flex:1;min-width:0;margin:0;overflow-wrap:anywhere}
+.turn-clock{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;min-width:42px;padding:5px 8px;border:1px solid #8f8039;border-radius:8px;background:#172d1d;color:#fed100;font-size:14px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.turn-clock.urgent{color:#ffe0b0;border-color:#e8a03d;background:#442c12}
+.seat-name .turn-clock{min-width:34px;padding:3px 5px;font-size:12px}
+.connection-badge{display:inline-flex;align-items:center;gap:6px;flex-shrink:0;color:#c8efd0;border:1px solid #356746;border-radius:20px;padding:5px 9px;font-size:11px;font-weight:700;white-space:nowrap}
+.connection-badge::before{content:"";width:7px;height:7px;border-radius:50%;background:#61ce7b}
+.connection-badge.reconnecting{color:#ffdda7;border-color:#9b763c}
+.connection-badge.reconnecting::before{background:#efb451}
+.winner-panel{margin:0 0 16px;padding:20px;border:2px solid var(--gold);border-radius:12px;background:linear-gradient(135deg,#173d27,#0b2015);box-shadow:0 8px 25px #0005}
+.winner-panel h2{margin:8px 0;color:#ffdf58;font-size:clamp(24px,4vw,36px);line-height:1.15;overflow-wrap:anywhere}
+.winner-panel p{font-size:13px;line-height:1.5;color:#d4e5d5;margin:8px 0}
+.winner-panel button{max-width:340px;min-height:44px}
+.rematch-votes{list-style:none;margin:12px 0 0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.rematch-votes li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px;border:1px solid #3c5640;border-radius:6px;font-size:12px}
+.rematch-votes li span{min-width:0;overflow-wrap:anywhere}
+.rematch-votes strong{font-size:11px;color:#c6cabb;white-space:nowrap}
+.rematch-votes .voted{border-color:#79bd68;background:#214629}
+.rematch-votes .voted strong{color:#b9f3ab}
+@media(max-width:650px){.turn-strip{margin-bottom:8px;gap:5px}.turn-clock{font-size:13px;min-width:38px;padding:5px}.connection-badge{font-size:10px;padding:4px 7px}.winner-panel{padding:15px}.rematch-votes{grid-template-columns:1fr}.table-heading{flex-wrap:wrap}.seat-name{max-width:100%}}
