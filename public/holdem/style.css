@@ -558,3 +558,15 @@ button.winner-badge { cursor:pointer; min-height:0; box-shadow:none; }
   .centre { top:42%; transform:translate(-50%,-50%); }
   .controls #winnerChoices { order:-1; flex-shrink:0; }
 }
+
+/* Widen the table within its grid lane, keeping the rail inside the viewport. */
+.felt { width:calc(110% - 145.2px); max-width:calc(100% - 14px); margin-inline:0; justify-self:center; }
+@media (max-width:700px) and (orientation:portrait) {
+  .felt { width:calc(110% - 41.8px); }
+}
+@media (min-width:701px) and (min-height:551px) and (max-height:800px) {
+  .felt { width:calc(110% - 39.6px); }
+}
+@media (orientation:landscape) and (max-height:550px) and (max-width:1400px) {
+  .felt { width:calc(110% - 22px); }
+}
