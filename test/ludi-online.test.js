@@ -36,3 +36,28 @@ test('the existing app serves LUDI, its assets and the home-menu link',async()=>
   const result=await fetch(origin+'/api/ludi',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({type:'create',name:'Junior',total:2})});A.equal(result.status,200);
  }finally{server.closeAllConnections();await new Promise(r=>io.close(r))}
 });
+
+test('online red capture cannot bypass the other die and a valid second piece must still move',async()=>{
+ const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),crypto=require('node:crypto'),E=require('../public/ludi/engine');
+ const {createLudiStorage}=require('../ludi-storage');
+ for(const otherProgress of [E.HOME-1,20]){
+  const directory=fs.mkdtempSync(path.join(os.tmpdir(),'ludi-red-capture-'));
+  const g=E.fresh(['Green','Red','Black','Gold']);g.turn=1;g.phase='move';g.dice=[2,3];g.remaining=[0,1];g.rollNo=1;g.players[1].tokens=[0,otherProgress,E.HOME,E.HOME];g.players[2].tokens[0]=38;
+  const tokens=g.players.map((_,i)=>String(i+1).repeat(64));
+  createLudiStorage(directory).save({code:'ABCDEF12',total:4,seats:g.players.map((p,i)=>({name:p.name,key:crypto.createHash('sha256').update(tokens[i]).digest('hex')})),game:g,version:7,votes:[],expires:Date.now()+60000,deadline:Date.now()+10000});
+  const router=createLUDIRouter({storageDir:directory}),app=express();app.use('/api/ludi',router);const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));const origin='http://127.0.0.1:'+server.address().port;
+  let version=7;
+  async function call(action){const res=await fetch(origin+'/api/ludi'+(action?'':'?code=ABCDEF12'),{method:action?'POST':'GET',headers:{Origin:origin,'Content-Type':'application/json',Authorization:'Bearer '+tokens[1]},...(action?{body:JSON.stringify({...action,code:'ABCDEF12',version})}:{})});const data=await res.json();if(res.ok)version=data.version;return {status:res.status,data}}
+  try{
+   if(otherProgress===E.HOME-1){
+    const rejected=await call({type:'move',piece:0,die:0});A.equal(rejected.status,400);A.match(rejected.data.error,/Use both dice/);A.equal(version,7);
+    A.deepEqual((await call()).data.state,g,'rejected capture must not change the saved board');
+    A.equal((await call({type:'move',piece:0,die:1})).status,200);const finished=await call({type:'move',piece:0,die:0});A.equal(finished.status,200);A.equal(finished.data.state.players[1].tokens[0],5);A.equal(finished.data.state.turn,2);
+   }else{
+    const captured=await call({type:'move',piece:0,die:0});A.equal(captured.status,200);A.equal(captured.data.state.last.captured.length,1);A.equal(captured.data.state.turn,1);A.deepEqual(captured.data.state.remaining,[1]);
+    A.equal((await call({type:'roll'})).status,400);A.equal((await call({type:'move',piece:0,die:1})).status,400);
+    const second=await call({type:'move',piece:1,die:1});A.equal(second.status,200);A.equal(second.data.state.players[1].tokens[1],23);A.equal(second.data.state.turn,2);
+   }
+  }finally{router.close();server.closeAllConnections();await new Promise(r=>server.close(r));fs.rmSync(directory,{recursive:true,force:true})}
+ }
+});

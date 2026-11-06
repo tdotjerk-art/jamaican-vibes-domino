@@ -40,34 +40,23 @@
   p.tokens[move.piece]=move.to;g.remaining=g.remaining.filter(index=>index!==move.die);if(captured.length)g.capturedThisRoll.push(move.piece);
   return captured;
  }
- function ordered(g){
-  // Either die may be chosen first by tapping it on the table.
-  return rawLegal(g);
- }
- function wouldCapture(g,move){
-  const player=g.players[g.turn],index=ring(player,move.to);
-  return index!==null&&occupants(g,index).some(other=>other.seat!==g.turn);
- }
- function onlyOnePieceAvailable(g){
-  return g.players[g.turn].tokens.filter(progress=>progress>=0&&progress<HOME).length===1;
- }
- function canUseOtherDieOnSamePiece(g,move){
-  const trial=structuredClone(g);
-  const captured=place(trial,move);
-  if(captured.length)return false;
-  if(!trial.remaining.length)return true;
-  const otherMoves=rawLegal(trial);
-  return otherMoves.some(nextMove=>nextMove.piece===move.piece&&!wouldCapture(trial,nextMove));
- }
  function legal(g,dieIndex){
-  // When only one piece remains outside the home/finished areas, prefer a
-  // two-die route for that same piece over a capture that would waste a die.
-  let choices=ordered(g);
-  if(onlyOnePieceAvailable(g)&&g.remaining.length===2){
-   const continuations=choices.filter(move=>!wouldCapture(g,move)&&canUseOtherDieOnSamePiece(g,move));
-   if(continuations.length)choices=continuations;
+  const choices=rawLegal(g);
+  let allowed=choices;
+  if(g.remaining.length===2){
+   // Evaluate both dice together before allowing the first move. Capturing
+   // locks that piece, but another piece may still spend the remaining die.
+   // A capture on the second move is valid: both dice have then been used.
+   const routes=choices.map(move=>{
+    const trial=structuredClone(g);place(trial,move);
+    const wins=trial.players[trial.turn].tokens.every(n=>n===HOME);
+    return {move,wins,usesBoth:!wins&&rawLegal(trial).length>0};
+   });
+   if(routes.some(route=>route.usesBoth))allowed=routes.filter(route=>route.usesBoth||route.wins).map(route=>route.move);
   }
-  return choices.filter(move=>dieIndex===undefined||move.die===dieIndex);
+  // Apply the selected-die filter last so selecting a die cannot bypass the
+  // requirement to use both whenever either order provides two legal moves.
+  return allowed.filter(move=>dieIndex===undefined||move.die===dieIndex);
  }
  function note(g,message){g.history.push(message);g.history=g.history.slice(-40);}
  function completelyBarrierBlocked(g){
