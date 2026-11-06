@@ -145,3 +145,17 @@ test('saved profile displays verified counts and a recoverable identity without 
  ui.get('showRecovery').onclick();A.equal(ui.get('recoveryBox').hidden,false);A.match(ui.get('recoveryCode').value,/^[a-f0-9]{32}\.[a-f0-9]{64}$/);
  ui.get('recoverCode').value='invalid';await ui.get('recoverForm').onsubmit({preventDefault(){}});A.match(ui.get('profileMessage').textContent,/complete recovery code/);
 });
+
+test('red computer uses both dice around captures, including when another piece is near home',()=>{
+ for(const otherProgress of [E.HOME-1,20]){
+  const ui=boot((g,seat,a)=>{
+   if(seat===1&&a.type==='roll'){g.players[1].tokens=[0,otherProgress,E.HOME,E.HOME];g.players[2].tokens[0]=38;return [2,3]}
+   return [1,1];
+  });
+  ui.get('count').value='4';ui.start();ui.get('roll').onclick();ui.tick();ui.tick();ui.tick();ui.tick();
+  let history=ui.get('history').children.map(p=>p.textContent).join('\n');
+  A.match(history,otherProgress===20?/Computer 2 used die 1 \(2\).*captured/:/Computer 2 used die 2 \(3\)/);
+  ui.tick();history=ui.get('history').children.map(p=>p.textContent).join('\n');
+  A.match(history,/Computer 2 used die 1 \(2\)/);A.match(history,/Computer 2 used die 2 \(3\)/);
+ }
+});
