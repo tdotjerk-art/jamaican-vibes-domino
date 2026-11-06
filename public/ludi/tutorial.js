@@ -9,7 +9,7 @@
   {title:'Finish with the exact number',text:'Three pieces are home. Choose the two and move your last piece home. A three would overshoot.'}
  ];
  function scenario(step){
-  const g=E.fresh(['You','Practice opponent']);
+  const g=E.fresh(['Player','Practice opponent']);
   if(step<2)return g;
   g.phase='move';g.rollNo=step;g.remaining=[0];g.dice=[3,1];
   if(step===2){g.players[0].tokens[0]=4;g.players[1].tokens[0]=31}
