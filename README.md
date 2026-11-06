@@ -348,3 +348,29 @@ capturing a lone piece, respecting barriers, and finishing with an exact roll.
 The five interactive steps use the same movement engine as ordinary play, with
 fixed practice rolls and no action countdown. Players can exit at any time or
 start a full computer game after completing the tutorial.
+
+### LUDI move explanations and problem reports
+
+Tap one of your blocked pieces or an unusable die to see the reason: entry needs
+a six, an exact finish would be overshot, a protected barrier blocks the path,
+a piece already captured this roll, a die was used, or a different order is
+required to use both dice. These explanations use the movement engine's legality
+checks and never move a piece or restart the action countdown.
+
+**Report a problem** freezes the current board, dice, selected die, attempted move
+and up to eight recent board states when the form opens. The game continues while
+the player describes the issue. **Save report** writes a private snapshot on the
+existing persistent disk and returns a report ID. For an authenticated online
+seat, the saved record also includes the server's board and revision at receipt,
+separately from the frozen client view. Client data is not trusted as game state
+and cannot alter a room, score or leaderboard.
+
+Reports include basic viewport/browser information but no automatically captured
+seat tokens, profile credentials, recovery codes or browser storage. There is no
+public report-reading endpoint. A report can be downloaded as JSON or copied
+and shared with the problem description. The last report is also kept in the
+same browser and can be reopened from **Last problem report** after reloading;
+if saving online fails, the player can retry or download/copy the captured report.
+Identical retries reuse the same report ID. Report requests have a separate
+96 KiB limit; ordinary game actions retain their 4 KiB limit. Private report
+storage accepts up to 1,000 reports before asking players to download instead.
