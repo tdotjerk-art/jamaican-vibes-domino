@@ -24,13 +24,13 @@ function createLudiStorage(directory) {
     try { fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
   };
   function save(room) {
-    const {code,total,seats,game,version,votes,expires,deadline} = room;
+    const {code,total,seats,game,version,votes,expires,deadline,publicTable,createdAt,matchId,results} = room;
     const destination = filename(code);
     const temporary = destination + '.' + crypto.randomBytes(8).toString('hex') + '.tmp';
     try {
       const fd = fs.openSync(temporary, 'wx', 0o600);
       try {
-        fs.writeFileSync(fd, JSON.stringify({schemaVersion:1, room:{code,total,seats,game,version,votes,expires,deadline}}));
+        fs.writeFileSync(fd, JSON.stringify({schemaVersion:1, room:{code,total,seats,game,version,votes,expires,deadline,publicTable,createdAt,matchId,results}}));
         fs.fsyncSync(fd);
       } finally { fs.closeSync(fd); }
       fs.renameSync(temporary, destination);
@@ -43,7 +43,7 @@ function createLudiStorage(directory) {
     try { fs.unlinkSync(filename(code)); syncDirectory(); }
     catch (error) { if (error.code !== 'ENOENT') throw error; }
   }
-  function load() {
+  function load({keepExpired=false}={}) {
     const rooms = [];
     for (const entry of fs.readdirSync(root)) {
       if (!/^[A-F0-9]{8}\.json$/.test(entry)) continue; // Ignore unfinished atomic writes.
@@ -53,6 +53,7 @@ function createLudiStorage(directory) {
       }
       rooms.push(saved.room);
     }
+    if (keepExpired) return rooms;
     // Validate everything before pruning: a corrupt snapshot must never be overwritten.
     for (const room of rooms) if (room.expires <= Date.now()) remove(room.code);
     return rooms.filter(room => room.expires > Date.now());
@@ -68,6 +69,7 @@ function validRoom(r) {
       r.seats.some(p => !p || E.cleanName(p.name) !== p.name || !p.name || !/^[a-f0-9]{64}$/.test(p.key)) ||
       new Set(r.seats.map(p=>p.key)).size !== r.seats.length || !Array.isArray(r.votes) ||
       r.votes.some(s=>!Number.isInteger(s) || s < 0 || s >= r.total) || new Set(r.votes).size !== r.votes.length) return false;
+  if (r.publicTable !== undefined && typeof r.publicTable !== 'boolean' || r.createdAt !== undefined && !Number.isFinite(r.createdAt) || r.matchId !== undefined && !/^[a-f0-9]{32}$/.test(r.matchId) || r.results !== undefined && (!Array.isArray(r.results) || !r.results.every(require('./ludi-community').validResult)) || r.seats.some(p=>p.profileId !== undefined && !/^[a-f0-9]{32}$/.test(p.profileId) || p.lastSeen !== undefined && !Number.isFinite(p.lastSeen))) return false;
   if (r.game === null) return r.votes.length === 0;
   const g = r.game;
   return g && r.seats.length === r.total && Array.isArray(g.players) && g.players.length === r.total &&
