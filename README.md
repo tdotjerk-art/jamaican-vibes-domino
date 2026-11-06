@@ -253,11 +253,9 @@ service, account, dependency, or environment variable is required.
 
 ## LUDI
 
-Choose **LUDI** on the home menu or open `/ludi/`. The board follows the
-owner's Jamaican reference: black, green and gold, with Kingston, Cornwall,
-Middlesex and Surrey corners, long continuous stripes, rotated county artwork,
-and single-file rows of green, black, red and gold pieces. The supplied hummingbird
-and JAMAICA LAND WE LOVE remain in the center. The photographed track has 48
+Choose **LUDI** on the home menu or open `/ludi/`. The board uses black, green and gold, unnamed corner homes,
+long continuous stripes, a four-color center with a gold X, and single-file rows
+of green, black, red and gold pieces. The photographed track has 48
 outer spaces with shared corner squares; the movement engine follows those spaces.
 Enter a display name, then choose computer play, friends on the same device, or
 an online room for two, three or four players. Two players use opposite corners.
@@ -268,7 +266,7 @@ finish, captures of lone opponents on every shared track square (no safe zones, 
 only for a six after both dice are used (no extra roll for capturing or bringing a piece home). Consecutive sixes have no limit and never forfeit the turn. A roll with no available move
 passes automatically. First to bring all four pieces home wins; there are no
 teams. Two dice visibly tumble on the table. Tap an unused die, then a piece;
-play the bigger die first, then the smaller die, on one piece or split between pieces. Equal dice allow either order; an unplayable bigger die allows the smaller die. Use both whenever the required order permits it. A capture cannot discard an otherwise playable smaller die just because the capturing piece must stop; another piece must use it unless the remaining move is genuinely blocked. A six
+choose either die first, on one piece or split between pieces. Use both whenever legal moves permit it. A capture cannot discard an otherwise playable smaller die just because the capturing piece must stop; another piece must use it unless the remaining move is genuinely blocked. A six
 can bring a piece out and the other die can move it. Unusable remaining dice are
 skipped. Computer rolls and moves are separated by deliberate pauses.
 
@@ -278,7 +276,28 @@ rolled on the server, actions are validated against the current turn and room
 revision, and a secret browser-held token recovers each seat. A room code or a
 display name alone cannot reclaim an occupied seat. Copy the invite link or
 share the code. All players must request a new game before the board resets.
-There are no turn timers: a disconnected player's turn waits for their return.
-Rooms expire after 24 hours and are held in memory; restarting or deploying the
-service ends them. No extra host, dependency or environment variable is required.
+The server automatically rolls or plays the next legal move after 10 seconds,
+even while a player is disconnected. Rooms expire 24 hours after creation.
+
+Online LUDI rooms persist across server restarts and deploys when durable storage
+is enabled. The existing Render service's persistent disk at `/var/data` enables
+this automatically, using `/var/data/ludi-rooms`. For another persistent mount or
+local restart testing, set `LUDI_STATE_DIR` to an absolute directory outside
+`public/`. An ordinary ephemeral hosting directory will not survive a deploy.
+Without this setting or `/var/data`, local development uses memory only.
+
+Each accepted room creation, join, move, roll, rematch vote and automatic action
+is saved atomically before it is acknowledged. Snapshots retain names, hashed
+seat credentials, the complete board, remaining dice, turn, revision and rematch
+votes. No raw seat tokens are stored in these snapshots. After restarting, active
+rooms resume from the saved board with a fresh 10-second action window, without
+playing missed turns from the downtime. Use **Return to saved room** in the same
+browser to recover your seat. A failed save rejects the action without advancing
+the in-memory board. Invalid or unreadable snapshots stop startup instead of
+silently discarding rooms. Completed games remain available for rematch until
+the room expires.
+
+This disk-backed storage supports the existing single service instance. It is
+not a shared datastore for multiple server instances. No new dependency or
+hosting resource is required on the current Render service.
 Physical iPhone Safari and real-phone multiplayer need device verification.
