@@ -3,7 +3,7 @@ function element(){return {children:[],style:{},value:'',hidden:false,disabled:f
 function boot(die=[6,1]){
  const nodes={},timeouts=new Map(),intervals=new Map(),storage=new Map([['jv-draff-player-name-v1','Junior']]);let next=0,response,lastBody,now=100000;const events={};
  const get=id=>nodes[id]||(nodes[id]=element());get('mode').value='ai';get('count').value='2';get('name').value='Junior';
- const context=vm.createContext({Date:class extends Date{static now(){return now}},addEventListener:(name,fn)=>events[name]=fn,JVLudiLayout:require('../public/ludi/layout'),JVLUDI:{...E,act:(g,seat,a)=>{let next=0;const pair=typeof die==='function'?die(g,seat,a):die;return E.act(g,seat,a,()=>Array.isArray(pair)?pair[next++]:pair)}},document:{getElementById:get,createElement:element,createElementNS:element,body:element(),addEventListener(){},hidden:false},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},setTimeout:(fn,ms)=>{timeouts.set(++next,{fn,ms});return next},clearTimeout:id=>timeouts.delete(id),setInterval:(fn,ms)=>{fn.ms=ms;intervals.set(++next,fn);return next},clearInterval:id=>intervals.delete(id),location:{origin:'https://game.test',href:'https://game.test/ludi/'},URL,navigator:{clipboard:{writeText:async()=>{}}},confirm:()=>true,fetch:async(url,options)=>{lastBody=options.body?JSON.parse(options.body):null;if(response instanceof Error)throw response;return typeof response==='function'?response():response}});
+ const context=vm.createContext({Date:class extends Date{static now(){return now}},addEventListener:(name,fn)=>events[name]=fn,JVLudiTutorial:require('../public/ludi/tutorial'),JVLudiLayout:require('../public/ludi/layout'),JVLUDI:{...E,act:(g,seat,a)=>{let next=0;const pair=typeof die==='function'?die(g,seat,a):die;return E.act(g,seat,a,()=>Array.isArray(pair)?pair[next++]:pair)}},document:{getElementById:get,createElement:element,createElementNS:element,body:element(),addEventListener(){},hidden:false},localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},setTimeout:(fn,ms)=>{timeouts.set(++next,{fn,ms});return next},clearTimeout:id=>timeouts.delete(id),setInterval:(fn,ms)=>{fn.ms=ms;intervals.set(++next,fn);return next},clearInterval:id=>intervals.delete(id),location:{origin:'https://game.test',href:'https://game.test/ludi/'},URL,navigator:{clipboard:{writeText:async()=>{}}},confirm:()=>true,fetch:async(url,options)=>{if(url.startsWith('/api/ludi/profile'))return {ok:true,json:async()=>({profile:{id:'b'.repeat(32),name:'Junior',wins:0,games:0,winRate:0},token:'c'.repeat(64)})};lastBody=options.body?JSON.parse(options.body):null;if(response instanceof Error)throw response;return typeof response==='function'?response():response}});
  vm.runInContext(fs.readFileSync('public/ludi/app.js','utf8'),context);
  return {get,timeouts,intervals,storage,events,advance:ms=>now+=ms,now:()=>now,poll:()=>[...intervals.values()].find(fn=>fn.ms===1500)?.(),indicators:()=>[...intervals.values()].find(fn=>fn.ms===250)?.(),setResponse:r=>response=r,lastBody:()=>lastBody,start:()=>get('setupForm').onsubmit({preventDefault(){}}),tick(){const [id,job]=timeouts.entries().next().value;timeouts.delete(id);job.fn();return job.ms;}};
 }
@@ -121,4 +121,27 @@ test('same-device and computer wins show a play-again screen with no running clo
   A.equal(ui.get('winnerPanel').hidden,false);A.equal(ui.get('turnClock').hidden,true);A.equal(ui.get('rematchVotes').hidden,true);A.equal(ui.get('rematch').textContent,'Play again');
   A.equal(ui.timeouts.size,0);ui.get('rematch').onclick();A.equal(ui.get('winnerPanel').hidden,true);A.equal(ui.get('turnClock').textContent,'10s');
  }
+});
+
+test('guided tutorial completes all five steps without timers or online records and opens practice',()=>{
+ const ui=boot([6,3]);ui.get('learn').onclick();A.equal(ui.get('tutorialPanel').hidden,false);A.equal(ui.get('turnClock').hidden,true);A.equal(ui.timeouts.size,0);
+ ui.get('roll').onclick();ui.tick();ui.get('moves').children[0].onclick();A.match(ui.get('tutorialStep').textContent,/STEP 2/);
+ ui.get('moves').children[0].onclick();A.match(ui.get('tutorialStep').textContent,/STEP 3/);
+ ui.get('moves').children[0].onclick();A.match(ui.get('tutorialStep').textContent,/STEP 4/);
+ ui.get('moves').children[0].onclick();A.match(ui.get('tutorialStep').textContent,/STEP 5/);
+ ui.get('moves').children[0].onclick();A.equal(ui.get('tutorialStep').textContent,'PRACTICE COMPLETE');A.equal(ui.get('winnerPanel').hidden,true);A.equal(ui.timeouts.size,0);A.equal(ui.lastBody(),undefined);
+ ui.get('tutorialPractice').onclick();A.equal(ui.get('tutorialPanel').hidden,true);A.equal(ui.get('mode').value,'ai');A.equal(ui.get('turnClock').textContent,'10s');
+});
+
+test('public matchmaking creates a saved player, shows a cancelable search, and hides private invite controls',async()=>{
+ const ui=boot(),host={code:'ABCDEF12',token:'a'.repeat(64),you:0,version:0,total:2,players:['Junior'],state:null,votes:[],publicTable:true};
+ ui.setResponse({ok:true,json:async()=>({...host})});await ui.get('publicPlay').onclick();A.equal(ui.get('begin').textContent,'Play online');
+ A.equal(ui.lastBody().type,'find');A.equal(ui.lastBody().profileId,'b'.repeat(32));A.ok(ui.storage.has('jv-ludi-player-v1'));A.match(ui.get('connection').textContent,/Finding players/);A.equal(ui.get('leave').textContent,'Cancel search');A.equal(ui.get('copy').hidden,true);A.equal(ui.get('startOnline').hidden,true);
+ ui.setResponse({ok:true,json:async()=>({cancelled:true})});await ui.get('leave').onclick();A.equal(ui.lastBody().type,'cancel');A.equal(ui.get('setup').hidden,false);A.equal(ui.storage.has('jv-ludi-room-v1'),false);
+});
+
+test('saved profile displays verified counts and a recoverable identity without showing its secret by default',async()=>{
+ const ui=boot();ui.get('recoveryBox').hidden=true;await ui.get('saveProfile').onclick();A.match(ui.get('playerSummary').textContent,/Junior.*0 wins.*0 games/);A.equal(ui.get('recoveryBox').hidden,true);A.ok(ui.storage.has('jv-ludi-player-v1'));
+ ui.get('showRecovery').onclick();A.equal(ui.get('recoveryBox').hidden,false);A.match(ui.get('recoveryCode').value,/^[a-f0-9]{32}\.[a-f0-9]{64}$/);
+ ui.get('recoverCode').value='invalid';await ui.get('recoverForm').onsubmit({preventDefault(){}});A.match(ui.get('profileMessage').textContent,/complete recovery code/);
 });

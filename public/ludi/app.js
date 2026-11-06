@@ -1,8 +1,9 @@
 (()=>{
  'use strict';
  const E=JVLUDI,L=JVLudiLayout,$=id=>document.getElementById(id),svgNS='http://www.w3.org/2000/svg';
- const seatKey='jv-ludi-room-v1',nameKey='jv-draff-player-name-v1';
+ const seatKey='jv-ludi-room-v1',nameKey='jv-draff-player-name-v1',profileKey='jv-ludi-player-v1',T=JVLudiTutorial;
  let local=null,room=null,token=null,version=-1,busy=false,epoch=0,poll=null,aiTimer=null,message='',selectedDie=null,rolling=false,rollTimer=null,shownRollNo=0,autoRollTimer=null,autoRollKey='',autoRollDeadline=0;
+ let tutorial=null,tutorialMode='ai',profile=null,profileStats=null,profileTask=null;
  let clockTimer=null,clockTargets=[],aiDeadline=0,serverOffset=0,connectionState='connected',backOnlineUntil=0,refreshing=false,winnerShown='';
  function saved(){try{const r=JSON.parse(localStorage.getItem(seatKey)||'null');return r&&/^[A-F0-9]{8}$/.test(r.code)&&/^[a-f0-9]{64}$/.test(r.token)?r:null}catch{return null}}
  function save(r){try{if(r)localStorage.setItem(seatKey,JSON.stringify({code:r.code,token:r.token}));else localStorage.removeItem(seatKey)}catch{}}
@@ -25,7 +26,7 @@
   $('connectionBadge').className='connection-badge'+(reconnecting?' reconnecting':'');
   const computer=!!local&&$('mode').value==='ai'&&g?.turn!==0;
   const deadline=online?room.deadline:(computer?aiDeadline:autoRollKey?autoRollDeadline:0);
-  const visible=!!g&&g.phase!=='over'&&!rolling&&!reconnecting&&Number.isFinite(deadline)&&deadline>0;
+  const visible=!tutorial&&!!g&&g.phase!=='over'&&!rolling&&!reconnecting&&Number.isFinite(deadline)&&deadline>0;
   const seconds=visible?Math.max(0,Math.min(10,Math.ceil((deadline-Date.now()-(online?serverOffset:0))/1000))):0;
   for(const el of clockTargets){
    el.hidden=!visible;el.textContent=seconds+'s';
@@ -34,7 +35,7 @@
   }
  }
  function winner(g){
-  const over=g?.phase==='over';$('winnerPanel').hidden=!over;$('rematchVotes').replaceChildren();
+  const over=!tutorial&&g?.phase==='over';$('winnerPanel').hidden=!over;$('rematchVotes').replaceChildren();
   if(!over){winnerShown='';return}
   const player=g.players[g.winner];$('winnerTitle').textContent=player.name+' wins!';
   $('winnerPanel').style.borderColor=E.TEAMS[player.color].color;
@@ -50,7 +51,7 @@
   }
   $('rematchStatus').textContent=room?room.votes.length+' of '+room.total+' ready · everyone must agree.':'Start a new game with the same players.';
   const key=(room?.code||'local')+':'+g.rollNo+':'+g.winner;
-  if(key!==winnerShown){winnerShown=key;$('winnerTitle').focus?.()}
+  if(key!==winnerShown){winnerShown=key;$('winnerTitle').focus?.();if(room&&profile)refreshProfile()}
  }
  const {edge,middle}=L;
  function pieceGradients(){
@@ -155,7 +156,7 @@
   return ranked[0].m;
  }
  function scheduleAutoRoll(g){
-  const eligible=!!g&&!!local&&g.phase!=='over'&&yourTurn(g)&&($('mode').value!=='ai'||g.turn===0);
+  const eligible=!tutorial&&!!g&&!!local&&g.phase!=='over'&&yourTurn(g)&&($('mode').value!=='ai'||g.turn===0);
   const key=eligible?(local?'local':'online')+':'+(room?.code||'')+':'+g.turn+':'+g.rollNo+':'+g.phase+':'+g.remaining.join(',')+':'+g.players[g.turn].tokens.join(','):'';
   if(key===autoRollKey)return;
   clearTimeout(autoRollTimer);autoRollTimer=null;autoRollKey=key;
@@ -175,12 +176,15 @@
  }
  function render(){
   clearTimeout(aiTimer);const g=snapshot(),active=!!(local||room);syncRoll(g);const choices=g?E.legal(g):[];if(!choices.some(m=>m.die===selectedDie))selectedDie=choices[0]?.die??null;document.body.classList.toggle('in-game',!!g);
-  $('setup').hidden=active;$('gamePanel').hidden=!active;$('joinControls').hidden=$('mode').value!=='online';$('begin').textContent=$('mode').value==='online'?'Create online room':'Start game ↗';$('resume').hidden=!saved();
-  $('begin').disabled=busy;$('join').disabled=busy;$('resume').disabled=busy;$('leave').disabled=busy;
-  $('roomInfo').hidden=!room;$('roomCode').textContent=room?.code||'';$('modeLabel').textContent=room?'ONLINE TABLE':$('mode').value==='local'?'SAME DEVICE':'VS COMPUTERS';
+  $('setup').hidden=active;$('gamePanel').hidden=!active;$('joinControls').hidden=$('mode').value!=='online';$('begin').textContent=$('mode').value==='public'?'Play online':$('mode').value==='online'?'Create online room':'Start game ↗';$('resume').hidden=!saved();
+  $('begin').disabled=busy||!!profileTask;$('publicPlay').disabled=busy||!!profileTask;$('publicPlay').hidden=$('mode').value==='public';$('learn').disabled=busy||!!profileTask;$('join').disabled=busy;$('resume').disabled=busy;$('leave').disabled=busy;
+  $('roomInfo').hidden=!room||room.publicTable;$('roomCode').textContent=room?.code||'';$('modeLabel').textContent=tutorial?'GUIDED PRACTICE':room?(room.publicTable?'PUBLIC TABLE':'PRIVATE TABLE'):$('mode').value==='local'?'SAME DEVICE':'VS COMPUTERS';
   $('connection').textContent=message|| (room?!g?'Share your room code · '+room.players.length+' of '+room.total+' players joined.':room.votes.length?(room.votes.includes(room.you)?'New game requested. Waiting for everyone.':'A new game was requested. Press Request new game to agree.'):'Connected · your seat is saved in this browser.':'');
-  $('startOnline').hidden=!room||!!g||room.you!==0;$('startOnline').disabled=busy||!room||connectionState!=='connected'||room.players.length!==room.total;
-  $('newGame').hidden=!g||g.phase==='over';$('newGame').disabled=busy||!!room&&connectionState!=='connected';$('newGame').textContent=room?'Request new game':'New game';
+  $('leave').textContent=tutorial?'Exit tutorial':room?.publicTable&&!g?'Cancel search':'Leave table';
+  if(room?.publicTable&&!g&&!message)$('connection').textContent='Finding players · '+room.players.length+' of '+room.total+' seated. Starts when full. Stay on this screen.';
+  $('copy').hidden=!!room?.publicTable;
+  $('startOnline').hidden=!room||room.publicTable||!!g||room.you!==0;$('startOnline').disabled=busy||!room||connectionState!=='connected'||room.players.length!==room.total;
+  $('newGame').hidden=!!tutorial||!g||g.phase==='over';$('newGame').disabled=busy||!!room&&connectionState!=='connected';$('newGame').textContent=room?'Request new game':'New game';
   $('playControls').hidden=!g||g.phase==='over';$('quickControls').hidden=!g||g.phase==='over';
   $('turnBanner').textContent=!active?'Welcome to the table.':!g?'Waiting for players…':g.phase==='over'?g.players[g.winner].name+' wins!':g.players[rolling?(g.last?.seat??g.turn):g.turn].name+(rolling?' · rolling two dice…':$('mode').value==='ai'&&g.turn!==0?' is thinking…':g.phase==='move'?' · choose a piece':' · roll the dice');
   $('seats').replaceChildren();clockTargets=[$('turnClock')];
@@ -192,13 +196,13 @@
   $('hint').textContent=!g?'':rolling?'Both dice are rolling on the table.':g.phase==='over'?'All four pieces are home. Start another game.':g.phase==='move'?(yourTurn(g)?'Tap either die to play it first. Using die '+(selectedDie+1)+' ('+g.dice[selectedDie]+'). Choose a piece for the highlighted die.':'Waiting for '+g.players[g.turn].name+' to move.'):'Roll a six on either die to enter. Tap either die to choose which to play first.';
   drawDice(g);moveButtons($('moves'),g);moveButtons($('quickMoves'),g);
   $('history').replaceChildren();(g?.history||[]).slice(-5).reverse().forEach(text=>$('history').append(node('p',text)));
-  board(g);scheduleAutoRoll(g);scheduleComputer();winner(g);
+  board(g);scheduleAutoRoll(g);scheduleComputer();winner(g);renderTutorial();
   if(active&&!clockTimer)clockTimer=setInterval(updateIndicators,250);
   else if(!active){clearInterval(clockTimer);clockTimer=null}
   updateIndicators();
  }
  function scheduleComputer(){
-  aiDeadline=0;const g=local;if(!g||rolling||$('mode').value!=='ai'||g.turn===0||g.phase==='over')return;
+  aiDeadline=0;const g=local;if(tutorial||!g||rolling||$('mode').value!=='ai'||g.turn===0||g.phase==='over')return;
   const delay=g.phase==='roll'?1400:1100;aiDeadline=Date.now()+delay;
   aiTimer=setTimeout(()=>{
    if(g!==local)return;
@@ -210,17 +214,21 @@
    render();
   },delay);
  }
- function action(a){const g=snapshot();if(!g||!yourTurn(g))return;if(local){try{local=E.act(local,local.turn,a);$('error').textContent='';render()}catch(e){$('error').textContent=e.message}}else return send(a)}
+ function action(a){const g=snapshot();if(!g||!yourTurn(g))return;if(local){try{
+  let draw=0;local=E.act(local,local.turn,a,tutorial?()=>[6,3][draw++]:undefined);
+  if(tutorial){const next=T.advance(tutorial.step,local);if(next!==tutorial.step){tutorial.step=next;if(next>=2&&next<5){local=T.scenario(next);shownRollNo=local.rollNo;clearTimeout(rollTimer);rolling=false}}}
+  $('error').textContent='';render()
+ }catch(e){$('error').textContent=e.message}}else return send(a)}
  async function request(a,credentials=room?{code:room.code,token}:null){
   const sentAt=Date.now(),controller=typeof AbortController==='undefined'?null:new AbortController();
   const timeout=controller?setTimeout(()=>controller.abort(),8000):null;
   try{
-   const response=await fetch('/api/ludi'+(a?'':'?code='+encodeURIComponent(credentials.code)),{method:a?'POST':'GET',headers:{'Content-Type':'application/json',...(credentials?.token?{Authorization:'Bearer '+credentials.token}:{})},...(controller?{signal:controller.signal}:{}),...(a?{body:JSON.stringify({...a,...(credentials?{code:credentials.code,version}:{})})}:{})});
+   const response=await fetch('/api/ludi'+(a?'':'?code='+encodeURIComponent(credentials.code)),{method:a?'POST':'GET',headers:{'Content-Type':'application/json',...(profile?{'x-ludi-profile-token':profile.token}:{}),...(credentials?.token?{Authorization:'Bearer '+credentials.token}:{})},...(controller?{signal:controller.signal}:{}),...(a?{body:JSON.stringify({...a,...(profile?{profileId:profile.id}:{}),...(credentials?{code:credentials.code,version}:{})})}:{})});
    const r=await response.json();if(!response.ok){const e=Error(r.error||'Unable to connect.');e.status=response.status;throw e}
    r.clockOffset=Number.isFinite(r.serverNow)?r.serverNow-(sentAt+Date.now())/2:0;return r;
   }finally{clearTimeout(timeout)}
  }
- function receive(r,newToken){if(room&&r.code===room.code&&r.version<version)return;if(connectionState==='reconnecting')$('error').textContent='';connection(true);serverOffset=r.clockOffset||0;room=r;version=r.version;if(newToken)token=newToken;render()}
+ function receive(r,newToken){if(room&&r.code===room.code&&r.version<version)return;if(connectionState==='reconnecting')$('error').textContent='';connection(true);serverOffset=r.clockOffset||0;room=r;$('mode').value=r.publicTable?'public':'online';version=r.version;if(newToken)token=newToken;render()}
  function terminal(e){if([401,403,404].includes(e.status)){epoch++;room=null;token=null;version=-1;busy=false;refreshing=false;clearInterval(poll);save(null);message='';$('error').textContent=e.message;render();return true}return false}
  function polling(){clearInterval(poll);poll=setInterval(refresh,1500)}
  async function refresh(){
@@ -246,7 +254,7 @@
  async function enter(type){
   if(busy)return;let player,total;try{player=name();total=count()}catch(e){$('error').textContent=e.message;return}
   const generation=epoch;busy=true;connectionState='connected';backOnlineUntil=0;message='';$('error').textContent='';render();
-  try{const r=await request({type,name:player,total,...(type==='join'?{code:$('code').value.trim().toUpperCase()}: {})},null);if(generation!==epoch)return;token=r.token;save(r);version=-1;receive(r,r.token);polling()}
+  try{await ensureProfile(player);if(generation!==epoch)return;const r=await request({type,name:player,total,...(type==='join'?{code:$('code').value.trim().toUpperCase()}: {})},null);if(generation!==epoch)return;token=r.token;save(r);version=-1;receive(r,r.token);polling()}
   catch(e){if(generation===epoch)$('error').textContent=e.message}finally{if(generation===epoch){busy=false;render()}}
  }
  async function resume(){
@@ -255,14 +263,70 @@
   catch(e){if(generation===epoch&&!terminal(e))$('error').textContent=e.message}finally{if(generation===epoch){busy=false;render()}}
  }
  function startLocal(){const n=count(),player=name();shownRollNo=0;winnerShown='';connectionState='connected';local=E.fresh(Array.from({length:n},(_,i)=>i===0?player:$('mode').value==='ai'?'Computer '+(i+1):'Player '+(i+1)));render()}
- $('setupForm').onsubmit=e=>{e.preventDefault();if($('mode').value==='online')enter('create');else try{startLocal();$('error').textContent=''}catch(error){$('error').textContent=error.message}};
+
+ async function communityRequest(route,body,credentials=profile){
+  const controller=typeof AbortController==='undefined'?null:new AbortController(),timeout=controller?setTimeout(()=>controller.abort(),8000):null;
+  try{const response=await fetch('/api/ludi/'+route,{method:body?'POST':'GET',headers:{'Content-Type':'application/json',...(credentials?{'x-ludi-profile-token':credentials.token}:{})},...(body?{body:JSON.stringify(body)}:{}),...(controller?{signal:controller.signal}:{})});const data=await response.json();if(!response.ok){const e=Error(data.error||'Unable to load player records.');e.status=response.status;throw e}return data}finally{clearTimeout(timeout)}
+ }
+ function renderProfile(){
+  $('playerSummary').textContent=profileStats?profileStats.name+' · '+profileStats.wins+' wins · '+profileStats.games+' games · '+profileStats.winRate+'% wins':'Save a player profile to keep your online wins and games played.';
+  $('saveProfile').textContent=profile?'Update player name':'Save player profile';$('saveProfile').disabled=busy||!!profileTask;$('learn').disabled=busy||!!profileTask;$('begin').disabled=busy||!!profileTask;$('changeProfile').disabled=busy||!!profileTask;$('recoverProfile').disabled=busy||!!profileTask;
+  $('showRecovery').hidden=!profile;$('changeProfile').hidden=!profile;
+  if(profile)$('recoveryCode').value=profile.id+'.'+profile.token;
+ }
+ async function ensureProfile(playerName){
+  if(profileTask)return profileTask;
+  profileTask=(async()=>{
+   const data=profile?await communityRequest('profile',{type:'rename',id:profile.id,name:playerName}):await communityRequest('profile',{type:'create',name:playerName},null);
+   if(!profile)profile={id:data.profile.id,token:data.token};profileStats=data.profile;
+   try{localStorage.setItem(profileKey,JSON.stringify(profile))}catch{$('profileMessage').textContent='Save your recovery code to keep this player after closing the browser.'}
+   return profile;
+  })();renderProfile();try{return await profileTask}finally{profileTask=null;renderProfile()}
+ }
+ async function refreshProfile(){if(!profile)return;const id=profile.id,credentials={...profile};try{const data=await communityRequest('profile?id='+id,null,credentials);if(profile?.id!==id)return;profileStats=data.profile;renderProfile()}catch(e){if(profile?.id===id)$('profileMessage').textContent=e.message}}
+ async function showLeaderboard(){
+  $('leaderboardPanel').hidden=false;$('leaderboardStatus').textContent='Loading…';
+  try{const data=await communityRequest('leaderboard',null,null);$('leaderboardRows').replaceChildren();for(const p of data.players){const row=node('tr');row.append(node('td',p.name),node('td',p.wins),node('td',p.games));$('leaderboardRows').append(row)}$('leaderboardStatus').textContent=data.players.length?'Ranked by online wins.':'No completed online games yet. Be the first!'}catch(e){$('leaderboardStatus').textContent=e.message}
+ }
+ function renderTutorial(){
+  $('tutorialPanel').hidden=!tutorial;$('playerPanel').hidden=!!(tutorial||local||room);
+  if(!tutorial)return;const done=tutorial.step>=T.steps.length,step=T.steps[tutorial.step];
+  $('tutorialStep').textContent=done?'PRACTICE COMPLETE':'STEP '+(tutorial.step+1)+' OF '+T.steps.length;
+  $('tutorialTitle').textContent=done?'Ready for the table!':step.title;
+  $('tutorialText').textContent=done?'You entered, used both dice, captured, avoided a barrier and finished exactly. Now try a full game.':step.text;
+  $('tutorialPractice').hidden=!done;
+ }
+ function startTutorial(){if(busy||profileTask||local||room)return;tutorialMode=$('mode').value;tutorial={step:0};$('mode').value='local';local=T.scenario(0);shownRollNo=0;message='';$('error').textContent='';render();$('tutorialTitle').focus?.()}
+ function exitTutorial(){tutorial=null;$('mode').value=tutorialMode;resetTable()}
+ $('learn').onclick=startTutorial;$('tutorialExit').onclick=exitTutorial;
+ $('tutorialPractice').onclick=()=>{exitTutorial();$('mode').value='ai';if(!E.cleanName($('name').value))$('name').value='Player';startLocal()};
+ $('saveProfile').onclick=async()=>{if(busy)return;try{await ensureProfile(name());$('profileMessage').textContent='Player saved. Keep your recovery code to use this player on another device.'}catch(e){$('profileMessage').textContent=e.message}};
+ $('showRecovery').onclick=()=>{$('recoveryBox').hidden=!$('recoveryBox').hidden};
+ $('copyRecovery').onclick=async()=>{try{await navigator.clipboard.writeText($('recoveryCode').value);$('profileMessage').textContent='Recovery code copied. Keep it private.'}catch{$('profileMessage').textContent='Select and copy the recovery code.'}};
+ $('recoverProfile').onclick=()=>{$('recoverForm').hidden=!$('recoverForm').hidden};
+ $('recoverForm').onsubmit=async e=>{e.preventDefault();if(busy||profileTask)return;const parts=$('recoverCode').value.trim().split('.');if(parts.length!==2||!/^[a-f0-9]{32}$/.test(parts[0])||!/^[a-f0-9]{64}$/.test(parts[1])){$('profileMessage').textContent='Paste the complete recovery code.';return}try{const credentials={id:parts[0],token:parts[1]};profileTask=communityRequest('profile?id='+parts[0],null,credentials);renderProfile();const data=await profileTask;profile=credentials;profileStats=data.profile;localStorage.setItem(profileKey,JSON.stringify(profile));$('name').value=profileStats.name;$('recoverCode').value='';$('recoverForm').hidden=true;$('profileMessage').textContent='Player recovered.';renderProfile()}catch(error){$('profileMessage').textContent=error.message}finally{profileTask=null;renderProfile()}};
+ $('changeProfile').onclick=()=>{if(!confirm('Start a new player profile? Keep your current recovery code if you want to return to this player.'))return;profile=null;profileStats=null;try{localStorage.removeItem(profileKey)}catch{}$('recoveryCode').value='';$('recoveryBox').hidden=true;$('profileMessage').textContent='Enter a name and save your new player.';renderProfile()};
+ $('showLeaderboard').onclick=showLeaderboard;
+ $('publicPlay').onclick=()=>{$('mode').value='public';render();return enter('find')};
+ $('setupForm').onsubmit=e=>{e.preventDefault();if(['online','public'].includes($('mode').value))enter($('mode').value==='public'?'find':'create');else try{startLocal();$('error').textContent=''}catch(error){$('error').textContent=error.message}};
  $('mode').onchange=()=>{message='';$('error').textContent='';render()};$('join').onclick=()=>enter('join');$('resume').onclick=resume;
  $('startOnline').onclick=()=>send({type:'start'});$('roll').onclick=$('quickRoll').onclick=$('tableRoll').onclick=()=>action({type:'roll'});
  for(let die=0;die<2;die++)$('tableDie'+die).onclick=()=>{const g=snapshot();if(g&&yourTurn(g)&&E.legal(g,die).length){selectedDie=die;render()}};
  function rematch(){if(room)return send({type:'rematch'});if(snapshot()?.phase==='over'||confirm('Start a new LUDI game? The current board will be cleared.'))startLocal()}
  $('newGame').onclick=$('rematch').onclick=rematch;
- $('leave').onclick=()=>{if(!confirm('Leave this table? Online players can return using this browser’s saved room.'))return;epoch++;clearTimeout(aiTimer);clearTimeout(rollTimer);clearTimeout(autoRollTimer);autoRollKey='';rolling=false;clearInterval(poll);local=null;room=null;token=null;version=-1;busy=false;refreshing=false;connectionState='connected';backOnlineUntil=0;message='';$('error').textContent='';render()};
+ function resetTable(){epoch++;clearTimeout(aiTimer);clearTimeout(rollTimer);clearTimeout(autoRollTimer);autoRollKey='';rolling=false;clearInterval(poll);local=null;room=null;token=null;version=-1;busy=false;refreshing=false;connectionState='connected';backOnlineUntil=0;message='';$('error').textContent='';render()}
+ $('leave').onclick=async()=>{
+  if(tutorial)return exitTutorial();
+  if(room?.publicTable&&!room.state){
+   const generation=epoch;busy=true;render();
+   try{const r=await request({type:'cancel'});if(generation!==epoch)return;if(r.cancelled){save(null);resetTable()}}
+   catch(e){if(generation!==epoch)return;$('error').textContent=e.message;try{receive(await request(null))}catch(error){terminal(error)}}finally{if(generation===epoch){busy=false;render()}}return;
+  }
+  if(confirm('Leave this table? Online players can return using this browser’s saved room.'))resetTable();
+ };
  $('copy').onclick=async()=>{if(!room)return;const link=new URL('/ludi/',location.origin);link.searchParams.set('room',room.code);try{await navigator.clipboard.writeText(link.href);message='Invite link copied.'}catch{message='Share room code: '+room.code}render()};
+ try{const savedPlayer=JSON.parse(localStorage.getItem(profileKey)||'null');if(savedPlayer&&/^[a-f0-9]{32}$/.test(savedPlayer.id)&&/^[a-f0-9]{64}$/.test(savedPlayer.token))profile=savedPlayer}catch{}
+ renderProfile();if(profile)refreshProfile();
  try{$('name').value=E.cleanName(localStorage.getItem(nameKey))}catch{}
  const invite=new URL(location.href).searchParams.get('room');if(invite){$('mode').value='online';$('code').value=invite.toUpperCase()}
  globalThis.addEventListener?.('offline',()=>{if(room){connection(false);message='Connection interrupted. Reconnecting…';render()}});

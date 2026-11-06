@@ -52,3 +52,7 @@
 .rematch-votes .voted{border-color:#79bd68;background:#214629}
 .rematch-votes .voted strong{color:#b9f3ab}
 @media(max-width:650px){.turn-strip{margin-bottom:8px;gap:5px}.turn-clock{font-size:13px;min-width:38px;padding:5px}.connection-badge{font-size:10px;padding:4px 7px}.winner-panel{padding:15px}.rematch-votes{grid-template-columns:1fr}.table-heading{flex-wrap:wrap}.seat-name{max-width:100%}}
+
+.community-panel{margin-top:18px;padding:18px}.community-panel h2,.tutorial-panel h2{margin:4px 0 10px;font-size:20px;line-height:1.2}.community-panel p,.tutorial-panel p{font-size:13px;line-height:1.5;color:#c5d9c7}.profile-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px}.profile-actions button{font-size:12px}.community-panel input{width:100%;min-width:0;font-size:16px}.leaderboard-scroll{overflow-x:auto}.leaderboard{width:100%;border-collapse:collapse;font-size:13px}.leaderboard th,.leaderboard td{text-align:left;padding:9px 5px;border-bottom:1px solid #3c5640}.leaderboard td:first-child{overflow-wrap:anywhere;max-width:180px}.leaderboard th:not(:first-child),.leaderboard td:not(:first-child){text-align:right;white-space:nowrap}.tutorial-panel{margin-bottom:14px;padding:18px;border:2px solid #fed100;border-radius:12px;background:#153621}.tutorial-panel .text-button{display:block;margin-top:10px;color:#e6d38e}.tutorial-panel .primary{max-width:300px}
+
+#publicPlay{background:#0b7840;border-color:#25a55a;color:#fff4d0}
