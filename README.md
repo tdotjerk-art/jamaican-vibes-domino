@@ -301,3 +301,19 @@ This disk-backed storage supports the existing single service instance. It is
 not a shared datastore for multiple server instances. No new dependency or
 hosting resource is required on the current Render service.
 Physical iPhone Safari and real-phone multiplayer need device verification.
+
+
+### LUDI turn and result indicators
+
+The active player has a countdown beside their name and above the board. Human
+rolls and moves count down from ten seconds; computer turns show their actual
+shorter pause. Online clocks use the server deadline and clock offset, so polling
+or choosing a die does not restart them. Clocks hide during dice animation,
+a connection interruption, and after the game finishes.
+
+Online tables show **Connected**, **Reconnecting…**, and **Back online**. Temporary
+outages preserve the saved seat and board; requests time out and polling retries
+without overlapping requests. Controls wait for a fresh connection before play
+resumes. The winner panel names the winner and provides **Play again** locally or
+**Request rematch** online, with each player's Ready/Waiting vote. Online games
+restart only after every player agrees.
