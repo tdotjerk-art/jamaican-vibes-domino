@@ -166,3 +166,38 @@ test('entry capture is allowed when the remaining die cannot be used, and barrie
  }
  let g=fresh();g.players[0].tokens=[0,E.HOME,E.HOME,E.HOME];g.players[1].tokens[0]=38;g.players[2].tokens=[27,27,-1,-1];g=move(roll(g,2,1),0,0);A.equal(g.players[1].tokens[0],-1);A.equal(g.players[0].tokens[0],2);A.equal(g.turn,1);
 });
+
+test('every color must decline a first capture that wastes a die when two moves are possible',()=>{
+ for(let seat=0;seat<4;seat++)for(const pair of [[2,3],[3,2]]){
+  let g=fresh();g.turn=seat;g.players[seat].tokens=[0,E.HOME-1,E.HOME,E.HOME];
+  const victim=(seat+1)%4,target=(E.TEAMS[seat].start+2)%48;
+  g.players[victim].tokens[0]=(target-E.TEAMS[victim].start+48)%48;
+  g=roll(g,...pair);const capture=pair.indexOf(2),other=pair.indexOf(3),before=structuredClone(g);
+  A.ok(!E.legal(g,capture).some(m=>m.piece===0),'seat '+seat+' must keep both dice usable');
+  A.throws(()=>move(g,0,capture),/Use both dice/);A.deepEqual(g,before);
+  g=move(g,0,other);A.equal(g.turn,seat);A.deepEqual(g.remaining,[capture]);
+  g=move(g,0,capture);A.equal(g.players[seat].tokens[0],5);A.equal(g.turn,(seat+1)%4);
+ }
+});
+
+test('a later capture is a valid second move and must be preferred to wasting a die on an earlier capture',()=>{
+ for(let seat=0;seat<4;seat++)for(const pair of [[1,2],[2,1]]){
+  let g=fresh();g.turn=seat;g.players[seat].tokens=[0,E.HOME,E.HOME,E.HOME];const victim=(seat+1)%4;
+  const progress=n=>(E.TEAMS[seat].start+n-E.TEAMS[victim].start+48)%48;
+  g.players[victim].tokens=[progress(1),progress(3),-1,-1];g=roll(g,...pair);
+  const one=pair.indexOf(1),two=pair.indexOf(2);A.throws(()=>move(g,0,one),/Use both dice/);
+  g=move(g,0,two);A.equal(g.phase,'move');A.deepEqual(g.remaining,[one]);
+  g=move(g,0,one);A.equal(g.last.captured.length,1);A.equal(g.players[victim].tokens[0],progress(1));A.equal(g.players[victim].tokens[1],-1);A.equal(g.players[seat].tokens[0],3);
+ }
+});
+
+test('after a capture every color must spend the other die on an eligible different piece',()=>{
+ for(let seat=0;seat<4;seat++)for(const pair of [[2,3],[3,2]]){
+  let g=fresh();g.turn=seat;g.players[seat].tokens=[0,20,E.HOME,E.HOME];const victim=(seat+1)%4;
+  g.players[victim].tokens[0]=(E.TEAMS[seat].start+2-E.TEAMS[victim].start+48)%48;g=roll(g,...pair);
+  const capture=pair.indexOf(2),other=pair.indexOf(3);g=move(g,0,capture);
+  A.equal(g.last.captured.length,1);A.equal(g.turn,seat);A.equal(g.phase,'move');A.deepEqual(g.remaining,[other]);
+  A.throws(()=>roll(g,1,1),/remaining/);A.throws(()=>move(g,0,other),/unused die/);
+  g=move(g,1,other);A.equal(g.players[seat].tokens[1],23);A.equal(g.turn,(seat+1)%4);
+ }
+});
