@@ -317,3 +317,34 @@ without overlapping requests. Controls wait for a fresh connection before play
 resumes. The winner panel names the winner and provides **Play again** locally or
 **Request rematch** online, with each player's Ready/Waiting vote. Online games
 restart only after every player agrees.
+
+### LUDI public play, player records and guided practice
+
+Choose **Online · public table** and **Play online** to join the earliest waiting
+public table for the selected 2–4-player count. A full table starts automatically;
+additional players get another table. Private room codes stay separate. **Cancel
+search** removes a waiting seat. Searches that stop checking in for 45 seconds
+are removed so disconnected browsers do not block a queue. Restored waiting
+rooms get a fresh check-in window after a server restart. Selecting Play online
+again with the same saved player returns to that player's current public seat.
+
+Online play automatically saves a player profile in the browser. **Your player
+record** shows completed online games, wins and win rate. The leaderboard lists
+up to 20 players by wins, then win rate and games played. A name alone cannot
+recover a profile: keep its private recovery code and use **Use recovery code**
+on another browser. Profile identifiers and credential hashes are saved on the
+existing persistent disk; raw profile tokens are kept only by the player's
+browser/recovery code. Practice and tutorial results do not affect the online
+leaderboard, and pre-profile games are not backfilled.
+
+The server records completed games between saved profiles, including private
+rooms. Results are keyed by a unique match ID, so reconnects, repeated requests
+and restarts do not duplicate wins. An atomic room snapshot retains any pending
+result until it is archived; startup and cleanup reconcile that result before
+expiring the room. Player records remain after the room's 24-hour expiry.
+
+**Learn to play · guided practice** teaches entry with a six, using both dice,
+capturing a lone piece, respecting barriers, and finishing with an exact roll.
+The five interactive steps use the same movement engine as ordinary play, with
+fixed practice rolls and no action countdown. Players can exit at any time or
+start a full computer game after completing the tutorial.
