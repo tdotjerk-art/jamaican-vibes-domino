@@ -78,14 +78,6 @@ input{width:100%;padding:12px;border:1px solid #456247;border-radius:6px;backgro
  dialog {max-height:calc(100dvh - 16px);overflow:auto}
 }
 
-/* Phone portrait keeps a compact square so landscape is the larger play view. */
-@media (orientation:portrait) and (max-width:600px) {
- #draffGame #playArea {
-  width:min(100%,64vw,250px);
-  margin-inline:auto;
- }
-}
-
 header {gap:12px}
 .player-bar {font-size:12px;margin-top:12px}
 .settings>div {min-width:0}
