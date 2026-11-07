@@ -13,13 +13,20 @@ input{width:100%;padding:12px;border:1px solid #456247;border-radius:6px;backgro
  }
  body:has(#draffGame:not([hidden])) header {height:36px;padding:0 8px}
  #draffGame {
-  display:grid;grid-template-columns:min(52vw, calc(var(--draff-room) - 82px)) minmax(0, 290px);
+  display:grid;grid-template-columns:min(52vw, calc(var(--draff-room) - 90px)) minmax(0, 290px);
   justify-content:center;gap:12px;margin:4px auto;padding:0;max-width:none;
  }
  #draffGame .board-shell {padding:5px}
  #draffGame .player {height:22px;padding:0 3px}
- #draffGame .player-huff {height:32px}
- #draffGame #claim {min-height:32px;padding:4px 8px}
+ #draffGame .player-huff {
+  display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:repeat(2,1fr);
+  column-gap:8px;row-gap:0;height:36px;margin-bottom:4px;font-size:12px;line-height:1.15;
+ }
+ #draffGame .player-huff strong {grid-area:1 / 1;gap:5px}
+ #draffGame .player-huff strong span {overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ #draffGame .player-huff .dot {flex:0 0 8px;width:8px;height:8px}
+ #draffGame .player-huff .count {grid-area:2 / 1;padding-left:13px;white-space:nowrap}
+ #draffGame #claim {grid-area:1 / 2 / 3 / 3;min-height:32px;padding:4px 8px;white-space:nowrap}
  #draffGame .foot,#draffGame .intro,#draffGame .eyebrow,#draffGame .sidebar h1 {display:none}
  #draffGame .sidebar {order:0;min-width:0;max-height:var(--draff-room);overflow-y:auto}
  #draffGame .status {min-height:0;margin:0 0 5px;padding:5px 8px}
