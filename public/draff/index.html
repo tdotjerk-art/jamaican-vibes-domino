@@ -19,9 +19,32 @@ input{width:100%;padding:12px;border:1px solid #456247;border-radius:6px;backgro
  }
  body:has(#draffGame:not([hidden]) #playArea:not([hidden])) :is(header,#playerBar) {display:none}
  #draffGame:has(> #playArea:not([hidden])) {
-  grid-template-columns:min(60vw, calc(var(--draff-room) - 56px)) minmax(0, clamp(148px, 25vw, 208px));
-  gap:10px;
+  grid-template-columns:minmax(0,3fr) minmax(0,1fr);
+  gap:8px;
  }
+ #draffGame #playArea {
+  --draff-player-rail:clamp(68px, 13vw, 110px);
+  display:grid;
+  grid-template-columns:minmax(0, min(var(--draff-room), calc(100% - var(--draff-player-rail) - 8px))) minmax(0,1fr);
+  grid-template-rows:repeat(2, minmax(0,1fr));
+  column-gap:8px;
+  height:var(--draff-room);
+  min-width:0;
+  align-items:start;
+ }
+ #draffGame #playArea .board-shell {grid-area:1 / 1 / 3 / 2}
+ #draffGame #playArea .player {
+  grid-column:2;
+  display:flex;flex-direction:column;align-items:flex-start;gap:3px;
+  height:auto;margin:0;padding:0;font-size:12px;line-height:1.2;
+ }
+ #draffGame #playArea .player-huff {grid-row:1}
+ #draffGame #playArea .player:not(.player-huff) {grid-row:2;align-self:end}
+ #draffGame #playArea .player strong {gap:5px}
+ #draffGame #playArea .player strong span {white-space:normal;overflow-wrap:anywhere}
+ #draffGame #playArea .player .dot {flex:0 0 8px;width:8px;height:8px}
+ #draffGame #playArea .player .count {padding-left:13px}
+ #draffGame #claim {order:-1}
  #draffGame:has(> #playArea:not([hidden])) .landscape-nav {
   display:flex;justify-content:space-between;align-items:center;gap:6px;
   margin-bottom:5px;border-bottom:1px solid #456247;
@@ -31,25 +54,16 @@ input{width:100%;padding:12px;border:1px solid #456247;border-radius:6px;backgro
  #draffGame:has(> #playArea:not([hidden])) .status {padding:4px 6px}
  #draffGame:has(> #playArea:not([hidden])) .status b {font-size:13px}
  #draffGame:has(> #playArea:not([hidden])) :is(.status span,label,.rules summary) {font-size:11px;line-height:1.25}
+ #draffGame:has(> #playArea:not([hidden])) .settings {
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,86px),1fr));
+ }
  #draffGame:has(> #playArea:not([hidden])) .sidebar :is(select,button.action) {font-size:11px;min-height:30px}
  #draffGame {
-  /* Reserve 32px for Huff, a 2px gap, and 22px for the bottom player. */
-  display:grid;grid-template-columns:min(60vw, calc(var(--draff-room) - 56px)) minmax(0, 290px);
+  display:grid;
   justify-content:center;gap:12px;margin:4px auto;padding:0;max-width:none;
  }
  #draffGame .board-shell {padding:5px}
- #draffGame .player {height:22px;padding:0 3px}
- #draffGame .player-huff {
-  display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:repeat(2,1fr);
-  column-gap:8px;row-gap:0;height:32px;margin-bottom:2px;font-size:12px;line-height:1.15;
- }
- #draffGame .player-huff strong {grid-area:1 / 1;gap:5px}
- #draffGame .player strong span {overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
- #draffGame .player .count {white-space:nowrap}
- #draffGame .player:not(.player-huff) {gap:8px}
- #draffGame .player-huff .dot {flex:0 0 8px;width:8px;height:8px}
- #draffGame .player-huff .count {grid-area:2 / 1;padding-left:13px;white-space:nowrap}
- #draffGame #claim {grid-area:1 / 2 / 3 / 3;min-height:32px;padding:4px 8px;white-space:nowrap}
+ #draffGame #claim {min-height:32px;max-width:100%;padding:4px 8px;white-space:normal}
  #draffGame .foot,#draffGame .intro,#draffGame .eyebrow,#draffGame .sidebar h1 {display:none}
  #draffGame .sidebar {order:0;min-width:0;max-height:var(--draff-room);overflow-y:auto}
  #draffGame .status {min-height:0;margin:0 0 5px;padding:5px 8px}
