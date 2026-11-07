@@ -4,7 +4,7 @@ function installThreeCards(io){
  const nsp=io.of('/three-cards'),rooms=new Map();
  const clean=v=>String(v||'').replace(/[\x00-\x1f]/g,'').trim().slice(0,20);
  const valid=n=>Number.isInteger(n)&&n>=5&&n<=1000&&n%5===0;
- function broadcast(r){for(let i=0;i<r.seats.length;i++){const p=r.seats[i];if(p.id)nsp.to(p.id).emit('state',{code:r.code,seat:i,phase:r.game?'game':'lobby',host:0,seats:r.seats.map(p=>({name:p.name,connected:!!p.id,total:p.total,ready:p.ready,extension:p.extension})),game:r.game?.view(i)||null});}}
+ function broadcast(r){require('./analytics').changed();for(let i=0;i<r.seats.length;i++){const p=r.seats[i];if(p.id)nsp.to(p.id).emit('state',{code:r.code,seat:i,phase:r.game?'game':'lobby',host:0,seats:r.seats.map(p=>({name:p.name,connected:!!p.id,total:p.total,ready:p.ready,extension:p.extension})),game:r.game?.view(i)||null});}}
  function locate(s){const r=rooms.get(s.data.code),i=s.data.seat;if(!r||!Number.isInteger(i)||r.seats[i]?.id!==s.id)return [];return [r,i];}
  nsp.on('connection',s=>{
   let count=0,windowStart=Date.now();s.use((packet,next)=>{if(['create','join','resume','choice','action','extend'].includes(packet[0])&&(!packet[1]||typeof packet[1]!=='object'||Array.isArray(packet[1]))){s.emit('card-error','Invalid table request.');return;}if(Date.now()-windowStart>1000){count=0;windowStart=Date.now();}if(++count>25)return;next();});
@@ -25,6 +25,7 @@ function installThreeCards(io){
   s.on('disconnect',()=>{const [r,i]=locate(s);if(!r)return;r.seats[i].id=null;r.seats[i].ready=false;broadcast(r);});
  });
  const cleanup=setInterval(()=>{for(const [code,r]of rooms){if(r.seats.every(p=>!p.id)){r.offlineSince??=Date.now();if(Date.now()-r.offlineSince>30*60*1000)rooms.delete(code);}else r.offlineSince=null;}},60000);cleanup.unref();
- nsp.on('close',()=>clearInterval(cleanup));return {rooms};
+ nsp.on('close',()=>clearInterval(cleanup));return {rooms,analyticsSnapshot:()=>[...rooms.values()].map(r=>({id:r.code,phase:r.game&&r.game.phase!=='session-over'?'playing':!r.game?'waiting':'finished',players:r.seats.filter(p=>p.id).map(p=>require('./analytics').identity(nsp.sockets.get(p.id)?.handshake.headers,p.token)),match:r.game?'session':null,complete:r.game?.phase==='session-over'}))};
 }
 module.exports={installThreeCards};
+

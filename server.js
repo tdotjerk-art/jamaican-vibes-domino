@@ -4,12 +4,14 @@ const {Server}=require("socket.io");
 const crypto=require("crypto");
 
 const app=express(),server=http.createServer(app),io=new Server(server,{cors:{origin:"*"}});
-app.use("/api/draff",require("./draff-online").createDraffRouter());
+const analytics=require("./analytics").installAnalytics(app);
+const draffRouter=require("./draff-online").createDraffRouter();
+app.use("/api/draff",draffRouter);
 const ludiRouter=require("./ludi-online").createLUDIRouter();
 app.use("/api/ludi",ludiRouter);
 server.on("close",()=>ludiRouter.close());
 app.use(express.static("public"));
-app.get("/",(req,res)=>res.sendFile(__dirname + "/index.html"));
+app.get("/",(req,res)=>{const fs=require("node:fs");fs.readFile(__dirname+"/index.html","utf8",(error,html)=>{if(error)return res.sendStatus(500);res.type("html").send(html.replace("<head>",'<head><script src="/analytics-client.js"></script>'))})});
 app.get("/health",(req,res)=>res.status(200).send("ok"));
 const rooms=new Map();
 const GRACE_MS=90000;
@@ -50,6 +52,7 @@ function gameBase(r){return {
 function privateState(r,seat){return {...gameBase(r),hand:r.hands[seat]||[],revealedHands:r.revealHands?r.hands:null}}
 function spectatorState(r){return {...gameBase(r),hand:[],revealedHands:r.revealHands?r.hands:null}}
 function emitAll(r){
+ require("./analytics").changed();
  io.to(r.code).emit("room-state",roomState(r));
  r.players.forEach(p=>{if(p&&p.connected&&p.id)io.to(p.id).emit("private-state",privateState(r,p.seat))});
  for(const id of r.spectators.keys())io.to(id).emit("spectator-state",spectatorState(r));
@@ -348,7 +351,7 @@ function leaveCurrentRoom(socket){
 function newRoom(name,mode,target,socket,tieRule){
  let code;do code=randCode();while(rooms.has(code));
  const token=randToken(),room={code,mode:mode==="individual"?"individual":"partner",target:clampTarget(target),tieRule:tieRuleOf(tieRule),hostSeat:0,
- players:[null,null,null,null],spectators:new Map(),hands:[[],[],[],[]],board:[],turn:null,handNo:0,handValue:1,
+ analyticsMatch:crypto.randomUUID(),players:[null,null,null,null],spectators:new Map(),hands:[[],[],[],[]],board:[],turn:null,handNo:0,handValue:1,
  tiedCarry:false,lastWinnerTeam:null,lastIndividualWinner:null,scores:[0,0,0,0],teamScores:[0,0],phase:"waiting",
  revealHands:false,playSequence:0,timer:null,deadline:0,message:"Waiting for four players to get ready.",poseOptions:[],
  history:[],lastEvent:"",rematchVotes:new Set(),phaseBeforePause:null,turnBeforePause:null,
@@ -357,8 +360,14 @@ function newRoom(name,mode,target,socket,tieRule){
 }
 
 require("./voice").installVoice(io,rooms);
-require("./three-cards-online").installThreeCards(io);
-require("./holdem-online").installHoldem(io);
+const cardsAnalytics=require("./three-cards-online").installThreeCards(io);
+const holdemAnalytics=require("./holdem-online").installHoldem(io);
+function sampleAnalytics(){try{
+ for(const r of rooms.values()) analytics.observe("domino",r.code,{phase:r.phase==="playing"?"playing":r.phase==="waiting"?"waiting":"paused",players:r.players.filter(p=>p?.connected).map(p=>require("./analytics").identity(io.sockets.sockets.get(p.id)?.handshake.headers,p.token)),spectators:r.spectators.size,match:r.handNo?String(r.analyticsMatch):null,complete:r.phase==="match-over"});
+ for(const [game,source]of [["ludi",ludiRouter],["draff",draffRouter],["three-cards",cardsAnalytics],["holdem",holdemAnalytics]])for(const row of source.analyticsSnapshot())analytics.observe(game,row.id,row);
+}catch(error){console.error("Analytics sample failed:",error.message)}}
+require("./analytics").setSampler(sampleAnalytics);
+const analyticsTimer=setInterval(sampleAnalytics,15000);analyticsTimer.unref();server.on("close",()=>{clearInterval(analyticsTimer);require("./analytics").setSampler(null);analytics.persist()});
 
 io.on("connection",socket=>{
  const payloadEvents=new Set(['create-room','join-public-table','join-room','join-spectator','reconnect-player','set-room-options','play-domino','choose-poser']);
@@ -461,7 +470,7 @@ io.on("connection",socket=>{
    r.rematchVotes.add(seat);r.message=`Rematch votes: ${r.rematchVotes.size}/4`;emitAll(r);
    if(r.rematchVotes.size===4){
      r.scores=[0,0,0,0];r.teamScores=[0,0];r.bruckStartTeam=null;r.bruckStartCount=0;r.oneOnePlayTwo=false;r.doubleSixPoseAfterBruck=false;r.nextPlayFor=1;r.handNo=0;r.tiedCarry=false;r.lastWinnerTeam=null;r.lastIndividualWinner=null;r.rematchVotes.clear();
-     r.history=[];r.players.forEach(p=>{if(p)p.ready=false});r.phase="waiting";r.message="Rematch ready. Press READY.";emitAll(r)
+     r.analyticsMatch=crypto.randomUUID();r.history=[];r.players.forEach(p=>{if(p)p.ready=false});r.phase="waiting";r.message="Rematch ready. Press READY.";emitAll(r)
    }
  });
  socket.on("leave-room",()=>leaveCurrentRoom(socket));
@@ -485,4 +494,5 @@ if(require.main===module){
 
 module.exports={server,io,turnSeconds,makeDeck,ends,canPlay,orientLeft,orientRight,applyBruckAndStartWin,nextHand,finishWin,finishBlocked,choosePoser};
 // github write test 2026-09-05
+
 

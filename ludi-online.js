@@ -4,13 +4,14 @@ const {createCommunity,idOK}=require('./ludi-community');
 const {createReports}=require('./ludi-reports'),Report=require('./public/ludi/report');
 const digest=token=>crypto.createHash('sha256').update(token).digest('hex');
 function createLUDIRouter({rollDie=()=>crypto.randomInt(1,7),storageDir=process.env.LUDI_STATE_DIR||(fs.existsSync('/var/data')?'/var/data/ludi-rooms':null)}={}){
- const router=express.Router(),rooms=new Map(),rates=new Map(),day=86400000;
+ const router=express.Router(),rooms=new Map(),rates=new Map(),analyticsSeen=new Map(),day=86400000;
  const storage=createLudiStorage(storageDir),community=createCommunity(storageDir),reports=createReports(storageDir);
  function archive(r){for(const result of r.results||[])community.record(result)}
  // Fail startup on unreadable or damaged saves instead of erasing saved games.
  for(const r of storage.load({keepExpired:true})){archive(r);if(r.expires<=Date.now()){storage.remove(r.code);continue}if(r.publicTable&&!r.game)r.seats=r.seats.map(p=>({...p,lastSeen:Date.now()}));rooms.set(r.code,r)}
  router.storageEnabled=storage.enabled;router.restoredRooms=rooms.size;
  if(storage.enabled)console.log('LUDI durable room storage enabled; restored '+rooms.size+' rooms.');
+ router.use((req,res,next)=>{const json=res.json;res.json=function(body){require('./analytics').changed();if(res.statusCode<400&&body?.code&&body.you!==undefined){analyticsSeen.set(body.code+':'+body.you,{at:Date.now(),identity:require('./analytics').identity(req.headers,null)});}return json.call(this,body)};next()});
  router.use((req,res,next)=>{
   res.set('Cache-Control','no-store');
   if(req.method==='POST'){
@@ -39,7 +40,7 @@ function createLUDIRouter({rollDie=()=>crypto.randomInt(1,7),storageDir=process.
   r={...r,results:pending,deadline:active?(advance?Date.now()+10000:r.deadline):null};
   // Save before publishing or acknowledging a changed board.
   try{storage.save(r)}catch(error){error.ludiStorage=true;throw error}
-  clearTimeout(current?.rollTimer);rooms.set(r.code,r);scheduleTurn(r);
+  clearTimeout(current?.rollTimer);rooms.set(r.code,r);require('./analytics').changed();scheduleTurn(r);
   try{archive(r)}catch(error){console.error('LUDI records pending retry:',error)}return r;
  }
  // Enforce both online rolls and moves on the server, even if a player disconnects.
@@ -147,6 +148,8 @@ function createLUDIRouter({rollDie=()=>crypto.randomInt(1,7),storageDir=process.
  // resume from the exact saved board with a fresh ten seconds to reconnect.
  for(const r of rooms.values()){if(r.game&&r.game.phase!=='over')r.deadline=Date.now()+10000;scheduleTurn(r)}
  router.close=()=>{clearInterval(timer);for(const r of rooms.values())clearTimeout(r.rollTimer)};
+ router.analyticsSnapshot=()=>[...rooms.values()].map(r=>({id:r.code,phase:r.game&&r.game.phase!=='over'?'playing':!r.game?'waiting':'finished',players:r.seats.map((p,i)=>({...p,analyticsIdentity:analyticsSeen.get(r.code+':'+i)?.identity,analyticsSeat:i})).filter((p)=>Date.now()-(analyticsSeen.get(r.code+':'+p.analyticsSeat)?.at||0)<45000).map(p=>p.analyticsIdentity||p.key),match:r.matchId||null,complete:r.game?.phase==='over'}));
  return router;
 }
 module.exports={createLUDIRouter};
+

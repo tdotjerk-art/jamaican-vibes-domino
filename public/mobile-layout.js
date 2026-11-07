@@ -257,3 +257,7 @@ function partnerWin(r,winnerSeat){
   root.JVMobileLayout={layout,render,mount,frame,partnerWin};
   if(typeof module!=='undefined')module.exports={layout,frame,partnerWin};
 })(typeof window!=='undefined'?window:globalThis);
+
+
+// Practice analytics never count computer opponents as people.
+(function(){if(typeof document==='undefined')return;let ref={};const boot=()=>{if(typeof startMatch!=='function'||typeof render!=='function')return;const start=startMatch,paint=render;startMatch=function(...args){ref={};return start.apply(this,args)};render=function(...args){globalThis.JVAnalytics?.state(window.gameConnectionMode!=='online'&&handNo>0?ref:null,localMatchOver);return paint.apply(this,args)};};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();})();

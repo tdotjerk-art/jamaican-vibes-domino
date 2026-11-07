@@ -6,8 +6,9 @@ const playerName=value=>typeof value==='string'?value.replace(/[\u0000-\u001f\u0
 const players=r=>({gold:r.hostName,black:r.guestName||null});
 const digest=t=>crypto.createHash('sha256').update(t).digest('hex');
 function createDraffRouter(){
- const router=express.Router(),rooms=new Map(),rates=new Map();
+ const router=express.Router(),rooms=new Map(),rates=new Map(),analyticsSeen=new Map();
  router.use(express.json({limit:'4kb'}));
+ router.use((req,res,next)=>{const json=res.json;res.json=function(body){require('./analytics').changed();if(res.statusCode<400&&body?.code&&body.you!==undefined){analyticsSeen.set(body.code+':'+body.you,{at:Date.now(),identity:require('./analytics').identity(req.headers,null)});}return json.call(this,body)};next()});
  router.use((req,res,next)=>{
   res.set('Cache-Control','no-store');
   if(req.method==='POST'){
@@ -32,7 +33,7 @@ function createDraffRouter(){
    const name=playerName(a.name);if(!name)return res.status(400).json({error:'Enter your name to play.'});
    cleanup();if(rooms.size>=2000)return res.status(503).json({error:'All tables are busy. Try again later.'});
    let code;do{code=[...crypto.randomBytes(8)].map(x=>'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[x%32]).join('')}while(rooms.has(code));
-   let token=crypto.randomBytes(32).toString('hex'),state=fresh();rooms.set(code,{host:digest(token),hostName:name,guest:null,guestName:null,state,version:0,expires:Date.now()+DAY});
+   let token=crypto.randomBytes(32).toString('hex'),state=fresh();rooms.set(code,{host:digest(token),hostName:name,guest:null,guestName:null,state,analyticsMatch:crypto.randomUUID(),version:0,expires:Date.now()+DAY});
    return res.json({code,token,you:1,players:players(rooms.get(code)),version:0,state:view(state)});
   }
   let code=String(a.code||req.query.code||'').toUpperCase();if(!/^[A-Z2-9]{8}$/.test(code))return res.status(400).json({error:'Enter the 8-character room code.'});
@@ -50,10 +51,12 @@ function createDraffRouter(){
   if(a.version!==r.version)return res.status(409).json({error:'The board changed. Please try again.'});
   let next;try{next=act(r.state,you,a)}catch(e){return res.status(400).json({error:e.message});}
   // No asynchronous work between checking the revision and updating it.
-  r.state=next;r.version++;
+  if(a.type==='rematch'&&next.rematch.length===0)r.analyticsMatch=crypto.randomUUID();r.state=next;r.version++;
   return res.json({code,you,players:players(r),version:r.version,state:view(next)});
  }catch(error){console.error('Draff room error:',error);res.status(500).json({error:'Unable to reach the game. Please try again.'});}}
  router.use((error,req,res,next)=>{if(error.type==='entity.too.large')return res.status(413).json({error:'Request too large.'});if(error instanceof SyntaxError)return res.status(400).json({error:'Invalid request.'});next(error)});
+ router.analyticsSnapshot=()=>[...rooms.values()].map(r=>({id:r.code,phase:r.state.active&&!r.state.over?'playing':!r.state.active?'waiting':'finished',players:[[1,r.host],[-1,r.guest]].filter(([i,key])=>key&&Date.now()-(analyticsSeen.get(r.code+':'+i)?.at||0)<45000).map(([i,key])=>analyticsSeen.get(r.code+':'+i)?.identity||key),match:r.state.active?r.analyticsMatch:null,complete:!!r.state.over}));
  return router;
 }
 module.exports={createDraffRouter};
+

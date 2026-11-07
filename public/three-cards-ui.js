@@ -19,7 +19,7 @@
   socket.on('disconnect',()=>{if(remote){error('Connection lost. Reconnecting…');render();}});
   socket.on('connect',()=>{error('');const seat=saved();if(seat)socket.emit('resume',seat);});return socket;
  }
- function render(){
+ function render(){globalThis.JVAnalytics?.state(local,local?.phase==='session-over');
   clearTimeout(timer);const online=!local&&remote,g=local?local.view(0):online?.game,seat=online?remote.seat:0;
   $('setup').hidden=!!(local||remote);$('lobby').hidden=!(online&&!g);$('game').hidden=!g;$('leave').hidden=!(local||remote);
   if(online&&!g){
@@ -86,3 +86,4 @@
  $('rulesBtn').onclick=()=>{clearTimeout(timer);$('rules').showModal();};$('closeRules').onclick=()=>$('rules').close();$('rules').addEventListener('close',()=>render());
  if(saved()){try{connect();}catch(e){error(e.message);}}render();
 })();
+

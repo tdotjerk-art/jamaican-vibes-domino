@@ -1,4 +1,4 @@
-(()=>{'use strict';const $=id=>document.getElementById(id),E=JVHoldem;let game=new E.Game(),timer;
+(()=>{'use strict';const $=id=>document.getElementById(id),E=JVHoldem;let game=new E.Game(),timer,analyticsRef={},analyticsHand=0,analyticsGame=null;
 let selectedWinner, selectedWinnerGame, selectedWinnerHand;
 let previous, soundContext, alertedTurn, warnedTurn;
 let socket, online, practice, clock, pendingRoom;
@@ -317,7 +317,7 @@ function updateSessionSummary() {
   } else saveLocalGame();
 }
 
-function render(){document.body.classList.toggle('four-colour-deck', fourColour.checked);if (advanceAction !== advanceKey()) advanceAction = undefined;clearTimeout(timer);if(clock)clearInterval(clock);$('error').textContent='';$('seats').replaceChildren();
+function render(){if(!online&&game.handNumber){if(analyticsHand!==game.handNumber||analyticsGame!==game){analyticsRef={};analyticsHand=game.handNumber;analyticsGame=game;}globalThis.JVAnalytics?.state(analyticsRef,game.phase==='over');}else globalThis.JVAnalytics?.state(null);document.body.classList.toggle('four-colour-deck', fourColour.checked);if (advanceAction !== advanceKey()) advanceAction = undefined;clearTimeout(timer);if(clock)clearInterval(clock);$('error').textContent='';$('seats').replaceChildren();
 const localKey = game.handNumber + ':' + game.phase + ':' + game.log.length + ':' + game.turn;
 if (!online && game.turn != null && (localTurn?.game !== game || localTurn.key !== localKey)) {
   localTurn = {game, key:localKey, deadline:Date.now() + (game.turn === 0 ? 30000 : computerDelay())};
@@ -656,3 +656,4 @@ if (/^[0-9a-f]{6}$/i.test(invitedRoom || '') && !sessionStorage.getItem('holdem-
   $('friendsButton').click();
 }
 })();
+
