@@ -14,13 +14,13 @@ input{width:100%;padding:12px;border:1px solid #456247;border-radius:6px;backgro
  }
  body:has(#draffGame:not([hidden])) header {height:36px;padding:0 8px}
  body:has(#draffGame:not([hidden]) #playArea:not([hidden])) {
-  /* The board uses the height beside the navigation, minus the layout margins. */
-  --draff-room:calc(100dvh - 8px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  /* Give the landscape board all of the safe viewport height during play. */
+  --draff-room:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
  }
  body:has(#draffGame:not([hidden]) #playArea:not([hidden])) :is(header,#playerBar) {display:none}
  #draffGame:has(> #playArea:not([hidden])) {
   grid-template-columns:minmax(0,3fr) minmax(0,1fr);
-  gap:8px;
+  gap:8px;margin-block:0;
  }
  #draffGame #playArea {
   --draff-player-rail:clamp(68px, 13vw, 110px);
@@ -76,6 +76,14 @@ input{width:100%;padding:12px;border:1px solid #456247;border-radius:6px;backgro
  #draffGame .rules {margin:5px 0 0;padding-top:4px}
  #draffGame .piece {font-size:clamp(12px,5dvh,24px)}
  dialog {max-height:calc(100dvh - 16px);overflow:auto}
+}
+
+/* Phone portrait keeps a compact square so landscape is the larger play view. */
+@media (orientation:portrait) and (max-width:600px) {
+ #draffGame #playArea {
+  width:min(100%,64vw,250px);
+  margin-inline:auto;
+ }
 }
 
 header {gap:12px}
