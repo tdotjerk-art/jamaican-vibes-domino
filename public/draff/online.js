@@ -2,8 +2,31 @@ var netRoom=null,netBusy=false,netTimer=null,netMessage='',netVersion=-1,netEpoc
 const savedKey='jv-draff-online-room-v1';
 function savedRoom(){try{let r=JSON.parse(localStorage.getItem(savedKey)||'null');return r&&/^[A-Z2-9]{8}$/.test(r.code)&&/^[a-f0-9]{64}$/.test(r.token)?r:null}catch{return null}}
 function remember(r){try{localStorage.setItem(savedKey,JSON.stringify({code:r.code,token:r.token}))}catch{}}
-function netRender(){if(mode.value!=='online')return;$('onlinePanel').hidden=false;$('roomSetup').hidden=!!netRoom;$('roomInfo').hidden=!netRoom;$('level').disabled=true;$('createRoom').disabled=netBusy;$('joinRoom').disabled=netBusy;$('resumeRoom').hidden=!savedRoom();$('new').textContent='Request new game';$('new').disabled=netBusy||!netRoom||!netRoom.state.active;$('claim').disabled=netBusy||!netRoom||!netRoom.state.active||!!over||s!==netRoom.you||chain>=0;
- if(!netRoom){$('status').textContent='Online Draff';$('hint').textContent='Create a room, then share the invite link.';$('connection').textContent=netMessage||'Create a room or join a friend.';$('opponent').textContent='Opponent';$('you').textContent='Your seat';return;}
+function netRender(){
+ const online=mode.value==='online';
+ const active=online&&!!netRoom?.state.active;
+ $('difficulty').hidden=mode.value!=='ai';
+ $('playArea').hidden=online&&!active;
+ $('turnStatus').hidden=online&&!netRoom;
+ $('new').hidden=online&&!active;
+ $('claim').hidden=online&&!active;
+ $('onlinePanel').hidden=!online;
+ if(!online)return;
+
+ $('roomSetup').hidden=!!netRoom;
+ $('roomInfo').hidden=!netRoom;
+ $('level').disabled=true;
+ $('createRoom').disabled=netBusy;
+ $('joinRoom').disabled=netBusy;
+ $('resumeRoom').hidden=!savedRoom();
+ $('resumeRoom').disabled=netBusy;
+ $('new').textContent='Request new game';
+ $('new').disabled=netBusy||!active;
+ $('claim').disabled=netBusy||!active||!!over||s!==netRoom?.you||chain>=0;
+ if(!netRoom){
+  $('connection').textContent=netMessage||'Create a room or enter a friend’s code.';
+  return;
+ }
  $('codeLabel').textContent=netRoom.code;$('seatLabel').textContent=netRoom.you===1?'You are Gold':'You are Black';let names=netRoom.players||{};$('opponent').textContent=(names.black||'Waiting for opponent')+(netRoom.you===-1?' (you)':'')+' · Black';$('you').textContent=(names.gold||'Gold')+(netRoom.you===1?' (you)':'')+' · Gold';
  $('status').textContent=over||(!netRoom.state.active?'Waiting for opponent…':s===netRoom.you?'Your turn':'Opponent’s turn');
  $('connection').textContent=netMessage||(!netRoom.state.active?'Share this room’s invite link with your friend.':netRoom.state.rematch.length?(netRoom.state.rematch.includes(netRoom.you)?'New game requested. Waiting for your opponent.':'Your opponent requests a new game. Press Request new game to accept.'):'Connected · two-player room');
