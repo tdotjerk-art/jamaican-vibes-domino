@@ -12,18 +12,27 @@ input{width:100%;padding:12px;border:1px solid #456247;border-radius:6px;backgro
   padding:env(safe-area-inset-top) max(8px, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(8px, env(safe-area-inset-left));
  }
  body:has(#draffGame:not([hidden])) header {height:36px;padding:0 8px}
+ body:has(#draffGame:not([hidden]) #playArea:not([hidden])) {
+  /* Match the compact 28px header and the layout's two 4px margins. */
+  --draff-room:calc(100dvh - 36px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+ }
+ body:has(#draffGame:not([hidden]) #playArea:not([hidden])) header {height:28px}
+ body:has(#draffGame:not([hidden]) #playArea:not([hidden])) #playerBar {display:none}
  #draffGame {
-  display:grid;grid-template-columns:min(52vw, calc(var(--draff-room) - 90px)) minmax(0, 290px);
+  /* Reserve 32px for Huff, a 2px gap, and 22px for the bottom player. */
+  display:grid;grid-template-columns:min(60vw, calc(var(--draff-room) - 56px)) minmax(0, 290px);
   justify-content:center;gap:12px;margin:4px auto;padding:0;max-width:none;
  }
  #draffGame .board-shell {padding:5px}
  #draffGame .player {height:22px;padding:0 3px}
  #draffGame .player-huff {
   display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:repeat(2,1fr);
-  column-gap:8px;row-gap:0;height:36px;margin-bottom:4px;font-size:12px;line-height:1.15;
+  column-gap:8px;row-gap:0;height:32px;margin-bottom:2px;font-size:12px;line-height:1.15;
  }
  #draffGame .player-huff strong {grid-area:1 / 1;gap:5px}
- #draffGame .player-huff strong span {overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ #draffGame .player strong span {overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ #draffGame .player .count {white-space:nowrap}
+ #draffGame .player:not(.player-huff) {gap:8px}
  #draffGame .player-huff .dot {flex:0 0 8px;width:8px;height:8px}
  #draffGame .player-huff .count {grid-area:2 / 1;padding-left:13px;white-space:nowrap}
  #draffGame #claim {grid-area:1 / 2 / 3 / 3;min-height:32px;padding:4px 8px;white-space:nowrap}
