@@ -91,7 +91,7 @@ function installHoldem(io, options = {}) {
     if (table.game.start(seat => connected.includes(table.members[seat]))) progress(table);
   }
 
-  function publish(table) {
+  function publish(table) {require('./analytics').changed();
     persist();
     const ready = !table.recovering && table.public && (!table.game || table.game.phase === 'over') && available(table).length >= 2;
     if (ready && !table.startTimer) {
@@ -309,6 +309,8 @@ function installHoldem(io, options = {}) {
     socket.on('table-leave', () => detach(socket, true));
     socket.on('disconnect', () => detach(socket, false));
   });
+  return {analyticsSnapshot:()=>[...tables.values()].map(t=>({id:t.code,phase:t.game&&t.game.phase!=='over'?'playing':!t.game?'waiting':'finished',players:t.members.filter(m=>m.socket&&!m.sittingOut).map(m=>require('./analytics').identity(m.socket.handshake.headers,m.token)),match:t.game?.handNumber?String(t.game.handNumber):null,complete:t.game?.phase==='over'}))};
 }
 
 module.exports = {installHoldem};
+

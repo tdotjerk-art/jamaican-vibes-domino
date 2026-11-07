@@ -374,3 +374,16 @@ if saving online fails, the player can retry or download/copy the captured repor
 Identical retries reuse the same report ID. Report requests have a separate
 96 KiB limit; ordinary game actions retain their 4 KiB limit. Private report
 storage accepts up to 1,000 reports before asking players to download instead.
+
+
+### Private owner analytics
+
+Open `/owner/analytics` and enter the `ANALYTICS_ADMIN_TOKEN` configured on the web service. Use a randomly generated key of at least 32 bytes. The key is submitted as an Authorization header and held only in page memory, never in the URL or browser storage. Without configuration, the summary API returns 503; incorrect keys return 401. Do not commit the key.
+
+Online metrics come from engine room snapshots and authenticated seat activity. Practice play is browser-reported and shown separately. Computers are never counted as players; same-device play counts as one browser. A first-party random browser ID supports approximate daily/30-day unique and returning counts; blocked storage, shared devices, cleared storage and multiple devices affect estimates. Reconnect tokens/room codes are hashed before persistence; names, hands, IP addresses and raw identifiers are not saved. Document this first-party analytics use in the site's privacy notice before public rollout.
+
+History retains 90 Toronto calendar days. Set `ANALYTICS_FILE` to a private path on an **existing persistent disk**; `/var/data/game-analytics.json` is used automatically when `/var/data` exists. An ordinary ephemeral path does not provide durable history. With neither setting, history runs in memory and the dashboard explicitly warns that a restart resets it. Snapshots are atomic and flushed within about one second after updates, then every minute; an abrupt crash can lose the last pending flush. Corrupt snapshots fail startup rather than being overwritten. Back up the configured file with the service's other private state.
+
+Domino/Draff count matches, Ludi games, 3 Cards sessions and Hold’em hands. Unfinished tracked games with no observations for 24 hours are marked as estimated abandonment. History starts at rollout; old play cannot be recovered. Analytics events are informational and never authorize game actions, payments or prizes. Public ingestion is same-origin checked, size-limited and rate-limited, but client-reported practice/visitor data is not fraud-proof.
+
+Deployment checklist: configure the private owner key, verify a persistent mount before relying on history, run `npm test`, verify `/api/analytics/summary` rejects anonymous requests, then verify online/practice counts on two real devices and confirm saved totals survive a service restart. Do not change paid hosting plans without the owner's approval.

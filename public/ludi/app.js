@@ -2,7 +2,7 @@
  'use strict';
  const E=JVLUDI,L=JVLudiLayout,$=id=>document.getElementById(id),svgNS='http://www.w3.org/2000/svg';
  const seatKey='jv-ludi-room-v1',nameKey='jv-draff-player-name-v1',profileKey='jv-ludi-player-v1',T=JVLudiTutorial,R=JVLudiReport,reportKey='jv-ludi-last-report-v1';
- let local=null,room=null,token=null,version=-1,busy=false,epoch=0,poll=null,aiTimer=null,message='',selectedDie=null,rolling=false,rollTimer=null,shownRollNo=0,autoRollTimer=null,autoRollKey='',autoRollDeadline=0;
+ let analyticsLocalRef={},local=null,room=null,token=null,version=-1,busy=false,epoch=0,poll=null,aiTimer=null,message='',selectedDie=null,rolling=false,rollTimer=null,shownRollNo=0,autoRollTimer=null,autoRollKey='',autoRollDeadline=0;
  let trace=[],traceSignature='',lastAttempt=null,reportDraft=null,reportBusy=false,reportSaved=false,reportId='',lastReportState=null;
  let tutorial=null,tutorialMode='ai',profile=null,profileStats=null,profileTask=null;
  let clockTimer=null,clockTargets=[],aiDeadline=0,serverOffset=0,connectionState='connected',backOnlineUntil=0,refreshing=false,winnerShown='';
@@ -18,7 +18,7 @@
   if(!g)return;const signature=JSON.stringify(g);if(signature===traceSignature)return;traceSignature=signature;feedback('');
   trace.push({at:Date.now(),revision:room?.version??null,state:R.state(g)});trace=trace.slice(-8);
  }
- function newTrace(){trace=[];traceSignature='';lastAttempt=null;feedback('')}
+ function newTrace(){analyticsLocalRef={};trace=[];traceSignature='';lastAttempt=null;feedback('')}
  function inspectMove(g,piece,die,seat=g.turn){
   const reason=E.explainMove(g,seat,piece,die);lastAttempt={at:Date.now(),type:'move',piece,die,reason};feedback(reason);return reason;
  }
@@ -218,7 +218,7 @@
   },10000);
  }
  function render(){
-  clearTimeout(aiTimer);const g=snapshot(),active=!!(local||room);remember(g);syncRoll(g);const choices=g?E.legal(g):[];if(!choices.some(m=>m.die===selectedDie))selectedDie=choices[0]?.die??null;document.body.classList.toggle('in-game',!!g);
+  clearTimeout(aiTimer);const g=snapshot(),active=!!(local||room);globalThis.JVAnalytics?.state(local&&!tutorial?analyticsLocalRef:null,local?.phase==='over');remember(g);syncRoll(g);const choices=g?E.legal(g):[];if(!choices.some(m=>m.die===selectedDie))selectedDie=choices[0]?.die??null;document.body.classList.toggle('in-game',!!g);
   $('setup').hidden=active;$('gamePanel').hidden=!active;$('joinControls').hidden=$('mode').value!=='online';$('begin').textContent=$('mode').value==='public'?'Play online':$('mode').value==='online'?'Create online room':'Start game ↗';$('resume').hidden=!saved();
   $('begin').disabled=busy||!!profileTask;$('publicPlay').disabled=busy||!!profileTask;$('publicPlay').hidden=$('mode').value==='public';$('learn').disabled=busy||!!profileTask;$('join').disabled=busy;$('resume').disabled=busy;$('leave').disabled=busy;
   $('roomInfo').hidden=!room||room.publicTable;$('roomCode').textContent=room?.code||'';$('modeLabel').textContent=tutorial?'GUIDED PRACTICE':room?(room.publicTable?'PUBLIC TABLE':'PRIVATE TABLE'):$('mode').value==='local'?'SAME DEVICE':'VS COMPUTERS';
@@ -378,3 +378,4 @@
  document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh()});render();
  if(invite&&saved()?.code===invite.toUpperCase())resume();
 })();
+
