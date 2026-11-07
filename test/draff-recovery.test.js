@@ -37,3 +37,32 @@ test('Draff sends the logged-in name and displays both online players safely',as
  A.equal(JSON.parse(h.lastRequest().body).name,'Junior');A.equal(h.get('you').textContent,'Junior (you) · Gold');A.equal(h.get('opponent').textContent,'<b>Andre</b> · Black');
  h.run('mode.value="local";mode.onchange()');
 });
+
+test('Draff shows lobby, match and computer controls only in the relevant state',()=>{
+ const h=boot();
+ const hidden=id=>h.get(id).hidden;
+ A.equal(hidden('roomSetup'),false);
+ for(const id of ['difficulty','playArea','turnStatus','new','claim','resumeRoom'])A.equal(hidden(id),true,id);
+
+ h.enter();
+ h.run('netRoom.state.active=false;netRender()');
+ A.equal(hidden('roomInfo'),false);
+ A.equal(hidden('roomSetup'),true);
+ A.equal(hidden('new'),true);
+ A.equal(hidden('playArea'),true);
+ A.match(h.get('status').textContent,/Waiting for opponent/);
+
+ h.run('netRoom.state.active=true;s=-netRoom.you;netRender()');
+ A.equal(hidden('playArea'),false);
+ A.equal(hidden('new'),false);
+ A.equal(h.get('status').textContent,'Opponent’s turn');
+
+ h.run('mode.value="ai";mode.onchange()');
+ A.equal(hidden('onlinePanel'),true);
+ A.equal(hidden('difficulty'),false);
+ A.equal(h.get('level').disabled,false);
+ h.run('mode.value="local";mode.onchange()');
+ A.equal(hidden('difficulty'),true);
+ h.run('mode.value="online";mode.onchange()');
+ A.equal(hidden('resumeRoom'),false);
+});
