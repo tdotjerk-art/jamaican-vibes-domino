@@ -22,13 +22,102 @@
 /* Keep the dice centered while removing only the on-table roll button. */
 #tableRoll{display:none!important}
 
-/* Landscape phones: do not shrink the entire board to the short viewport height. */
-@media (orientation:landscape) and (max-height:600px){
- .board-viewport{width:min(92vw,720px)!important;max-width:100%;margin-inline:auto}
- .layout{display:flex;flex-direction:column;align-items:stretch;max-width:850px;margin:12px auto;gap:14px;padding:0 10px}
- .table-panel,aside{width:100%}
- .board-frame{padding:5px}
- #board{width:100%;height:auto;aspect-ratio:1}
+/* Fit the square board to the space below the status and beside the controls. */
+@media (orientation: landscape) and (max-height: 600px) {
+  body {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    height: 100svh;
+    height: 100dvh;
+  }
+
+  header {
+    width: 100%;
+    min-height: 30px;
+    padding: 4px 12px;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) clamp(200px, 36%, 340px);
+    align-items: stretch;
+    width: 100%;
+    min-height: 0;
+    margin: 0 auto;
+    padding: 4px 8px;
+    gap: 8px;
+  }
+
+  .table-panel,
+  .layout > aside {
+    width: 100%;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .table-panel {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .table-panel > :not(.board-viewport) { flex-shrink: 0; }
+  .table-panel .table-heading,
+  .table-panel .turn-strip { margin-bottom: 4px; }
+
+  .turn-strip .turn-banner {
+    min-height: 32px;
+    padding: 6px 8px;
+    font-size: 13px;
+  }
+
+  .table-panel .move-feedback {
+    max-height: 44px;
+    margin-bottom: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
+    overflow-y: auto;
+  }
+
+  .move-feedback:not([hidden]) + .move-help { display: none; }
+
+  .board-viewport {
+    flex: 1;
+    display: grid;
+    place-items: center;
+    container-type: size;
+    width: 100%;
+    min-height: 0;
+  }
+
+  /* Keep the board usable when a full panel needs to scroll above it. */
+  .table-panel:has(> #reportPanel:not([hidden]), > #winnerPanel:not([hidden]), > #tutorialPanel:not([hidden])) .board-viewport {
+    min-height: 120px;
+  }
+
+  .board-viewport .board-frame {
+    width: min(100cqw, 100cqh);
+    padding: 4px;
+  }
+
+  .table-die {
+    width: clamp(26px, 14cqh, 48px);
+    height: clamp(26px, 14cqh, 48px);
+    padding: 4px;
+  }
+
+  .quick-controls { display: none; }
+  .in-game #playControls { display: block; }
+
+  #gamePanel {
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+  }
+
+  #gamePanel .game-top { order: -2; }
+  #playControls { order: -1; }
+  #playControls .dice-box { margin: 4px 0; }
+  #roll { margin-top: 4px; }
 }
 
 /* Status stays beside the table on narrow screens; ticking never redraws the board. */
