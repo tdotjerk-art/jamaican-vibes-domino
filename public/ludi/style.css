@@ -70,6 +70,16 @@
     font-size: 13px;
   }
 
+  .table-panel .move-feedback {
+    max-height: 44px;
+    margin-bottom: 4px;
+    padding: 4px 8px;
+    font-size: 12px;
+    overflow-y: auto;
+  }
+
+  .move-feedback:not([hidden]) + .move-help { display: none; }
+
   .board-viewport {
     flex: 1;
     display: grid;
