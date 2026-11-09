@@ -76,6 +76,11 @@
     place-items: center;
     container-type: size;
     width: 100%;
+    min-height: 0;
+  }
+
+  /* Keep the board usable when a full panel needs to scroll above it. */
+  .table-panel:has(> #reportPanel:not([hidden]), > #winnerPanel:not([hidden]), > #tutorialPanel:not([hidden])) .board-viewport {
     min-height: 120px;
   }
 
