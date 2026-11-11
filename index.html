@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Jamaican Vibes Domino</title>
 <script src="/sound-settings.js"></script>
+<script src="/domino-energy.js"></script>
 <style>
 :root{
   --gold:#ffd447;
@@ -5725,6 +5726,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
 
   function playSound(kind){
     if(!soundOn||!window.JVSound.enabled(kind))return;
+    if(kind==='play' && window.JVDominoEnergy)return;
     try{
       const AC=window.AudioContext||window.webkitAudioContext,ctx=new AC(),o=ctx.createOscillator(),g=ctx.createGain();
       const map={play:[220,.06],pass:[130,.09],hand:[520,.16],match:[700,.26],ready:[360,.08]};
@@ -6330,9 +6332,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
   'use strict';
 
   let audioCtx=null;
-  let lastAnimatedOrder=-1;
   let eventTimer=null;
-  let lastBoardCount=typeof board!=='undefined' ? board.length : 0;
 
   function soundEnabled(){
     try{
@@ -6426,16 +6426,13 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
   }
 
   function animateNewestPlayedDomino(){
-    if(typeof playSequence==='undefined')return;
-    const order=Number(playSequence);
-    if(!Number.isFinite(order)||order<=lastAnimatedOrder)return;
-    const el=document.querySelector('#board .dom-physical[data-played-order="'+order+'"]');
-    if(!el)return;
-    lastAnimatedOrder=order;
-    el.classList.remove('jv-new-play');
-    void el.offsetWidth;
-    el.classList.add('jv-new-play');
-    setTimeout(()=>el.classList.remove('jv-new-play'),350);
+    if(!window.JVDominoEnergy || typeof board==='undefined')return;
+    const state=window.gameConnectionMode==='online'?window.authoritativeOnlineState:null;
+    window.JVDominoEnergy.observe(board,handNo,{
+      online:!!state,
+      room:state?.code,
+      winning:state?['hand-win','match-win'].includes(state.lastEvent):gameOver
+    });
   }
 
   function maybeYardTalk(){/* announcer removed */}
@@ -6459,17 +6456,9 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
   if(typeof render==='function'){
     const originalRender=render;
     render=function(){
-      const before=lastBoardCount;
       const result=originalRender.apply(this,arguments);
-      const now=(typeof board!=='undefined'&&Array.isArray(board))?board.length:0;
-      if(now>before){
-        requestAnimationFrame(()=>{
-          animateNewestPlayedDomino();
-          playFX('play');
-          if(typeof navigator!=='undefined'&&navigator.vibrate)navigator.vibrate(16);
-        });
-      }
-      lastBoardCount=now;
+      // Observe empty boards too: played-order numbering restarts each hand.
+      animateNewestPlayedDomino();
       return result;
     };
   }
@@ -6812,7 +6801,7 @@ function noise(duration=.22,gain=.018){
 }
 function fx(kind){
   activeSoundKind=kind==='winning'?'hand':kind;
-  if(kind==='double'){tone(88,.13,.055,'triangle');tone(176,.07,.028,'square',.03)}
+  if(kind==='double' && !window.JVDominoEnergy){tone(88,.13,.055,'triangle');tone(176,.07,.028,'square',.03)}
   if(kind==='winning'){tone(196,.08,.05,'square');tone(392,.12,.05,'triangle',.07);noise(.28,.022)}
   if(kind==='last'){tone(330,.08,.035);tone(440,.10,.035,'triangle',.09)}
   if(kind==='blocked'){tone(120,.12,.045);tone(95,.16,.04,'triangle',.12);noise(.25,.014)}
