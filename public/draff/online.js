@@ -27,7 +27,7 @@ function netRender(){
   $('connection').textContent=netMessage||'Create a room or enter a friend’s code.';
   return;
  }
- $('codeLabel').textContent=netRoom.code;$('seatLabel').textContent=netRoom.you===1?'You are Gold':'You are Black';let names=netRoom.players||{};$('opponent').textContent=(names.black||'Waiting for opponent')+(netRoom.you===-1?' (you)':'')+' · Black';$('you').textContent=(names.gold||'Gold')+(netRoom.you===1?' (you)':'')+' · Gold';
+ $('codeLabel').textContent=netRoom.code;$('seatLabel').textContent=netRoom.you===1?'You are Gold':'You are Green';let names=netRoom.players||{};$('opponent').textContent=(names.black||'Waiting for opponent')+(netRoom.you===-1?' (you)':'')+' · Green';$('you').textContent=(names.gold||'Gold')+(netRoom.you===1?' (you)':'')+' · Gold';
  $('status').textContent=over||(!netRoom.state.active?'Waiting for opponent…':s===netRoom.you?'Your turn':'Opponent’s turn');
  $('connection').textContent=netMessage||(!netRoom.state.active?'Share this room’s invite link with your friend.':netRoom.state.rematch.length?(netRoom.state.rematch.includes(netRoom.you)?'New game requested. Waiting for your opponent.':'Your opponent requests a new game. Press Request new game to accept.'):'Connected · two-player room');
  $('hint').textContent=claiming?'Tap the opposing piece that missed a capture.':netRoom.state.notice|| (chain>=0?'Continue jumping with the same piece.':'Select a piece, then choose where to move.');
