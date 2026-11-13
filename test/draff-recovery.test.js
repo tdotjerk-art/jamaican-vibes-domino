@@ -34,7 +34,7 @@ test('Draff sends the logged-in name and displays both online players safely',as
  h.run('DraffProfile.ready=()=>true');
  const room={code:'ABCDEFGH',token:'a'.repeat(64),you:1,version:1,players:{gold:'Junior',black:'<b>Andre</b>'},state:{b:require('../public/draff/engine').initial(),s:1,chain:-1,last:[],over:'',active:true,rematch:[]}};
  h.setResponse({ok:true,json:async()=>room});await h.run('enterRoom("create")');
- A.equal(JSON.parse(h.lastRequest().body).name,'Junior');A.equal(h.get('you').textContent,'Junior (you) · Gold');A.equal(h.get('opponent').textContent,'<b>Andre</b> · Black');
+ A.equal(JSON.parse(h.lastRequest().body).name,'Junior');A.equal(h.get('you').textContent,'Junior (you) · Gold');A.equal(h.get('opponent').textContent,'<b>Andre</b> · Green');
  h.run('mode.value="local";mode.onchange()');
 });
 
