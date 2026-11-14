@@ -534,3 +534,8 @@ body .app>.table::before{left:10.715%;right:10.715%}
 body .app>.table #board{left:15.575%!important;right:15.575%!important}
 body .app>.table #turnLight2{left:90.2408%!important}
 body .app>.table #turnLight4{left:9.7592%!important}
+
+/* Match setup modes flow in separate cells instead of fixed screen positions. */
+body #modal #card:has(#partnerBtn){position:fixed!important;inset:auto!important;top:max(12px,env(safe-area-inset-top))!important;left:50%!important;transform:translateX(-50%)!important;translate:none!important;width:min(420px,calc(100vw - 24px))!important;min-width:0!important;max-width:calc(100vw - 24px)!important;max-height:calc(100dvh - 24px)!important;padding:12px!important;margin:0!important;box-sizing:border-box;display:grid!important;gap:12px;overflow:auto!important}
+body #modal #card .row:has(#partnerBtn){display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;width:100%;margin:0!important}
+body #modal #card :is(#partnerBtn,#individualBtn,#startMatchBtn){position:static!important;inset:auto!important;transform:none!important;translate:none!important;scale:1!important;width:100%!important;min-width:0!important;min-height:44px!important;margin:0!important;padding:10px 12px!important;box-sizing:border-box;white-space:normal!important;word-break:normal;font-size:16px!important;line-height:1.25!important}
