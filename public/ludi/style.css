@@ -226,11 +226,13 @@
   .board-viewport {
     overflow: auto;
     align-items: start;
+    justify-items: start;
     scrollbar-gutter: stable;
   }
   .board-viewport .board-frame {
     width: var(--ludi-board-size, calc(100svh - 4px));
     max-width: none;
+    margin-inline: auto;
     padding: 3px;
     border-radius: 12px;
   }
