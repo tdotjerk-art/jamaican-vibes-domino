@@ -1,8 +1,8 @@
 (function(root){
  'use strict';
- // Enlarge the current track squares by 20% within the same 600-unit board.
+ // Increase the small outer track squares by 10%; retain the 600-unit board and corner homes.
  const PREVIOUS_CENTER=144*1.15*1.15*1.10;
- const UNIT=((600-PREVIOUS_CENTER)/12)*1.10*1.20,CENTER=600-12*UNIT;
+ const UNIT=((600-PREVIOUS_CENTER)/12)*1.10,CENTER=600-12*UNIT;
  const edge=n=>n<=6?n*UNIT:6*UNIT+CENTER+(n-7)*UNIT;
  const middle=n=>(edge(n)+edge(n+1))/2;
  const palettes={B:'#080b08',G:'#08753c',Y:'#f4cf22'};
@@ -24,6 +24,6 @@
  }
  function home(color){const side=140,margin=8,far=600-margin-side;const [x,y]=[[margin,margin],[far,margin],[far,far],[margin,far]][color];return {x,y,width:side,height:side};}
  function yard(color,piece){const h=home(color),along=20+34*piece;return color===0?[h.x+30,h.y+along]:color===1?[h.x+along,h.y+30]:color===2?[h.x+h.width-20,h.y+along]:[h.x+along,h.y+h.height-20];}
- function finished(color,piece){const near=edge(6)+12,far=edge(7)-12,along=near+(far-near)*piece/3;return color===0?[near,along]:color===1?[along,near]:color===2?[far,along]:[along,far];}
+ function finished(color,piece){const near=edge(6)+12,far=edge(7)-12,along=264+24*piece;return color===0?[near,along]:color===1?[along,near]:color===2?[far,along]:[along,far];}
  const api={UNIT,edge,middle,paint,home,yard,finished};if(typeof module!=='undefined')module.exports=api;else root.JVLudiLayout=api;
 })(globalThis);
