@@ -75,3 +75,13 @@
  #game .your-hand .cards{gap:6px}
  #game .your-hand .card{width:37px;height:52px;font-size:20px;padding:2px}
 }
+
+/* Enlarge playing cards by 20% in hands, seats and the centre pile. */
+.table .card{zoom:1.2}
+@media (orientation:landscape) and (max-height:600px){
+ #game>.table{overflow:visible}
+ #game .player{width:clamp(100px,20%,110px)}
+ #game .seat-north,#game .seat-south{width:114px}
+ #game .table:has(.your-hand .card) .seat-south{left:calc(50% + 79px);width:90px}
+ #game .centre{top:45%}
+}
