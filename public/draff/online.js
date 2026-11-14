@@ -1,10 +1,12 @@
-var netRoom=null,netBusy=false,netTimer=null,netMessage='',netVersion=-1,netEpoch=0;
+var netRoom=null,netBusy=false,netTimer=null,netMessage='',netVersion=-1,netEpoch=0,lastPlayingState=null;
 const savedKey='jv-draff-online-room-v1';
 function savedRoom(){try{let r=JSON.parse(localStorage.getItem(savedKey)||'null');return r&&/^[A-Z2-9]{8}$/.test(r.code)&&/^[a-f0-9]{64}$/.test(r.token)?r:null}catch{return null}}
 function remember(r){try{localStorage.setItem(savedKey,JSON.stringify({code:r.code,token:r.token}))}catch{}}
 function netRender(){
  const online=mode.value==='online';
  const active=online&&!!netRoom?.state.active;
+ const playing=!online||active;
+ if(playing!==lastPlayingState){$('gameOptions').open=!playing;lastPlayingState=playing;}
  $('difficulty').hidden=mode.value!=='ai';
  $('playArea').hidden=online&&!active;
  $('turnStatus').hidden=online&&!netRoom;
@@ -30,7 +32,7 @@ function netRender(){
  $('codeLabel').textContent=netRoom.code;$('seatLabel').textContent=netRoom.you===1?'You are Gold':'You are Green';let names=netRoom.players||{};$('opponent').textContent=(names.black||'Waiting for opponent')+(netRoom.you===-1?' (you)':'')+' · Green';$('you').textContent=(names.gold||'Gold')+(netRoom.you===1?' (you)':'')+' · Gold';
  $('status').textContent=over||(!netRoom.state.active?'Waiting for opponent…':s===netRoom.you?'Your turn':'Opponent’s turn');
  $('connection').textContent=netMessage||(!netRoom.state.active?'Share this room’s invite link with your friend.':netRoom.state.rematch.length?(netRoom.state.rematch.includes(netRoom.you)?'New game requested. Waiting for your opponent.':'Your opponent requests a new game. Press Request new game to accept.'):'Connected · two-player room');
- $('hint').textContent=claiming?'Tap the opposing piece that missed a capture.':netRoom.state.notice|| (chain>=0?'Continue jumping with the same piece.':'Select a piece, then choose where to move.');
+ $('hint').textContent=netMessage|| (netRoom.state.rematch.length?$('connection').textContent:'')|| (claiming?'Tap the opposing piece that missed a capture.':netRoom.state.notice|| (chain>=0?'Continue jumping with the same piece.':'Select a piece, then choose where to move.'));
 }
 async function requestGame(a,credential=netRoom){let res=await fetch('/api/draff'+(a?'':'?code='+encodeURIComponent(credential.code)),{method:a?'POST':'GET',headers:{'Content-Type':'application/json',...(credential?.token?{Authorization:'Bearer '+credential.token}:{})},...(a?{body:JSON.stringify({...a,...(credential?{code:credential.code,version:netVersion}:{})})}:{})});let r=await res.json();if(!res.ok){let error=Error(r.error||'Unable to connect.');error.status=res.status;throw error;}return r;}
 function receive(r,token){if(mode.value!=='online')return;if(netRoom&&r.code===netRoom.code&&r.version<netVersion)return;let changed=r.version!==netVersion;netRoom={...r,token:token||netRoom?.token};netVersion=r.version;b=r.state.b;s=r.state.s;chain=r.state.chain;last=r.state.last;over=r.state.over;busy=false;if(changed){showCapture(r.state.captureSquares||[]);selected=chain>=0&&s===r.you?chain:-1;claiming=false;}render();}

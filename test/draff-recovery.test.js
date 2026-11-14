@@ -66,3 +66,13 @@ test('Draff shows lobby, match and computer controls only in the relevant state'
  h.run('mode.value="online";mode.onchange()');
  A.equal(hidden('resumeRoom'),false);
 });
+
+ test('Draff folds controls during play while preserving manual expansion and visible connection notices',()=>{
+ const h=boot();A.equal(h.get('gameOptions').open,true);
+ h.enter();A.equal(h.get('gameOptions').open,false);
+ h.get('gameOptions').open=true;h.run('netRender()');A.equal(h.get('gameOptions').open,true);
+ h.run('netMessage="Connection interrupted. Reconnecting…";netRender()');A.match(h.get('hint').textContent,/Reconnecting/);
+ h.run('netMessage="";netRoom.state.rematch=[-1];netRender()');A.match(h.get('hint').textContent,/opponent requests a new game/);
+ h.run('mode.value="online";mode.onchange()');A.equal(h.get('gameOptions').open,true);
+ h.run('mode.value="ai";mode.onchange()');A.equal(h.get('gameOptions').open,false);
+});
