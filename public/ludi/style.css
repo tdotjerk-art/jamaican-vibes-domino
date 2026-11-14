@@ -179,3 +179,44 @@
     border-radius: 12px;
   }
 }
+
+/* Wide phones: give the board the full height below the header.
+   Status and controls share the column beside it. Tall screens are unchanged. */
+@media (orientation: landscape) and (max-height: 600px) {
+  .layout {
+    grid-template-rows: repeat(8, auto) minmax(0, 1fr);
+  }
+
+  .table-panel { display: contents; }
+
+  .table-heading { grid-column: 2; grid-row: 1; }
+  .turn-strip { grid-column: 2; grid-row: 2; }
+  .move-feedback { grid-column: 2; grid-row: 3; }
+  .move-help { grid-column: 2; grid-row: 4; }
+  #reportPanel { grid-column: 2; grid-row: 5; }
+  #winnerPanel { grid-column: 2; grid-row: 6; }
+  #tutorialPanel { grid-column: 2; grid-row: 7; }
+
+  .table-panel > :not(.board-viewport) {
+    min-height: 0;
+    max-height: 35dvh;
+    margin-block: 0;
+    overflow-y: auto;
+  }
+
+  .board-viewport {
+    grid-column: 1;
+    grid-row: 1 / 10;
+    height: 100%;
+    min-height: 0;
+  }
+
+  .table-panel:has(> #reportPanel:not([hidden]), > #winnerPanel:not([hidden]), > #tutorialPanel:not([hidden])) .board-viewport {
+    min-height: 0;
+  }
+
+  .layout > aside {
+    grid-column: 2;
+    grid-row: 9;
+  }
+}
