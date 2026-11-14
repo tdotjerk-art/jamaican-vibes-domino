@@ -20,11 +20,12 @@ input{width:100%;padding:12px;border:1px solid #456247;border-radius:6px;backgro
  body:has(#draffGame:not([hidden]) #playArea:not([hidden])) :is(header,#playerBar) {display:none}
  #draffGame:has(> #playArea:not([hidden])) {
   --draff-board-size:min(var(--draff-room), calc(100vw - max(2px, env(safe-area-inset-left)) - max(2px, env(safe-area-inset-right)) - 166px));
-  grid-template-columns:var(--draff-board-size) minmax(160px,1fr);
+  grid-template-columns:var(--draff-board-size) clamp(160px,24vw,200px);
   grid-template-rows:auto minmax(0,1fr) auto;
   gap:6px;
   height:var(--draff-room);
-  margin:0;
+  width:max-content;max-width:100%;
+  margin:0 auto;
  }
  #draffGame:has(> #playArea:not([hidden])) #playArea {display:contents}
  #draffGame #playArea .board-shell {grid-area:1 / 1 / 4 / 2;width:var(--draff-board-size);align-self:center}
