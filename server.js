@@ -39,11 +39,11 @@ const addHistory=(r,s)=>{r.history.push(s);if(r.history.length>60)r.history.shif
 function clearTimer(r){if(r.timer){clearTimeout(r.timer);r.timer=null}}
 function publicPlayers(r){return r.players.map(p=>p?{name:p.name,seat:p.seat,connected:!!p.connected,ready:!!p.ready}:null)}
 function roomState(r){return {
- code:r.code,players:publicPlayers(r),hostSeat:r.hostSeat,mode:r.mode,target:r.target,tieRule:tieRuleOf(r.tieRule),phase:r.phase,publicTable:!!r.publicTable,
+ code:r.code,playerCount:r.players.length,players:publicPlayers(r),hostSeat:r.hostSeat,mode:r.mode,target:r.target,tieRule:tieRuleOf(r.tieRule),phase:r.phase,publicTable:!!r.publicTable,
  message:r.message||"",spectatorCount:r.spectators.size,rematchVotes:[...r.rematchVotes]
 }}
 function gameBase(r){return {
- code:r.code,players:publicPlayers(r),hostSeat:r.hostSeat,mode:r.mode,target:r.target,tieRule:tieRuleOf(r.tieRule),phase:r.phase,
+ code:r.code,playerCount:r.players.length,players:publicPlayers(r),hostSeat:r.hostSeat,mode:r.mode,target:r.target,tieRule:tieRuleOf(r.tieRule),phase:r.phase,
  turn:r.turn,handNo:r.handNo,handValue:r.handValue,board:r.board,handCounts:r.hands.map(h=>h.length),
  revealHands:r.revealHands,scores:r.scores,teamScores:r.teamScores,deadline:r.deadline||0,dealUntil:r.dealUntil||0,message:r.message||"",
  poseOptions:r.poseOptions||[],history:r.history,lastEvent:r.lastEvent||"",spectatorCount:r.spectators.size,
@@ -123,18 +123,18 @@ function applyBruckAndStartWin(r,winnerSeat){
 }
 function scheduleTurn(r){
  clearTimer(r);if(r.phase!=="playing"||r.turn==null)return;
- if(connectedPlayers(r)<4){pauseForDisconnect(r);return}
+ if(connectedPlayers(r)<r.players.length){pauseForDisconnect(r);return}
  const sec=turnSeconds(r.hands[r.turn].length),intro=Math.max(0,(r.dealUntil||0)-Date.now());r.deadline=Date.now()+intro+sec*1000;
  r.timer=setTimeout(()=>autoAction(r),intro+sec*1000+75);r.timer.unref?.();emitAll(r)
 }
 function allBlocked(r){return r.hands.every(h=>!h.some(t=>canPlay(r.board,t)))}
 function nextPlayableTurn(r){
  let guard=0;
- while(guard++<4&&r.phase==="playing"){
+ while(guard++<r.players.length&&r.phase==="playing"){
    if(r.hands[r.turn].some(t=>canPlay(r.board,t)))break;
    if(allBlocked(r)){finishBlocked(r);return}
    const n=r.players[r.turn]?.name||"Player";addHistory(r,`${n} passed.`);setEvent(r,"pass",`${n} passes.`);
-   r.turn=(r.turn+1)%4
+   r.turn=(r.turn+1)%r.players.length
  }
  if(r.phase==="playing")scheduleTurn(r)
 }
@@ -162,7 +162,7 @@ function playTile(r,seat,tileId,side,automatic=false){
  addHistory(r,`${n} played ${t.a}-${t.b}${automatic?" automatically":""}.`);
  setEvent(r,"play",`${n} played ${t.a}-${t.b}.`);
  if(!hand.length){finishWin(r,seat);return {ok:true}}
- r.turn=(r.turn+1)%4;nextPlayableTurn(r);return {ok:true}
+ r.turn=(r.turn+1)%r.players.length;nextPlayableTurn(r);return {ok:true}
 }
 function autoAction(r){
  if(r.phase!=="playing")return;
@@ -170,7 +170,7 @@ function autoAction(r){
  if(!playables.length){
    if(allBlocked(r)){finishBlocked(r);return}
    const n=r.players[seat]?.name||"Player";addHistory(r,`${n} passed.`);setEvent(r,"pass",`${n} passes.`);
-   r.turn=(r.turn+1)%4;nextPlayableTurn(r);return
+   r.turn=(r.turn+1)%r.players.length;nextPlayableTurn(r);return
  }
  const t=playables[Math.floor(Math.random()*playables.length)];let side="start";
  if(r.board.length){const[L,R]=ends(r.board),l=t.a===L||t.b===L,rr=t.a===R||t.b===R;side=l&&rr?(Math.random()<.5?"left":"right"):(l?"left":"right")}
@@ -247,7 +247,7 @@ function finishBlocked(r){
 }
 function beginHand(r,poser=null){
  r.dealUntil=Date.now()+4000;
- clearTimer(r);const d=shuffle(makeDeck());r.hands=[d.slice(0,7),d.slice(7,14),d.slice(14,21),d.slice(21,28)];
+ clearTimer(r);const d=shuffle(makeDeck());const n=r.players.length,at=d.findIndex(t=>t.a===6&&t.b===6);if(at>=n*7){const slot=Math.floor(Math.random()*n*7);[d[slot],d[at]]=[d[at],d[slot]];}r.hands=Array.from({length:n},(_,i)=>d.slice(i*7,i*7+7));
  r.board=[];r.playSequence=0;r.revealHands=false;r.handNo++;r.handValue=r.mode==="individual"?(r.tiedCarry&&tieRuleOf(r.tieRule)==="double-six-two"?2:1):(r.tiedCarry?2:(r.nextPlayFor||1));r.phase="playing";r.poseOptions=[];r.message="";
 
  // FIRST HAND AND BRUCK RESTART RULE:
@@ -264,7 +264,7 @@ function beginHand(r,poser=null){
    r.playSequence++;
    r.board=[{...t,playedOrder:r.playSequence,player:holder,side:"start"}];
    const n=r.players[holder]?.name||`Player ${holder+1}`;
-   r.turn=(holder+1)%4;
+   r.turn=(holder+1)%r.players.length;
    addHistory(r,`Hand ${r.handNo} started. ${n} has double-six and poses 6-6.`);
    setEvent(r,"double-six-pose",`${n} has double-six and poses 6-6.`);
    nextPlayableTurn(r);
@@ -317,7 +317,7 @@ function pauseForDisconnect(r){
  }
 }
 function resumeIfPossible(r){
- if(r.phase!=="paused"||connectedPlayers(r)<4)return;
+ if(r.phase!=="paused"||connectedPlayers(r)<r.players.length)return;
  const prev=r.phaseBeforePause||"playing";r.phase=prev;r.turn=r.turnBeforePause;r.phaseBeforePause=null;r.turnBeforePause=null;
  r.message="All players reconnected.";addHistory(r,r.message);
  if(r.phase==="playing")scheduleTurn(r);else emitAll(r)
@@ -330,7 +330,7 @@ function abandonSeat(r,seat){
  const p=r.players[seat];if(!p)return;
  if(p.graceTimer)clearTimeout(p.graceTimer);
  r.players[seat]=null;r.ready=false;promoteHost(r);clearTimer(r);
- r.hands=[[],[],[],[]];r.board=[];r.turn=null;r.phase="waiting";r.revealHands=false;r.message="A seat opened. Waiting for four ready players.";
+ r.hands=r.players.map(()=>[]);r.board=[];r.turn=null;r.phase="waiting";r.revealHands=false;r.message="A seat opened. Waiting for all selected players to be ready.";
  if(r.publicTable&&!r.players.some(Boolean)&&!r.spectators.size){clearTimeout(r.restartTimer);rooms.delete(r.code);return;}
  r.players.forEach(x=>{if(x)x.ready=r.publicTable&&r.handNo===0&&x.connected});emitAll(r)
 }
@@ -348,12 +348,13 @@ function leaveCurrentRoom(socket){
  }
  delete socket.data.roomCode;delete socket.data.seat;delete socket.data.spectator;
 }
-function newRoom(name,mode,target,socket,tieRule){
+function newRoom(name,mode,target,socket,tieRule,playerCount=4){
+ const n=[2,3,4].includes(playerCount)?playerCount:4;if(n<4)mode="individual";
  let code;do code=randCode();while(rooms.has(code));
  const token=randToken(),room={code,mode:mode==="individual"?"individual":"partner",target:clampTarget(target),tieRule:tieRuleOf(tieRule),hostSeat:0,
- analyticsMatch:crypto.randomUUID(),players:[null,null,null,null],spectators:new Map(),hands:[[],[],[],[]],board:[],turn:null,handNo:0,handValue:1,
+ analyticsMatch:crypto.randomUUID(),players:Array(n).fill(null),spectators:new Map(),hands:[[],[],[],[]],board:[],turn:null,handNo:0,handValue:1,
  tiedCarry:false,lastWinnerTeam:null,lastIndividualWinner:null,scores:[0,0,0,0],teamScores:[0,0],phase:"waiting",
- revealHands:false,playSequence:0,timer:null,deadline:0,message:"Waiting for four players to get ready.",poseOptions:[],
+ revealHands:false,playSequence:0,timer:null,deadline:0,message:"Waiting for players to get ready.",poseOptions:[],
  history:[],lastEvent:"",rematchVotes:new Set(),phaseBeforePause:null,turnBeforePause:null,
  bruckStartTeam:null,bruckStartCount:0,oneOnePlayTwo:false,doubleSixPoseAfterBruck:false,nextPlayFor:1};
  room.players[0]={id:socket.id,name,seat:0,token,connected:true,ready:false,graceTimer:null};rooms.set(code,room);return {room,token}
@@ -377,7 +378,9 @@ io.on("connection",socket=>{
    next();
  });
 
- socket.on("join-public-table",({name})=>{
+ socket.on("join-public-table",({name,playerCount,mode})=>{
+   const count=[2,3,4].includes(playerCount)?playerCount:4;
+   const publicMode=count<4||mode==="individual"?"individual":"partner";
    name=typeof name==="string"?name.trim().slice(0,20):"";
    if(!name)return socket.emit("room-error","A name is required.");
    const current=seatedRoom(socket);
@@ -393,7 +396,7 @@ io.on("connection",socket=>{
    // Map iteration is insertion ordered, so the oldest available table fills first.
    let room;
    for(const candidate of rooms.values()){
-     if(candidate.publicTable&&candidate.phase==="waiting"&&candidate.handNo===0&&candidate.players.some(player=>!player)){
+     if(candidate.players.length===count&&candidate.mode===publicMode&&candidate.publicTable&&candidate.phase==="waiting"&&candidate.handNo===0&&candidate.players.some(player=>!player)){
        room=candidate;
        break;
      }
@@ -405,22 +408,22 @@ io.on("connection",socket=>{
      token=randToken();
      room.players[seat]={id:socket.id,name,seat,token,connected:true,ready:true,graceTimer:null};
    }else{
-     ({room,token}=newRoom(name,"partner",6,socket,"double-six-two"));
+     ({room,token}=newRoom(name,publicMode,6,socket,"double-six-two",count));
      room.publicTable=true;
      seat=0;
      room.players[0].ready=true;
    }
-   room.message="Waiting for four players. The public table starts automatically.";
+   room.message=`Waiting for ${room.players.length} players. The public table starts automatically.`;
    socket.data.roomCode=room.code;
    socket.data.seat=seat;
    socket.join(room.code);
    socket.emit("seat-assigned",{code:room.code,seat,token});
    startIfReady(room);
  });
- socket.on("create-room",({name,mode,target,tieRule})=>{
+ socket.on("create-room",({name,mode,target,tieRule,playerCount})=>{
    name=String(name||"").trim().slice(0,20);if(!name)return socket.emit("room-error","A name is required.");
    leaveCurrentRoom(socket);
-   const {room,token}=newRoom(name,mode,target,socket,tieRule); if(room.mode==="partner") room.target=6;socket.data.roomCode=room.code;socket.data.seat=0;socket.join(room.code);
+   const {room,token}=newRoom(name,mode,target,socket,tieRule,playerCount); if(room.mode==="partner") room.target=6;socket.data.roomCode=room.code;socket.data.seat=0;socket.join(room.code);
    socket.emit("seat-assigned",{code:room.code,seat:0,token});emitAll(room)
  });
  socket.on("join-room",({name,code})=>{
@@ -449,7 +452,7 @@ io.on("connection",socket=>{
  });
  socket.on("set-room-options",({mode,target,tieRule})=>{
    const r=seatedRoom(socket),seat=socket.data.seat;if(!r||r.publicTable||seat!==r.hostSeat||r.phase!=="waiting")return;
-   r.mode=mode==="individual"?"individual":"partner";r.target=r.mode==="partner"?6:clampTarget(target);r.tieRule=tieRuleOf(tieRule);emitAll(r)
+   r.mode=r.players.length<4||mode==="individual"?"individual":"partner";r.target=r.mode==="partner"?6:clampTarget(target);r.tieRule=tieRuleOf(tieRule);emitAll(r)
  });
  socket.on("toggle-ready",()=>{
    const r=seatedRoom(socket),seat=socket.data.seat;if(!r)return socket.emit("action-error","Join a player seat first.");if(!Number.isInteger(seat)||r.phase!=="waiting"||(r.publicTable&&r.handNo===0&&r.players.some(p=>!p)))return;
@@ -467,8 +470,8 @@ io.on("connection",socket=>{
  });
  socket.on("rematch-vote",()=>{
    const r=seatedRoom(socket),seat=socket.data.seat;if(!r||r.phase!=="match-over"||!Number.isInteger(seat))return;
-   r.rematchVotes.add(seat);r.message=`Rematch votes: ${r.rematchVotes.size}/4`;emitAll(r);
-   if(r.rematchVotes.size===4){
+   r.rematchVotes.add(seat);r.message=`Rematch votes: ${r.rematchVotes.size}/${r.players.length}`;emitAll(r);
+   if(r.rematchVotes.size===r.players.length){
      r.scores=[0,0,0,0];r.teamScores=[0,0];r.bruckStartTeam=null;r.bruckStartCount=0;r.oneOnePlayTwo=false;r.doubleSixPoseAfterBruck=false;r.nextPlayFor=1;r.handNo=0;r.tiedCarry=false;r.lastWinnerTeam=null;r.lastIndividualWinner=null;r.rematchVotes.clear();
      r.analyticsMatch=crypto.randomUUID();r.history=[];r.players.forEach(p=>{if(p)p.ready=false});r.phase="waiting";r.message="Rematch ready. Press READY.";emitAll(r)
    }

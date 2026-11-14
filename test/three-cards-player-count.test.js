@@ -3,14 +3,14 @@ const http=require('node:http'),{Server}=require('socket.io'),{io:connect}=requi
 const {installThreeCards}=require('../three-cards-online');
 const {evaluateCall,callResult}=require('../public/three-cards-engine');
 function wait(s,event,predicate=()=>true){return new Promise((resolve,reject)=>{const timer=setTimeout(()=>{s.off(event,handler);reject(Error('Timeout '+event));},4000);function handler(value){if(predicate(value)){clearTimeout(timer);s.off(event,handler);resolve(value);}}s.on(event,handler);});}
-for(const count of [2,3])test(`${count} online players complete calls and a hand; scores scale with table size`,async()=>{
+for(const count of [2,3,4])test(`${count} online players complete calls and a hand; scores scale with table size`,async()=>{
  const server=http.createServer(),io=new Server(server);installThreeCards(io);const clients=[];
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  try{
   for(let i=0;i<count;i++){
    const socket=connect(`http://127.0.0.1:${server.address().port}/three-cards`,{transports:['websocket'],forceNew:true});
    socket.on('state',state=>socket.current=state);clients.push(socket);await wait(socket,'connect');
-   const update=wait(socket,'state');socket.emit(i?'join':'create',{name:'P'+i,total:5,code:clients[0].current?.code});await update;
+   const update=wait(socket,'state');socket.emit(i?'join':'create',{name:'P'+i,total:5,playerCount:count,code:clients[0].current?.code});await update;
   }
   const command=async(socket,type,data)=>{await new Promise(resolve=>setTimeout(resolve,45));const updates=clients.map(client=>wait(client,'state'));socket.emit(type,data);await Promise.all(updates);};
   for(const client of clients)await command(client,'ready');await command(clients[0],'start');
