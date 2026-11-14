@@ -76,3 +76,16 @@ test('Draff shows lobby, match and computer controls only in the relevant state'
  h.run('mode.value="online";mode.onchange()');A.equal(h.get('gameOptions').open,true);
  h.run('mode.value="ai";mode.onchange()');A.equal(h.get('gameOptions').open,false);
 });
+
+test('Draff win messages name the winner in computer, local and either online seat',()=>{
+ const h=boot();h.run('mode.value="ai";mode.onchange();over="Gold wins!";render()');A.equal(h.get('status').textContent,'Junior wins!');
+ h.run('over="Green wins!";render()');A.equal(h.get('status').textContent,'Computer wins!');
+ h.run('mode.value="local";mode.onchange();over="Gold wins!";render()');A.equal(h.get('status').textContent,'Junior wins!');
+ h.run('over="Green wins!";render()');A.equal(h.get('status').textContent,'Player 2 wins!');
+ h.run('mode.value="online";mode.onchange()');h.enter();
+ for(const seat of [1,-1]){
+  h.run('netRoom.you='+seat+';netRoom.players={gold:"Mr.Tdot",black:"<b>Andre</b>"};over="Gold wins!";render()');A.equal(h.get('status').textContent,'Mr.Tdot wins!');
+  h.run('over="Green wins!";render()');A.equal(h.get('status').textContent,'<b>Andre</b> wins!');
+ }
+ h.run('over="Draw · repeated position";render()');A.equal(h.get('status').textContent,'Draw · repeated position');
+});
