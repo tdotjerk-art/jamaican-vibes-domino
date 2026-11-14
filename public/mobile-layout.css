@@ -526,3 +526,11 @@ body #modal.result-no-dim.show #card:has(button[onclick="openSetup()"]) :is(butt
   #jvVoiceLobby .jv-voice-buttons {display:inline-flex;margin:0 0 0 4px}
   #jvVoiceLobby small:empty {display:none}
 }
+
+/* Table surface: +10% toward P1/P3 and -10% toward P2/P4.
+   Match the flag, chain bounds and side indicators to the narrower artwork. */
+body .app>.table{background-size:93.15% var(--fit-art-height)!important}
+body .app>.table::before{left:10.715%;right:10.715%}
+body .app>.table #board{left:15.575%!important;right:15.575%!important}
+body .app>.table #turnLight2{left:90.2408%!important}
+body .app>.table #turnLight4{left:9.7592%!important}

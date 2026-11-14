@@ -28,3 +28,16 @@ test('regular phone domino size stays fixed as an uneven chain grows',()=>{
   for(let count=2;count<=28;count++)assert.equal(layout(board.slice(0,count),0,width,height).long,first);
  }
 });
+
+test('resized table keeps the played chain above the full-size bottom hand',()=>{
+ const {frame}=require('../public/mobile-layout');
+ for(const [width,height] of [[844,330],[667,320],[390,700],[1024,768]]){
+  for(const safeBottom of [0,21]){
+   const g=frame(width,height,0,safeBottom);
+   assert.ok(g.boardBottom>=g.long+10,'chain reserves the bottom hand plus a gap');
+   assert.ok(g.boardTop+g.boardBottom<g.tableHeight,'playing area remains usable');
+   const occupied=g.topBudget+(g.sharedTop?0:g.long+6)+g.tableHeight+safeBottom;
+   assert.ok(occupied<=height,'hands and table stay in the visible frame');
+  }
+ }
+});
