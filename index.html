@@ -2959,7 +2959,10 @@ const $=id=>document.getElementById(id);
 const POS={0:[],1:[5],2:[1,9],3:[1,5,9],4:[1,3,7,9],5:[1,3,5,7,9],6:[1,3,4,6,7,9]};
 
 let mode=new URLSearchParams(location.search).get('mode')==='individual'?'individual':'partner', target=6;
+let playerCount=4;
 let hands=[[],[],[],[]], board=[], turn=0;
+function playerCountSelect(id){return `<label for="${id}">Players</label><select id="${id}"><option value="2">2 players</option><option value="3">3 players</option><option value="4" selected>4 players</option></select>`;}
+function dealPlayers(d){const at=d.findIndex(t=>t.a===6&&t.b===6);if(at>=playerCount*7){const slot=Math.floor(Math.random()*playerCount*7);[d[slot],d[at]]=[d[at],d[slot]];}return Array.from({length:4},(_,i)=>i<playerCount?d.slice(i*7,i*7+7):[]);}
 let scores=[0,0,0,0]; let revealHands=false;
 let handNo=0, handValue=1, gameOver=true, localMatchOver=false;
 // OFFLINE PARTNER — BRUCK & START state
@@ -3211,6 +3214,7 @@ function updateTurnLights(){
 }
 
 function render(){
+  for(let i=0;i<4;i++)for(const id of ["p","hand"]){const el=$(id+(i+1));if(el)el.style.setProperty("display",i<playerCount?"":"none","important");}
   for(let i=0;i<4;i++)$('p'+(i+1)).classList.toggle('active',turn===i&&!gameOver);
   updateTurnLights();
   paintTurnTimer();
@@ -3238,7 +3242,7 @@ function renderScores(){
   if(mode==='partner'){
     $('scoreboard').innerHTML=`<div class="pill">Team A (P1 + P3): <b>${scores[0]}</b></div><div class="pill">Team B (P2 + P4): <b>${scores[1]}</b></div><div class="pill">First to <b>${target}</b></div>`;
   }else{
-    $('scoreboard').innerHTML=[0,1,2,3].map(i=>`<div class="pill">${playerName(i)}: <b>${scores[i]}</b></div>`).join('')+`<div class="pill">First to <b>${target}</b></div>`;
+    $('scoreboard').innerHTML=Array.from({length:playerCount},(_,i)=>i).map(i=>`<div class="pill">${playerName(i)}: <b>${scores[i]}</b></div>`).join('')+`<div class="pill">First to <b>${target}</b></div>`;
   }
 }
 
@@ -3487,14 +3491,14 @@ function openSetup(){
     <button id="partnerBtn" onclick="setMode('partner')">👥 Partner</button>
     <button id="individualBtn" onclick="setMode('individual')">🧍 Cut Throat</button>
   </div>
-  <p><b>Target</b></p>
+  ${playerCountSelect("localPlayerCount")}<p class="small">2 or 3 players use Cut Throat. Partner requires 4.</p><p><b>Target</b></p>
   <select id="targetSel"><option value="6">6 points</option></select>
   <p class="small">P1 + P3 are partners. P2 + P4 are partners.</p>
   <button id="startMatchBtn" onclick="startMatch()">Start Match</button>`);
 }
 function showIndividualSetup(){
   show(`<h2>Cut Throat — First to 6</h2><p>Everyone plays for themselves. Scores carry forward.</p>
-    <label for="individualTieRule">When the lowest counts tie on a blocked hand:</label>
+    ${playerCountSelect("localPlayerCount")}<label for="individualTieRule">When the lowest counts tie on a blocked hand:</label>
     <select id="individualTieRule">
       <option value="double-six-two">Play for 2 — double-six poses</option>
       <option value="last-winner-one">Play for 1 — previous hand winner poses</option>
@@ -3674,7 +3678,7 @@ function startPoseTimer(){
           playedOrder:++playSequence,
           side:'start'
         });
-        turn=(poser+1)%4;
+        turn=(poser+1)%playerCount;
         render();
         runTurn();
       }
@@ -3749,6 +3753,10 @@ function offlineBruckMessage(result, winnerPlayer){
 
 function startMatch(){
   localMatchOver=false;
+  const countChoice=document.getElementById("localPlayerCount");
+  playerCount=countChoice?Number(countChoice.value):playerCount;
+  if(![2,3,4].includes(playerCount))playerCount=4;
+  if(playerCount<4)mode="individual";
   const tieChoice=document.getElementById('individualTieRule');
   if(mode==='individual'&&tieChoice)individualTieRule=tieChoice.value==='last-winner-one'?'last-winner-one':'double-six-two';
   target=6;
@@ -3766,7 +3774,7 @@ function dealHand(first=false){
   selectedHumanIndex=null;
   clearBlockedCounts();
   const d=shuffle(makeDeck());
-  hands=[d.slice(0,7),d.slice(7,14),d.slice(14,21),d.slice(21,28)];
+  hands=dealPlayers(d);
   board=[];openingId=null;playSequence=0;passStreak=0;revealHands=false;gameOver=false;handNo++;
 
   // BRUCK RULE:
@@ -3787,7 +3795,7 @@ function dealHand(first=false){
 
     render();
     status(`BRUCK restart — ${playerName(turn)} has 6–6 and poses.`);
-    turn=(turn+1)%4;
+    turn=(turn+1)%playerCount;
     setTimeout(runTurn,turn===0?0:COMPUTER_MOVE_DELAY_MS);
     return;
   }
@@ -3808,7 +3816,7 @@ function dealHand(first=false){
     tiedCarry=false;
     render();
     status(`${playerName(turn)} has 6–6 and poses.`);
-    turn=(turn+1)%4;
+    turn=(turn+1)%playerCount;
     setTimeout(runTurn,turn===0?0:COMPUTER_MOVE_DELAY_MS);
     return;
   }
@@ -3845,7 +3853,7 @@ function dealHand(first=false){
     board=[{...t,playedOrder:++playSequence}];
     render();
     status(`${playerName(turn)} has 6-6 and poses the first hand.`);
-    turn=(turn+1)%4;
+    turn=(turn+1)%playerCount;
     setTimeout(runTurn,turn===0?0:COMPUTER_MOVE_DELAY_MS);
     return;
   }
@@ -4028,7 +4036,7 @@ function runTurn(){
       return;
     }
 
-    turn=(turn+1)%4;
+    turn=(turn+1)%playerCount;
     setTimeout(runTurn,turn===0?0:COMPUTER_MOVE_DELAY_MS);
     return;
   }
@@ -4067,7 +4075,7 @@ function runTurn(){
     return;
   }
 
-  turn=(turn+1)%4;
+  turn=(turn+1)%playerCount;
   render();
 
   // IMPORTANT: even when turn returns to Player 1,
@@ -4142,6 +4150,7 @@ function showBlockedCounts(counts, message){
     const hr=hand.getBoundingClientRect();
     const gap=12;
 
+    if(!Number.isFinite(counts[i]))return;
     el.textContent=counts[i];
     el.style.display='block';
 
@@ -4183,7 +4192,7 @@ function finishBlocked(){
   revealHands=true;
   render();
 
-  const counts=hands.map(pipCount);
+  const counts=hands.map((h,i)=>i<playerCount?pipCount(h):Infinity);
   const low=Math.min(...counts);
   const lows=counts.map((v,i)=>v===low?i:-1).filter(i=>i>=0);
 
@@ -5247,8 +5256,8 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
   let originalPlayerName=window.playerName;
 
   function isOnline(){ return window.gameConnectionMode==='online'; }
-  function s2l(seat){ return ((seat-myServerSeat)%4+4)%4; }
-  function l2s(local){ return (local+myServerSeat)%4; }
+  function s2l(seat){ return ((seat-myServerSeat)%playerCount+playerCount)%playerCount; }
+  function l2s(local){ return (local+myServerSeat)%playerCount; }
 
   function ensureOnlineOptions(){
     const panel=document.getElementById('onlineModePanel');
@@ -5368,6 +5377,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     if(!isOnline())return;
     onlineState=state;
     window.authoritativeOnlineState=state;
+    playerCount=state.playerCount||state.players.length;
     mode=state.mode;
     target=state.target;
     handNo=state.handNo;
@@ -5559,7 +5569,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
       <button class="jv-btn secondary" id="jvSettings">SETTINGS</button>
     </div>
     <button class="jv-btn green" id="jvReconnect" style="display:none">RECONNECT TO LAST ROOM</button>
-    <p class="jv-small" style="text-align:center;margin-bottom:0">Single Player works locally. Online play supports four players, private hands, reconnecting, ready-up, rematches and spectators.</p>
+    <p class="jv-small" style="text-align:center;margin-bottom:0">Single Player works locally. Private online play supports 2–4 players, private hands, reconnecting, ready-up, rematches and spectators.</p>
   </div>
 </div>
 
@@ -5569,11 +5579,11 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
   <input class="jv-input" id="jvName" maxlength="20" placeholder="Your name">
   <div class="jv-grid">
     <select class="jv-select" id="jvMode"><option value="partner">Partner — Bruck & Start (6 straight)</option><option value="individual">Cut Throat — First to 6</option></select>
-    <select class="jv-select" id="jvTarget"><option value="6">First to 6</option></select>
+    <label>Players<select class="jv-select" id="jvPlayerCount"><option value="2">2 players</option><option value="3">3 players</option><option value="4" selected>4 players</option></select></label><select class="jv-select" id="jvTarget"><option value="6">First to 6</option></select>
   </div>
   <select class="jv-select" id="jvTieRule"><option value="double-six-two">Blocked tie: play for 2, double-six poses</option><option value="last-winner-one">Blocked tie: play for 1, previous winner poses</option></select>
   <button class="jv-btn" id="jvPublicJoin">JOIN PUBLIC TABLE</button>
-  <p class="jv-small">Public tables seat players in arrival order and start with four players.</p>
+  <p class="jv-small">Public tables seat players in arrival order and start at your selected player count. 2 or 3 players use Cut Throat.</p>
   <button class="jv-btn" id="jvCreate">CREATE PRIVATE ROOM</button>
   <hr style="border-color:#496">
   <input class="jv-input" id="jvCode" maxlength="8" placeholder="Room code">
@@ -5781,15 +5791,15 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     });
 
     const me=mySeat!=null&&players?players[mySeat]:null;
-    const waitingForPublicPlayers=state.publicTable&&connectedCount<4;
+    const waitingForPublicPlayers=state.publicTable&&connectedCount<players.length;
     $id('jvReady').style.display=spectator||waitingForPublicPlayers?'none':'block';
     $id('jvStartHint').textContent=waitingForPublicPlayers
-      ? 'The public table starts automatically when four players join.'
-      : 'The game starts automatically when all 4 players are connected and READY.';
+      ? 'The public table starts automatically when '+players.length+' players join.'
+      : 'The game starts automatically when all '+players.length+' players are connected and READY.';
 
     const progress=$id('jvLobbyProgress');
     if(progress){
-      progress.textContent=`${connectedCount}/4 PLAYERS CONNECTED • ${readyCount}/4 READY`;
+      progress.textContent=`${connectedCount}/${players.length} PLAYERS CONNECTED • ${readyCount}/${players.length} READY`;
     }
 
     const seatInfo=$id('jvMySeatInfo');
@@ -5810,7 +5820,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
 
     if(me){
       $id('jvReady').textContent=me.ready?'NOT READY':'READY';
-      $id('jvReady').classList.toggle('waiting-for-four',connectedCount<4);
+      $id('jvReady').classList.toggle('waiting-for-four',connectedCount<players.length);
     }
 
     const opt=$id('jvLobbyOptions');opt.innerHTML='';
@@ -5913,7 +5923,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     if(!name)return toast('Enter your name.');
     $id('jvSetupStatus').textContent='Finding a public table…';
     window.gameConnectionMode='online';
-    ensureSocket().emit('join-public-table',{name});
+    ensureSocket().emit('join-public-table',{name,playerCount:Number($id('jvPlayerCount').value),mode:$id('jvMode').value});
   };
   $id('jvCreate').onclick=()=>{
     const name=$id('jvName').value.trim();
@@ -5921,7 +5931,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     $id('jvSetupStatus').textContent='Creating room…';
     window.gameConnectionMode='online';
     const s=ensureSocket();
-    s.emit('create-room',{name,mode:$id('jvMode').value,target:Number($id('jvTarget').value),tieRule:$id('jvTieRule').value});
+    s.emit('create-room',{name,playerCount:Number($id('jvPlayerCount').value),mode:$id('jvMode').value,target:Number($id('jvTarget').value),tieRule:$id('jvTieRule').value});
   };
   $id('jvJoin').onclick=()=>{
     const name=$id('jvName').value.trim(),code=$id('jvCode').value.trim().toUpperCase();
@@ -5972,11 +5982,13 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
 
 <script>
 (function(){
-  const mode=document.getElementById('jvMode'), target=document.getElementById('jvTarget');
+  const mode=document.getElementById('jvMode'), target=document.getElementById('jvTarget'), count=document.getElementById('jvPlayerCount');
+  count?.addEventListener('change',()=>{if(Number(count.value)<4)mode.value='individual';syncBreakStartTarget();});
   function syncBreakStartTarget(){
     if(!mode||!target)return;
     const tie=document.getElementById('jvTieRule');if(tie)tie.disabled=mode.value!=='individual';
     if(mode.value==='partner'){
+      if(count)count.value='4';
       target.value='6';
       target.disabled=true;
       target.title='Bruck & Start partner games are first to go 6, with ONE-ONE PLAY TWO and BRUCK rules.';
@@ -7233,7 +7245,7 @@ window.runTurn=function(){
     recordReplay({type:'pass',player:p});stats.totalPasses++;persistStats();reactPlayer(p,'pass');
     passStreak++;
     if(hands.every(hand=>!hand.some(t=>canPlay(t)))){finishBlocked();return}
-    turn=(turn+1)%4;setTimeout(runTurn,turn===0?0:COMPUTER_MOVE_DELAY_MS);return;
+    turn=(turn+1)%playerCount;setTimeout(runTurn,turn===0?0:COMPUTER_MOVE_DELAY_MS);return;
   }
 
   const choice=chooseAIMove(p,playable),idx=choice.idx;
@@ -7255,7 +7267,7 @@ window.runTurn=function(){
 
   passStreak=0;log(`${window.playerName(p)} played ${t.a}-${t.b}.`);
   if(winning){render();fx('winning');finishNormalWin(p);return}
-  turn=(turn+1)%4;render();setTimeout(runTurn,turn===0?0:COMPUTER_MOVE_DELAY_MS);
+  turn=(turn+1)%playerCount;render();setTimeout(runTurn,turn===0?0:COMPUTER_MOVE_DELAY_MS);
 };
 
 /* New-hand wrapper: reset warnings/replay and celebrate the 6-6 pose. */
@@ -7359,7 +7371,7 @@ const previousFinishBlocked=window.finishBlocked;
 window.finishBlocked=function(){
   if(isOnline())return previousFinishBlocked.apply(this,arguments);
 
-  const counts=hands.map(pipCount),low=Math.min(...counts);
+  const counts=hands.map((h,i)=>i<playerCount?pipCount(h):Infinity),low=Math.min(...counts);
   const lows=counts.map((v,i)=>v===low?i:-1).filter(i=>i>=0);
   let tied=false,winner=null;
   if(mode==='partner'){

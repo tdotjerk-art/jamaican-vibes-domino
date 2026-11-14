@@ -41,7 +41,7 @@ test('local partners see the newly dealt hand before the poser decision',()=>{
     assert.deepEqual(Array.from(ctx.hands,h=>h.length),[7,7,7,7]);
     assert.equal(ctx.turn,null);assert.equal(ctx.board.length,0);assert.equal(ctx.handNo,3);
    }};
-  vm.createContext(ctx);vm.runInContext(deal+'\ndealHand(false);',ctx);assert.equal(chosen,true);
+  vm.createContext(ctx);vm.runInContext('let playerCount=4;'+html.match(/function dealPlayers[^\n]+/)[0]+'\n'+deal+'\ndealHand(false);',ctx);assert.equal(chosen,true);
  }
  assert.doesNotMatch(html,/preparePartnerPoserChoice|setCountdownPoser\(/);
 });

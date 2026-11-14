@@ -23,10 +23,10 @@
   clearTimeout(timer);const online=!local&&remote,g=local?local.view(0):online?.game,seat=online?remote.seat:0;
   $('setup').hidden=!!(local||remote);$('lobby').hidden=!(online&&!g);$('game').hidden=!g;$('leave').hidden=!(local||remote);
   if(online&&!g){
-   $('roomCode').textContent=remote.code;$('seatList').replaceChildren();remote.seats.forEach((p,i)=>$('seatList').append(node('p',`${p.name}${i===seat?' (you)':''} · ${p.total} games · ${p.connected?(p.ready?'Ready':'Choosing'):'Disconnected'}`)));
+   $('roomCode').textContent=remote.code; $('seatList').replaceChildren();remote.seats.forEach((p,i)=>$('seatList').append(node('p',`${p.name}${i===seat?' (you)':''} · ${p.total} games · ${p.connected?(p.ready?'Ready':'Choosing'):'Disconnected'}`)));
    if(document.activeElement!==$('lobbyTotal'))$('lobbyTotal').value=remote.seats[seat].total;
    $('ready').textContent=remote.seats[seat].ready?'Not ready':'Ready';$('start').hidden=seat!==0;
-   $('start').disabled=remote.seats.length<2||remote.seats.length>4||!remote.seats.every(p=>p.connected&&p.ready&&p.total===remote.seats[0].total);return;
+   $('start').disabled=(remote.playerCount&&remote.seats.length!==remote.playerCount)||remote.seats.length<2||remote.seats.length>4||!remote.seats.every(p=>p.connected&&p.ready&&p.total===remote.seats[0].total);return;
   }
   if(!g)return;
   const stateKey=[g.phase,g.turn,g.top?.id,g.players[seat].hand.map(c=>c.id).join(',')].join('|');if(key!==stateKey){key=stateKey;match=null;other=null;}
@@ -78,7 +78,7 @@
   timer=setTimeout(()=>{if(g!==local)return;if(g.phase==='pick')g.pick(seat);else if(g.phase==='deal')g.deal(seat);else if(g.phase==='declare')g.declare(seat,!!E.evaluateCall(g.players[seat].hand));else if(g.phase==='draw')g.draw(seat);else{const hand=g.players[seat].hand,m=hand.find(c=>c.rank===g.pile.at(-1).rank),o=hand.find(c=>c!==m);g.play(seat,m.id,o?.id);}render();},1600);
  }
  $('solo').onclick=()=>{try{const count=Number($('count').value);if(!Number.isInteger(count)||count<2||count>4)throw Error('Choose 2, 3, or 4 players.');const names=['You','Andre','Simone','Winston'].slice(0,count);names[0]=$('name').value.trim().slice(0,20)||'You';local=new E.Game(names,total('total'));render();}catch(e){error(e.message);}};
- for(const type of ['create','join'])$(type).onclick=()=>{try{const name=$('name').value.trim();if(!name)throw Error('Enter your name.');const data={name,total:total('total'),code:$('code').value};remember(null);const s=connect();if(s.connected)s.emit(type,data);else s.once('connect',()=>s.emit(type,data));}catch(e){error(e.message);}};
+ for(const type of ['create','join'])$(type).onclick=()=>{try{const name=$('name').value.trim();if(!name)throw Error('Enter your name.');const data={name,playerCount:Number($('count').value),total:total('total'),code:$('code').value};remember(null);const s=connect();if(s.connected)s.emit(type,data);else s.once('connect',()=>s.emit(type,data));}catch(e){error(e.message);}};
  $('lobbyTotal').onchange=()=>{try{socket.emit('choice',{total:total('lobbyTotal')});}catch(e){error(e.message);}};
  $('ready').onclick=()=>socket.emit('ready');$('start').onclick=()=>socket.emit('start');
  $('extend').onclick=()=>{try{const amount=total('extra');if(local){if(!local.extend(amount))throw Error('Cannot extend this session beyond 1000 games.');render();}else socket.emit('extend',{amount});}catch(e){error(e.message);}};
