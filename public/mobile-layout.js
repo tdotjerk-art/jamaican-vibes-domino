@@ -69,7 +69,7 @@
     const topBudget=sharedTop?Math.max(32,handHeight+4):32;
     const topHandRow=sharedTop?0:handHeight+6;
     const tableHeight=Math.max(40,height-topBudget-safeTop-safeBottom-topHandRow-2);
-    const artHeight=Math.max(1,(tableHeight-handHeight-10)/.675);
+    const artHeight=Math.max(1,(tableHeight-handHeight-10)/.675)*1.1;
     const artTop=6-artHeight*.125;
     const originalFeltTop=artTop+artHeight*.184;
     const originalFeltBottom=artTop+artHeight*.733;
@@ -82,7 +82,7 @@
     const feltBottom=Math.min(rimBottom-4,centre+requestedSpan/2);
     return {long:handHeight,short:handHeight*.54,tableHeight,topBudget,sharedTop,bottomOverhang:0,
       artHeight,artTop,feltTop,feltBottom:tableHeight-feltBottom,
-      boardTop:feltTop+8,boardBottom:tableHeight-feltBottom+8,
+      boardTop:feltTop+8,boardBottom:Math.max(handHeight+10,tableHeight-feltBottom+8),
       topLight:10,bottomLight:tableHeight-handHeight-8};
   }
 function partnerWin(r,winnerSeat){
