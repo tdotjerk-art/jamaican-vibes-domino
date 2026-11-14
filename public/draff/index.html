@@ -35,12 +35,13 @@ input{width:100%;padding:12px;border:1px solid #456247;border-radius:6px;backgro
   min-width:0;margin:0;padding:0;font-size:12px;line-height:1.2;
  }
  #draffGame #playArea .player-huff {grid-row:1;flex-wrap:wrap}
+ #draffGame #playArea .player-huff strong {flex-basis:calc(100% - 64px);min-width:90px}
  #draffGame #playArea .player:not(.player-huff) {grid-row:3}
  #draffGame #playArea .player strong {flex:1}
  #draffGame #playArea .player .count {white-space:nowrap}
  #draffGame:has(> #playArea:not([hidden])) .sidebar {grid-area:2 / 2 / 3 / 3;min-height:0;max-height:none;overflow-y:auto}
  #draffGame #playArea .player strong {gap:5px}
- #draffGame #playArea .player strong span {white-space:normal;overflow-wrap:anywhere}
+ #draffGame #playArea .player strong span {white-space:normal;overflow-wrap:normal;word-break:normal;hyphens:none}
  #draffGame #playArea .player .dot {flex:0 0 8px;width:8px;height:8px}
  #draffGame #playArea .player .count {padding-left:13px}
  #draffGame #claim {order:-1}
