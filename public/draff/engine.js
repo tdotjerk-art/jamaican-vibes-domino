@@ -26,12 +26,20 @@ for(let i=0;i<64;i++){
 }
 return only>=0?j:j.concat(a);
 }
-// A missed capture may be claimed once, before the opponent moves.
-function missed(b,s,m){if(m.take!==undefined)return [];return [...new Set(moves(b,s).filter(x=>x.take!==undefined).map(x=>x.from===m.from?m.to:x.from))];}
+// Compare the whole turn with the longest capture sequence available at its start.
+// Eligibility stays private until the opponent chooses to claim Huff.
+function captureCount(path){return path.filter(m=>m.take!==undefined).length;}
+function maxCaptures(b,s){return turns(b,s).reduce((n,t)=>Math.max(n,captureCount(t.path)),0);}
+function missed(b,s,moveOrPath){
+ let path=Array.isArray(moveOrPath)?moveOrPath:[moveOrPath],m=path[0];
+ if(!m)return [];
+ if(m.take===undefined)return [...new Set(moves(b,s).filter(x=>x.take!==undefined).map(x=>x.from===m.from?m.to:x.from))];
+ return captureCount(path)<maxCaptures(b,s)?[path[path.length-1].to]:[];
+}
 function claim(b,s,eligible,i){if(!eligible.includes(i)||side(b[i])!==-s)return null;let n=b.slice();n[i]=0;return n;}
 function apply(b,m){let n=b.slice(),p=n[m.from];n[m.from]=0;n[m.to]=p;if(m.take!==undefined)n[m.take]=0;let crown=Math.abs(p)===1&&((p>0&&m.to<8)||(p<0&&m.to>=56));if(crown)n[m.to]=p*2;return {board:n,again:m.take!==undefined&&!crown&&moves(n,side(p),m.to).length>0};}
 function turns(b,s){let out=[];function walk(board,path,options){for(let m of options){let n=apply(board,m),p=path.concat(m);if(n.again)walk(n.board,p,moves(n.board,s,m.to));else out.push({board:n.board,path:p});}}walk(b,[],moves(b,s));return out;}
 function evaluate(b){return b.reduce((v,p,i)=>v+(p?Math.sign(p)*(Math.abs(p)===2?175:100+(p>0?7-(i>>3):i>>3)*4)+Math.sign(p)*(3.5-Math.abs(3.5-i%8))*2:0),0);}
 function search(b,s,d,alpha=-Infinity,beta=Infinity){let ts=turns(b,s);if(!ts.length)return -s*100000;if(!d)return evaluate(b);let v=s===1?-Infinity:Infinity;for(let t of ts){let n=search(t.board,-s,d-1,alpha,beta);v=s===1?Math.max(v,n):Math.min(v,n);if(s===1)alpha=Math.max(alpha,v);else beta=Math.min(beta,v);if(beta<=alpha)break;}return v;}
-const api={initial,moves,missed,claim,apply,turns,search};if(typeof module!=='undefined')module.exports=api;else root.Checkers=api;
+const api={initial,moves,missed,claim,apply,turns,search,captureCount,maxCaptures};if(typeof module!=='undefined')module.exports=api;else root.Checkers=api;
 })(globalThis);
