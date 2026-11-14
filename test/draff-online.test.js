@@ -23,8 +23,8 @@ test('main app serves Draff menu, assets, rules and online endpoint on its own o
  const {server,io}=require('../server');await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin='http://127.0.0.1:'+server.address().port;
  try{
   let root=await (await fetch(origin+'/')).text();A.match(root,/href="\/draff\/"[^>]*>JAMAICAN DRAFF/);
-  let page=await (await fetch(origin+'/draff/')).text();A.match(page,/href="\/">← Game menu/);A.match(page,/\/draff\/assets\/hummingbird.png/);A.doesNotMatch(page,/tdot-checkers|id="undo"/);A.match(page,/width:96%;height:96%/);A.match(page,/id="nameForm"/);A.match(page,/id="draffGame"[^>]*hidden inert/);
-  for(let asset of ['app.js','engine.js','profile.js','online.js','assets/hummingbird.png'])A.equal((await fetch(origin+'/draff/'+asset)).status,200);
+  let page=await (await fetch(origin+'/draff/')).text();A.match(page,/href="\/">← Game menu/);A.match(page,/\/draff\/assets\/hummingbird-hibiscus.webp/);A.doesNotMatch(page,/tdot-checkers|id="undo"/);A.match(page,/width:96%;height:96%/);A.match(page,/id="nameForm"/);A.match(page,/id="draffGame"[^>]*hidden inert/);
+  for(let asset of ['app.js','engine.js','profile.js','online.js','assets/hummingbird-hibiscus.webp'])A.equal((await fetch(origin+'/draff/'+asset)).status,200);
   let script=await (await fetch(origin+'/draff/online.js')).text();A.match(script,/\/api\/draff/);A.match(script,/new URL\('\/draff\/',location.origin\)/);
   const response=await fetch(origin+'/api/draff',{method:'POST',headers:{Origin:origin,'Content-Type':'application/json'},body:JSON.stringify({type:'create',name:'Junior'})});A.equal(response.status,200);A.equal((await response.json()).you,1);
  }finally{server.closeAllConnections();await new Promise(r=>io.close(r));}
