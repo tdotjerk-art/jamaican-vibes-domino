@@ -220,3 +220,24 @@
     grid-row: 9;
   }
 }
+
+/* Keep the portrait board scale after rotation; scroll instead of shrinking. */
+@media (orientation: landscape) and (max-height: 600px) {
+  .board-viewport {
+    overflow: auto;
+    align-items: start;
+    justify-items: start;
+    scrollbar-gutter: stable;
+  }
+  .board-viewport .board-frame {
+    width: var(--ludi-board-size, calc(100svh - 4px));
+    max-width: none;
+    margin-inline: auto;
+    padding: 3px;
+    border-radius: 12px;
+  }
+  .table-die {
+    width: clamp(40.32px, calc((var(--ludi-board-size, 371px) + 4px) * .0576), 63.36px);
+    height: clamp(40.32px, calc((var(--ludi-board-size, 371px) + 4px) * .0576), 63.36px);
+  }
+}
