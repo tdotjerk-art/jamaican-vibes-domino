@@ -24,6 +24,7 @@ function netRender(){
  $('resumeRoom').disabled=netBusy;
  $('new').textContent='Request new game';
  $('new').disabled=netBusy||!active;
+ $('endCapture').disabled=netBusy||!active||!!over||s!==netRoom?.you;
  $('claim').disabled=netBusy||!active||!!over||s!==netRoom?.you||chain>=0;
  if(!netRoom){
   $('connection').textContent=netMessage||'Create a room or enter a friend’s code.';
@@ -32,7 +33,7 @@ function netRender(){
  $('codeLabel').textContent=netRoom.code;$('seatLabel').textContent=netRoom.you===1?'You are Gold':'You are Green';let names=netRoom.players||{};$('opponent').textContent=(names.black||'Waiting for opponent')+(netRoom.you===-1?' (you)':'')+' · Green';$('you').textContent=(names.gold||'Gold')+(netRoom.you===1?' (you)':'')+' · Gold';
  $('status').textContent=over||(!netRoom.state.active?'Waiting for opponent…':s===netRoom.you?'Your turn':'Opponent’s turn');
  $('connection').textContent=netMessage||(!netRoom.state.active?'Share this room’s invite link with your friend.':netRoom.state.rematch.length?(netRoom.state.rematch.includes(netRoom.you)?'New game requested. Waiting for your opponent.':'Your opponent requests a new game. Press Request new game to accept.'):'Connected · two-player room');
- $('hint').textContent=netMessage|| (netRoom.state.rematch.length?$('connection').textContent:'')|| (claiming?'Tap the opposing piece that missed a capture.':netRoom.state.notice|| (chain>=0?'Continue jumping with the same piece.':'Select a piece, then choose where to move.'));
+ $('hint').textContent=netMessage|| (netRoom.state.rematch.length?$('connection').textContent:'')|| (claiming?'Tap the opposing piece that missed a capture.':netRoom.state.notice|| (chain>=0?'Continue capturing, or end capture. Taking fewer pieces allows Huff.':'Select a piece, then choose where to move.'));
 }
 async function requestGame(a,credential=netRoom){let res=await fetch('/api/draff'+(a?'':'?code='+encodeURIComponent(credential.code)),{method:a?'POST':'GET',headers:{'Content-Type':'application/json',...(credential?.token?{Authorization:'Bearer '+credential.token}:{})},...(a?{body:JSON.stringify({...a,...(credential?{code:credential.code,version:netVersion}:{})})}:{})});let r=await res.json();if(!res.ok){let error=Error(r.error||'Unable to connect.');error.status=res.status;throw error;}return r;}
 function receive(r,token){if(mode.value!=='online')return;if(netRoom&&r.code===netRoom.code&&r.version<netVersion)return;let changed=r.version!==netVersion;netRoom={...r,token:token||netRoom?.token};netVersion=r.version;b=r.state.b;s=r.state.s;chain=r.state.chain;last=r.state.last;over=r.state.over;busy=false;if(changed){showCapture(r.state.captureSquares||[]);selected=chain>=0&&s===r.you?chain:-1;claiming=false;}render();}
@@ -69,6 +70,8 @@ async function resume(){
  catch(e){if(epoch===netEpoch){if([401,403,404].includes(e.status))roomError(e,saved);else netMessage=e.message}}
  finally{if(epoch===netEpoch){netBusy=false;netRender()}}
 }
+const offlineEndCapture=endCapture;
+endCapture=function(){if(mode.value!=='online')return offlineEndCapture();if(!netBusy&&netRoom&&chain>=0&&!over&&s===netRoom.you)submitOnline({type:'endCapture'});};
 const offlineClick=click;
 click=function(i){if(!DraffProfile.ready())return;if(mode.value!=='online')return offlineClick(i);if(netBusy||!netRoom||!netRoom.state.active||over||s!==netRoom.you)return;if(claiming){submitOnline({type:'huff',at:i});return;}let m=E.moves(b,s,chain).find(m=>m.from===selected&&m.to===i);if(m){submitOnline({type:'move',from:m.from,to:m.to});return;}if(chain<0){selected=Math.sign(b[i])===s?i:-1;render();}};
 mode.onchange=()=>{netEpoch++;netBusy=false;clearInterval(netTimer);netRoom=null;netVersion=-1;netMessage='';$('onlinePanel').hidden=mode.value!=='online';$('new').disabled=false;$('new').textContent='New game ↗';reset();if(mode.value==='online')netRender();};
