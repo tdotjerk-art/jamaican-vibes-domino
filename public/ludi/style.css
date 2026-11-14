@@ -150,3 +150,32 @@
 
 /* Keep entry controls compact; account tools stay in a closed disclosure. */
 #setup{padding:18px}#setupForm>label:first-child{margin-top:0}#setup label{margin-top:12px}#setup button{min-height:44px}#setup .learn-link{display:block;width:auto;min-height:44px;margin:4px auto 0;padding:8px 6px;font-size:13px;color:#d9e1c5;text-decoration:underline;text-underline-offset:3px}.profile-menu{padding:14px 18px}.profile-menu>summary{cursor:pointer;font-size:15px;font-weight:700;color:#f4eed5;min-height:24px}.profile-menu>summary:focus-visible{outline:2px solid var(--gold);outline-offset:5px}.profile-content{padding-top:14px}@media(max-width:650px){header{padding:14px 16px}.layout{margin-top:12px;gap:12px}#setup{padding:16px}.community-panel{margin-top:12px}}
+
+/* Portrait uses the full screen width; landscape keeps its height-fitted layout. */
+@media (orientation: portrait) {
+  .layout {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: none;
+    padding-inline: 2px;
+    margin: 12px auto;
+    gap: 12px;
+  }
+
+  .table-panel,
+  .layout > aside {
+    width: 100%;
+  }
+
+  .board-viewport {
+    width: 100%;
+    max-width: none;
+  }
+
+  .board-viewport .board-frame {
+    width: 100%;
+    padding: 3px;
+    border-radius: 12px;
+  }
+}
