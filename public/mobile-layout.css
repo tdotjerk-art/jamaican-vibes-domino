@@ -539,33 +539,3 @@ body .app>.table #turnLight4{left:9.7592%!important}
 body #modal #card:has(#partnerBtn){position:fixed!important;inset:auto!important;top:max(12px,env(safe-area-inset-top))!important;left:50%!important;transform:translateX(-50%)!important;translate:none!important;width:min(420px,calc(100vw - 24px))!important;min-width:0!important;max-width:calc(100vw - 24px)!important;max-height:calc(100dvh - 24px)!important;padding:12px!important;margin:0!important;box-sizing:border-box;display:grid!important;gap:12px;overflow:auto!important}
 body #modal #card .row:has(#partnerBtn){display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;width:100%;margin:0!important}
 body #modal #card :is(#partnerBtn,#individualBtn,#startMatchBtn){position:static!important;inset:auto!important;transform:none!important;translate:none!important;scale:1!important;width:100%!important;min-width:0!important;min-height:44px!important;margin:0!important;padding:10px 12px!important;box-sizing:border-box;white-space:normal!important;word-break:normal;font-size:16px!important;line-height:1.25!important}
-
-
-/* Domino player rim indicators: never show a red lamp.
-   Idle seats remain dark green; the active turn is green. */
-body .app > .table [id^="turnLight"] {
-  background: #123b2b !important;
-  background-color: #123b2b !important;
-  border-color: #22543c !important;
-  box-shadow: inset 0 0 3px #061b13 !important;
-}
-body .app > .table [id^="turnLight"].active,
-body .app > .table [id^="turnLight"].on,
-body .app > .table [id^="turnLight"].lit {
-  background: #13e66c !important;
-  background-color: #13e66c !important;
-  border-color: #65ff9b !important;
-  box-shadow: 0 0 10px #13e66c, 0 0 4px #13e66c inset !important;
-}
-
-/* Safe default if hand tracking has not run yet: side lamps outside the
-   domino-bearing sides of the table, never on top of the side dominoes. */
-body .app > .table #turnLight2 { left:calc(100% + 7px)!important; }
-body .app > .table #turnLight4 { left:-7px!important; }
-
-/* Safe pre-script positions: keep side player 4's light on the
-   screen-right side of their left-hand domino rack, not outside the table.
-   Player 1's light defaults beside the bottom rack, not over its centre.
-   Runtime positioning may override these when hand geometry is available. */
-body .app > .table #turnLight4 {left:16%!important;}
-body .app > .table #turnLight1 {left:29%!important;}
