@@ -3192,7 +3192,9 @@ function positionTurnLights(){
   const topHand=$('hand3');if(topHand){topHand.style.setProperty('--dealt-long',dealtLong+'px');topHand.style.setProperty('--dealt-short',(dealtLong*.54)+'px');}
   const frame=table.getBoundingClientRect();
   for(let i=1;i<=4;i++){
-    const hand=$('hand'+i),light=$('turnLight'+i);if(!hand||!light)return;
+    // Side lights and clocks share one viewport layout owner in player-timers.js.
+    if(i===2||i===4)continue;
+    const hand=$('hand'+i),light=$('turnLight'+i);if(!hand||!light)continue;
     const row=hand.getBoundingClientRect(),horizontal=i===1||i===3;
     const extent=horizontal?table.clientWidth:table.clientHeight;
     const midpoint=horizontal?(row.left+row.width/2-frame.left-table.clientLeft):(row.top+row.height/2-frame.top-table.clientTop);
