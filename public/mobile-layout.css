@@ -557,3 +557,8 @@ body .app > .table [id^="turnLight"].lit {
   border-color: #65ff9b !important;
   box-shadow: 0 0 10px #13e66c, 0 0 4px #13e66c inset !important;
 }
+
+/* Safe default if hand tracking has not run yet: side lamps outside the
+   domino-bearing sides of the table, never on top of the side dominoes. */
+body .app > .table #turnLight2 { left:calc(100% + 7px)!important; }
+body .app > .table #turnLight4 { left:-7px!important; }
