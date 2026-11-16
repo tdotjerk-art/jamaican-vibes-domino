@@ -23,6 +23,32 @@
         if(!hand||!timer)continue;
         const pos=besideHand(Array.from(hand.children,el=>el.getBoundingClientRect()),root.innerWidth,root.innerHeight);
         if(!pos){timer.classList.remove('active');continue;}
+        if(player===1||player===4){
+          // Reserve the space immediately to the right of the dominoes
+          // for the red turn light; keep the countdown beyond that light.
+          const dominoRects=Array.from(hand.children,el=>el.getBoundingClientRect()).filter(r=>r.width&&r.height);
+          if(dominoRects.length){
+            const right=Math.max(...dominoRects.map(r=>r.right));
+            const top=Math.min(...dominoRects.map(r=>r.top));
+            const bottom=Math.max(...dominoRects.map(r=>r.bottom));
+            const light=document.getElementById('turnLight'+player);
+            if(light){
+              const lampSize=light.getBoundingClientRect();
+              const radius=Math.max(8,lampSize.width/2||8);
+              const lightX=right+7+radius;
+              const lightY=(top+bottom)/2;
+              const parent=(light.offsetParent||document.querySelector('.table')).getBoundingClientRect();
+              light.style.setProperty('left',(lightX-parent.left)+'px','important');
+              light.style.setProperty('top',(lightY-parent.top)+'px','important');
+              light.style.setProperty('right','auto','important');
+              light.style.setProperty('bottom','auto','important');
+              light.style.setProperty('transform','translate(-50%,-50%)','important');
+              light.style.setProperty('pointer-events','none','important');
+              // The timer remains to the right, separated from the light.
+              pos.left=Math.min(root.innerWidth-pos.width-3,right+7+2*radius+12);
+            }
+          }
+        }
         for(const key of ['left','top','width','height'])timer.style.setProperty(key,pos[key]+'px','important');
       }
     }
