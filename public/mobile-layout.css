@@ -562,3 +562,10 @@ body .app > .table [id^="turnLight"].lit {
    domino-bearing sides of the table, never on top of the side dominoes. */
 body .app > .table #turnLight2 { left:calc(100% + 7px)!important; }
 body .app > .table #turnLight4 { left:-7px!important; }
+
+/* Safe pre-script positions: keep side player 4's light on the
+   screen-right side of their left-hand domino rack, not outside the table.
+   Player 1's light defaults beside the bottom rack, not over its centre.
+   Runtime positioning may override these when hand geometry is available. */
+body .app > .table #turnLight4 {left:16%!important;}
+body .app > .table #turnLight1 {left:29%!important;}
