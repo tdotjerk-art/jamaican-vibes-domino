@@ -228,49 +228,53 @@ function partnerWin(r,winnerSeat){
     let lightsQueued=false;
     function positionTurnLights(){
       lightsQueued=false;
-      const tableBox=table.getBoundingClientRect();
-      if(!tableBox.width||!tableBox.height)return;
-      const gap=8;
+      const gap=12;
+      const viewportWidth=root.visualViewport?.width||root.innerWidth;
+      const viewportHeight=root.visualViewport?.height||root.innerHeight;
       for(let player=1;player<=4;player++){
         const light=document.getElementById('turnLight'+player);
         const hand=document.getElementById('hand'+player);
         if(!light||!hand)continue;
         const pieces=[...hand.querySelectorAll('.dom-physical,.back')].filter(el=>{
-          const rect=el.getBoundingClientRect();
-          return rect.width>0&&rect.height>0;
+          const r=el.getBoundingClientRect();
+          return r.width>0&&r.height>0;
         });
-        if(!pieces.length)continue;
-        const boxes=pieces.map(el=>el.getBoundingClientRect());
-        const minX=Math.min(...boxes.map(rect=>rect.left));
-        const maxX=Math.max(...boxes.map(rect=>rect.right));
-        const minY=Math.min(...boxes.map(rect=>rect.top));
-        const maxY=Math.max(...boxes.map(rect=>rect.bottom));
-        const lamp=light.getBoundingClientRect();
-        const radiusX=lamp.width/2||10,radiusY=lamp.height/2||10;
-        let x,y;
-        if(player===2||player===4){
-          x=player===2?maxX+gap+radiusX:minX-gap-radiusX;
-          y=(minY+maxY)/2;
-        }else{
-          // Top/bottom lamps stay on the wooden rim beside, not on, the hand.
-          x=(minX+maxX)/2;
-          y=player===3?maxY+gap+radiusY:minY-gap-radiusY;
-        }
-        // The rim cannot push a lamp over a domino. If there is no room on
-        // that side, place it beside the outermost domino instead.
-        const withinX=x-radiusX>=tableBox.left&&x+radiusX<=tableBox.right;
-        const withinY=y-radiusY>=tableBox.top&&y+radiusY<=tableBox.bottom;
-        if(!withinX||!withinY){
-          x=player===4?minX-gap-radiusX:maxX+gap+radiusX;
-          y=(minY+maxY)/2;
-        }
-        const localX=x-tableBox.left,localY=y-tableBox.top;
-        light.style.setProperty('left',localX+'px','important');
-        light.style.setProperty('top',localY+'px','important');
+        if(!pieces.length){light.style.setProperty('visibility','hidden','important');continue;}
+        const rects=pieces.map(el=>el.getBoundingClientRect());
+        const minX=Math.min(...rects.map(r=>r.left));
+        const maxX=Math.max(...rects.map(r=>r.right));
+        const minY=Math.min(...rects.map(r=>r.top));
+        const maxY=Math.max(...rects.map(r=>r.bottom));
+        const size=light.getBoundingClientRect();
+        const rx=Math.max(size.width/2,8),ry=Math.max(size.height/2,8);
+        const centerX=(minX+maxX)/2,centerY=(minY+maxY)/2;
+        // First choices are outside the hand, toward each player's nearest rim.
+        // Player 1's timer occupies the right side, so put that light left.
+        const left={x:minX-gap-rx,y:centerY};
+        const right={x:maxX+gap+rx,y:centerY};
+        const above={x:centerX,y:minY-gap-ry};
+        const below={x:centerX,y:maxY+gap+ry};
+        const candidates=player===1?[left,right,above,below]:
+          player===3?[right,left,below,above]:
+          player===2?[right,above,below,left]:
+          [left,above,below,right];
+        const clear=c=>rects.every(r=>
+          c.x+rx+3<=r.left||c.x-rx-3>=r.right||
+          c.y+ry+3<=r.top||c.y-ry-3>=r.bottom);
+        // Never display a lamp over a domino even when space is too tight.
+        const target=candidates.find(c=>clear(c)&&
+          c.x-rx>=2&&c.x+rx<=viewportWidth-2&&
+          c.y-ry>=2&&c.y+ry<=viewportHeight-2);
+        if(!target){light.style.setProperty('visibility','hidden','important');continue;}
+        const parent=light.offsetParent||table;
+        const parentRect=parent.getBoundingClientRect();
+        light.style.setProperty('left',(target.x-parentRect.left)+'px','important');
+        light.style.setProperty('top',(target.y-parentRect.top)+'px','important');
         light.style.setProperty('right','auto','important');
         light.style.setProperty('bottom','auto','important');
         light.style.setProperty('transform','translate(-50%, -50%)','important');
         light.style.setProperty('pointer-events','none','important');
+        light.style.setProperty('visibility','visible','important');
       }
     }
     function queueTurnLights(){
@@ -281,7 +285,9 @@ function partnerWin(r,winnerSeat){
     for(let player=1;player<=4;player++){
       const hand=document.getElementById('hand'+player);
       if(!hand)continue;
-      new MutationObserver(queueTurnLights).observe(hand,{childList:true,subtree:true});
+      new MutationObserver(queueTurnLights).observe(hand,{
+        childList:true,subtree:true,attributes:true,attributeFilter:['class','style']
+      });
     }
     const lampResize=new ResizeObserver(queueTurnLights);
     lampResize.observe(table);
@@ -289,6 +295,16 @@ function partnerWin(r,winnerSeat){
     root.addEventListener('resize',queueTurnLights);
     root.addEventListener('orientationchange',queueTurnLights);
     root.visualViewport?.addEventListener('resize',queueTurnLights);
+    // Game turns can update existing domino elements without changing the hand
+    // container. Recheck positioning after every render as well.
+    const renderForLamps=root.render;
+    if(typeof renderForLamps==='function'){
+      root.render=function(...args){
+        const result=renderForLamps.apply(this,args);
+        queueTurnLights();
+        return result;
+      };
+    }
     queueTurnLights();
 
     // Restore the original desktop DOM positions when the viewport grows.
