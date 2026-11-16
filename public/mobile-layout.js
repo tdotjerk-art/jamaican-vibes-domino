@@ -221,6 +221,76 @@ function partnerWin(r,winnerSeat){
     const mobile=matchMedia('(max-width: 1000px) and (pointer: coarse), (max-width: 760px), (max-height: 520px)');
     const position=()=>{for(const {el,marker,target} of placements){if(mobile.matches)target.appendChild(el);else marker.after(el);}};
     mobile.addEventListener('change',position);position();
+
+    // Keep the green turn lamps beside the hands, never beneath dominoes.
+    // Use actual hand bounds rather than fixed percentages: side hands can
+    // change size as pieces are played and when a phone rotates.
+    let lightsQueued=false;
+    function positionTurnLights(){
+      lightsQueued=false;
+      const tableBox=table.getBoundingClientRect();
+      if(!tableBox.width||!tableBox.height)return;
+      const gap=8;
+      for(let player=1;player<=4;player++){
+        const light=document.getElementById('turnLight'+player);
+        const hand=document.getElementById('hand'+player);
+        if(!light||!hand)continue;
+        const pieces=[...hand.querySelectorAll('.dom-physical,.back')].filter(el=>{
+          const rect=el.getBoundingClientRect();
+          return rect.width>0&&rect.height>0;
+        });
+        if(!pieces.length)continue;
+        const boxes=pieces.map(el=>el.getBoundingClientRect());
+        const minX=Math.min(...boxes.map(rect=>rect.left));
+        const maxX=Math.max(...boxes.map(rect=>rect.right));
+        const minY=Math.min(...boxes.map(rect=>rect.top));
+        const maxY=Math.max(...boxes.map(rect=>rect.bottom));
+        const lamp=light.getBoundingClientRect();
+        const radiusX=lamp.width/2||10,radiusY=lamp.height/2||10;
+        let x,y;
+        if(player===2||player===4){
+          x=player===2?maxX+gap+radiusX:minX-gap-radiusX;
+          y=(minY+maxY)/2;
+        }else{
+          // Top/bottom lamps stay on the wooden rim beside, not on, the hand.
+          x=(minX+maxX)/2;
+          y=player===3?maxY+gap+radiusY:minY-gap-radiusY;
+        }
+        // The rim cannot push a lamp over a domino. If there is no room on
+        // that side, place it beside the outermost domino instead.
+        const withinX=x-radiusX>=tableBox.left&&x+radiusX<=tableBox.right;
+        const withinY=y-radiusY>=tableBox.top&&y+radiusY<=tableBox.bottom;
+        if(!withinX||!withinY){
+          x=player===4?minX-gap-radiusX:maxX+gap+radiusX;
+          y=(minY+maxY)/2;
+        }
+        const localX=x-tableBox.left,localY=y-tableBox.top;
+        light.style.setProperty('left',localX+'px','important');
+        light.style.setProperty('top',localY+'px','important');
+        light.style.setProperty('right','auto','important');
+        light.style.setProperty('bottom','auto','important');
+        light.style.setProperty('transform','translate(-50%, -50%)','important');
+        light.style.setProperty('pointer-events','none','important');
+      }
+    }
+    function queueTurnLights(){
+      if(lightsQueued)return;
+      lightsQueued=true;
+      requestAnimationFrame(()=>requestAnimationFrame(positionTurnLights));
+    }
+    for(let player=1;player<=4;player++){
+      const hand=document.getElementById('hand'+player);
+      if(!hand)continue;
+      new MutationObserver(queueTurnLights).observe(hand,{childList:true,subtree:true});
+    }
+    const lampResize=new ResizeObserver(queueTurnLights);
+    lampResize.observe(table);
+    if(topHand)lampResize.observe(topHand);
+    root.addEventListener('resize',queueTurnLights);
+    root.addEventListener('orientationchange',queueTurnLights);
+    root.visualViewport?.addEventListener('resize',queueTurnLights);
+    queueTurnLights();
+
     // Restore the original desktop DOM positions when the viewport grows.
     const resize=new ResizeObserver(()=>{if(typeof root.renderPhotoTemplateBoard==='function')root.renderPhotoTemplateBoard();});
     resize.observe(document.getElementById('board'));
