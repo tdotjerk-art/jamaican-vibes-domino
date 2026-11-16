@@ -285,9 +285,9 @@ function partnerWin(r,winnerSeat){
     for(let player=1;player<=4;player++){
       const hand=document.getElementById('hand'+player);
       if(!hand)continue;
-      new MutationObserver(queueTurnLights).observe(hand,{
-        childList:true,subtree:true,attributes:true,attributeFilter:['class','style']
-      });
+      // Observe hand membership only; CSS/class updates on every turn should not
+      // trigger a cascading layout loop on iPhone Safari.
+      new MutationObserver(queueTurnLights).observe(hand,{childList:true,subtree:true});
     }
     const lampResize=new ResizeObserver(queueTurnLights);
     lampResize.observe(table);
@@ -295,16 +295,7 @@ function partnerWin(r,winnerSeat){
     root.addEventListener('resize',queueTurnLights);
     root.addEventListener('orientationchange',queueTurnLights);
     root.visualViewport?.addEventListener('resize',queueTurnLights);
-    // Game turns can update existing domino elements without changing the hand
-    // container. Recheck positioning after every render as well.
-    const renderForLamps=root.render;
-    if(typeof renderForLamps==='function'){
-      root.render=function(...args){
-        const result=renderForLamps.apply(this,args);
-        queueTurnLights();
-        return result;
-      };
-    }
+    // Do not wrap the game's render function: gameplay and timers own that loop.
     queueTurnLights();
 
     // Restore the original desktop DOM positions when the viewport grows.
