@@ -225,19 +225,28 @@ function partnerWin(r,winnerSeat){
     // Keep the green turn lamps beside the hands, never beneath dominoes.
     // Use actual hand bounds rather than fixed percentages: side hands can
     // change size as pieces are played and when a phone rotates.
+    // Each player owns exactly one rim indicator. Keep it outside BOTH
+    // the hand and the timer; the gameplay engine remains untouched.
     let lightsQueued=false;
     function positionTurnLights(){
       lightsQueued=false;
-      const gap=12;
       const viewportWidth=root.visualViewport?.width||root.innerWidth;
       const viewportHeight=root.visualViewport?.height||root.innerHeight;
+      const gap=10;
+      const collides=(c,rx,ry,r,pad=5)=>r.width>0&&r.height>0&&
+        c.x+rx+pad>r.left&&c.x-rx-pad<r.right&&
+        c.y+ry+pad>r.top&&c.y-ry-pad<r.bottom;
       for(let player=1;player<=4;player++){
-        const light=document.getElementById('turnLight'+player);
+        const id='turnLight'+player;
+        const copies=[...document.querySelectorAll('[id="'+id+'"]')];
+        // Duplicate markup can occur during game/lobby transitions. Only the
+        // original indicator is allowed to remain visible.
+        for(const duplicate of copies.slice(1))duplicate.style.setProperty('display','none','important');
+        const light=copies[0];
         const hand=document.getElementById('hand'+player);
         if(!light||!hand)continue;
         const pieces=[...hand.querySelectorAll('.dom-physical,.back')].filter(el=>{
-          const r=el.getBoundingClientRect();
-          return r.width>0&&r.height>0;
+          const r=el.getBoundingClientRect();return r.width>0&&r.height>0;
         });
         if(!pieces.length){light.style.setProperty('visibility','hidden','important');continue;}
         const rects=pieces.map(el=>el.getBoundingClientRect());
@@ -245,31 +254,30 @@ function partnerWin(r,winnerSeat){
         const maxX=Math.max(...rects.map(r=>r.right));
         const minY=Math.min(...rects.map(r=>r.top));
         const maxY=Math.max(...rects.map(r=>r.bottom));
-        const size=light.getBoundingClientRect();
-        const rx=Math.max(size.width/2,8),ry=Math.max(size.height/2,8);
-        const centerX=(minX+maxX)/2,centerY=(minY+maxY)/2;
-        // First choices are outside the hand, toward each player's nearest rim.
-        // Player 1's timer occupies the right side, so put that light left.
-        const left={x:minX-gap-rx,y:centerY};
-        const right={x:maxX+gap+rx,y:centerY};
-        const above={x:centerX,y:minY-gap-ry};
-        const below={x:centerX,y:maxY+gap+ry};
-        const candidates=player===1?[left,right,above,below]:
-          player===3?[right,left,below,above]:
-          player===2?[right,above,below,left]:
-          [left,above,below,right];
-        const clear=c=>rects.every(r=>
-          c.x+rx+3<=r.left||c.x-rx-3>=r.right||
-          c.y+ry+3<=r.top||c.y-ry-3>=r.bottom);
-        // Never display a lamp over a domino even when space is too tight.
-        const target=candidates.find(c=>clear(c)&&
+        const lamp=light.getBoundingClientRect();
+        const rx=Math.max(lamp.width/2,8),ry=Math.max(lamp.height/2,8);
+        const midX=(minX+maxX)/2,midY=(minY+maxY)/2;
+        const timer=document.getElementById('timerP'+player);
+        const timerRect=timer?.classList.contains('active')?timer.getBoundingClientRect():null;
+        const candidate=[
+          {x:minX-gap-rx,y:midY},{x:maxX+gap+rx,y:midY},
+          {x:midX,y:minY-gap-ry},{x:midX,y:maxY+gap+ry}
+        ];
+        // Keep lamps on the outer rim wherever possible, away from the timer
+        // normally docked to the right of each hand.
+        const preference=player===2?[1,2,3,0]:player===4?[0,2,3,1]:[0,1,2,3];
+        const target=preference.map(i=>candidate[i]).find(c=>
           c.x-rx>=2&&c.x+rx<=viewportWidth-2&&
-          c.y-ry>=2&&c.y+ry<=viewportHeight-2);
+          c.y-ry>=2&&c.y+ry<=viewportHeight-2&&
+          rects.every(r=>!collides(c,rx,ry,r))&&
+          (!timerRect||!collides(c,rx,ry,timerRect,7))
+        );
+        // Never allow a light to show through dominoes or a timer. If the
+        // screen has no free rim space, hide the light for that layout.
         if(!target){light.style.setProperty('visibility','hidden','important');continue;}
-        const parent=light.offsetParent||table;
-        const parentRect=parent.getBoundingClientRect();
-        light.style.setProperty('left',(target.x-parentRect.left)+'px','important');
-        light.style.setProperty('top',(target.y-parentRect.top)+'px','important');
+        const origin=(light.offsetParent||table).getBoundingClientRect();
+        light.style.setProperty('left',(target.x-origin.left)+'px','important');
+        light.style.setProperty('top',(target.y-origin.top)+'px','important');
         light.style.setProperty('right','auto','important');
         light.style.setProperty('bottom','auto','important');
         light.style.setProperty('transform','translate(-50%, -50%)','important');
@@ -284,10 +292,11 @@ function partnerWin(r,winnerSeat){
     }
     for(let player=1;player<=4;player++){
       const hand=document.getElementById('hand'+player);
-      if(!hand)continue;
-      // Observe hand membership only; CSS/class updates on every turn should not
-      // trigger a cascading layout loop on iPhone Safari.
-      new MutationObserver(queueTurnLights).observe(hand,{childList:true,subtree:true});
+      if(hand)new MutationObserver(queueTurnLights).observe(hand,{childList:true,subtree:true});
+      const timer=document.getElementById('timerP'+player);
+      if(timer)new MutationObserver(queueTurnLights).observe(timer,{
+        attributes:true,attributeFilter:['class','style']
+      });
     }
     const lampResize=new ResizeObserver(queueTurnLights);
     lampResize.observe(table);
@@ -295,7 +304,6 @@ function partnerWin(r,winnerSeat){
     root.addEventListener('resize',queueTurnLights);
     root.addEventListener('orientationchange',queueTurnLights);
     root.visualViewport?.addEventListener('resize',queueTurnLights);
-    // Do not wrap the game's render function: gameplay and timers own that loop.
     queueTurnLights();
 
     // Restore the original desktop DOM positions when the viewport grows.
