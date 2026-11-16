@@ -31,7 +31,11 @@
             const right=Math.max(...dominoRects.map(r=>r.right));
             const top=Math.min(...dominoRects.map(r=>r.top));
             const bottom=Math.max(...dominoRects.map(r=>r.bottom));
-            const light=document.getElementById('turnLight'+player);
+            // Keep a single existing lamp for each side player, even if
+            // game transitions have left duplicate IDs in the DOM.
+            const lamps=[...document.querySelectorAll('[id="turnLight'+player+'"]')];
+            for(const extra of lamps.slice(1))extra.style.setProperty('display','none','important');
+            const light=lamps[0];
             if(light){
               const lampSize=light.getBoundingClientRect();
               const radius=Math.max(8,lampSize.width/2||8);
