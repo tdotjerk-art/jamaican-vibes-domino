@@ -23,7 +23,7 @@
         if(!hand||!timer)continue;
         const pos=besideHand(Array.from(hand.children,el=>el.getBoundingClientRect()),root.innerWidth,root.innerHeight);
         if(!pos){timer.classList.remove('active');continue;}
-        if(player===1||player===4){
+        if(player===2||player===4){
           // Reserve the space immediately to the right of the dominoes
           // for the red turn light; keep the countdown beyond that light.
           const dominoRects=Array.from(hand.children,el=>el.getBoundingClientRect()).filter(r=>r.width&&r.height);
