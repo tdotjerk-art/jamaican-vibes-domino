@@ -263,10 +263,21 @@ function partnerWin(r,winnerSeat){
           {x:minX-gap-rx,y:midY},{x:maxX+gap+rx,y:midY},
           {x:midX,y:minY-gap-ry},{x:midX,y:maxY+gap+ry}
         ];
-        // Keep lamps on the outer rim wherever possible, away from the timer
-        // normally docked to the right of each hand.
-        const preference=player===2?[1,2,3,0]:player===4?[0,2,3,1]:[0,1,2,3];
-        const target=preference.map(i=>candidate[i]).find(c=>
+        // Both side players (2 and 4) always use the screen-right side
+        // of their own hand. Move vertically on that side to avoid the timer;
+        // never fall back to the left or beneath the dominoes.
+        const sideRightX=maxX+gap+rx;
+        const sideCandidates=[
+          {x:sideRightX,y:midY},
+          {x:sideRightX,y:minY+ry},
+          {x:sideRightX,y:maxY-ry},
+          {x:sideRightX,y:minY-gap-ry},
+          {x:sideRightX,y:maxY+gap+ry},
+          ...(timerRect?[{x:Math.max(sideRightX,timerRect.right+gap+rx),y:midY}]:[])
+        ];
+        const options=(player===2||player===4)?sideCandidates:
+          [candidate[0],candidate[1],candidate[2],candidate[3]];
+        const target=options.find(c=>
           c.x-rx>=2&&c.x+rx<=viewportWidth-2&&
           c.y-ry>=2&&c.y+ry<=viewportHeight-2&&
           rects.every(r=>!collides(c,rx,ry,r))&&
