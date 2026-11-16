@@ -24,33 +24,25 @@
         const pos=besideHand(Array.from(hand.children,el=>el.getBoundingClientRect()),root.innerWidth,root.innerHeight);
         if(!pos){timer.classList.remove('active');continue;}
         if(player===2||player===4){
-          // Reserve the space immediately to the right of the dominoes
-          // for the red turn light; keep the countdown beyond that light.
-          const dominoRects=Array.from(hand.children,el=>el.getBoundingClientRect()).filter(r=>r.width&&r.height);
-          if(dominoRects.length){
-            const right=Math.max(...dominoRects.map(r=>r.right));
-            const top=Math.min(...dominoRects.map(r=>r.top));
-            const bottom=Math.max(...dominoRects.map(r=>r.bottom));
-            // Keep a single existing lamp for each side player, even if
-            // game transitions have left duplicate IDs in the DOM.
-            const lamps=[...document.querySelectorAll('[id="turnLight'+player+'"]')];
-            for(const extra of lamps.slice(1))extra.style.setProperty('display','none','important');
-            const light=lamps[0];
-            if(light){
-              const lampSize=light.getBoundingClientRect();
-              const radius=Math.max(8,lampSize.width/2||8);
-              const lightX=right+7+radius;
-              const lightY=(top+bottom)/2;
-              const parent=(light.offsetParent||document.querySelector('.table')).getBoundingClientRect();
-              light.style.setProperty('left',(lightX-parent.left)+'px','important');
-              light.style.setProperty('top',(lightY-parent.top)+'px','important');
-              light.style.setProperty('right','auto','important');
-              light.style.setProperty('bottom','auto','important');
-              light.style.setProperty('transform','translate(-50%,-50%)','important');
-              light.style.setProperty('pointer-events','none','important');
-              // The timer remains to the right, separated from the light.
-              pos.left=Math.min(root.innerWidth-pos.width-3,right+7+2*radius+12);
-            }
+          // The original game has exactly one turnLight element per player.
+          // Place that existing red light using CSS custom properties so the
+          // old fixed-position renderer cannot overwrite this position.
+          const rects=Array.from(hand.children,el=>el.getBoundingClientRect())
+            .filter(r=>r.width>0&&r.height>0);
+          const table=document.querySelector('.table');
+          const light=document.getElementById('turnLight'+player);
+          if(rects.length&&table&&light){
+            const right=Math.max(...rects.map(r=>r.right));
+            const top=Math.min(...rects.map(r=>r.top));
+            const bottom=Math.max(...rects.map(r=>r.bottom));
+            const tableBox=table.getBoundingClientRect();
+            const radius=Math.max(8,light.offsetWidth/2||8);
+            const x=right+9+radius;
+            const y=(top+bottom)/2;
+            table.style.setProperty('--jv-p'+player+'-light-x',(x-tableBox.left)+'px');
+            table.style.setProperty('--jv-p'+player+'-light-y',(y-tableBox.top)+'px');
+            // The countdown stays on the same side, beyond the red light.
+            pos.left=Math.min(root.innerWidth-pos.width-3,right+9+radius*2+12);
           }
         }
         for(const key of ['left','top','width','height'])timer.style.setProperty(key,pos[key]+'px','important');
