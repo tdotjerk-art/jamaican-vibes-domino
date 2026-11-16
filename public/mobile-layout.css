@@ -399,8 +399,6 @@ body .app>.table::before{left:15.08%;right:15.08%;top:14.45%;bottom:23.7875%}
 body .app>.table #board{left:19.4%!important;right:19.4%!important;top:20.75%!important;bottom:29.75%!important}
 body .app>.table #turnLight3{top:11.75%!important}
 body .app>.table #turnLight1{top:72.95%!important}
-body .app>.table #turnLight2{left:85.7696%!important}
-body .app>.table #turnLight4{left:14.2304%!important}
 
 /* Keep automatic next-hand flow without controls or countdown over the table. */
 #blockedNextHand,#topNextHandBtn,#jvAutoNextCountdown{display:none!important}
@@ -445,8 +443,6 @@ body .app>.table::before{left:6.35%;right:6.35%;top:9.625%;bottom:13.171875%}
 body .app>.table #board{left:11.75%!important;right:11.75%!important;top:17.5%!important;bottom:20.625%!important}
 body .app>.table #turnLight3{top:6.25%!important}
 body .app>.table #turnLight1{top:82.75%!important}
-body .app>.table #turnLight2{left:94.712%!important}
-body .app>.table #turnLight4{left:5.288%!important}
 
 /* Add 20% only along the Player 1–Player 3 axis; retain the one-screen frame. */
 body .app>.table{background-size:103.5% 168.75%!important;background-position:center 39.813636%!important}
@@ -470,7 +466,6 @@ body .app #jvGameFeedback{margin-top:4px!important}
 body .app{--screen-safe-top:env(safe-area-inset-top,0px);padding-top:calc(var(--fit-top-budget,32px) + env(safe-area-inset-top,0px))!important}
 body .app #jvGameFeedback{position:absolute!important;left:4px!important;bottom:env(safe-area-inset-bottom,0px)!important;top:auto!important;width:22%!important;max-width:22%!important;margin:0!important;z-index:50}
 body .app>.table #hand2,body .app>.table #hand4{top:calc((100% - var(--dealt-long))/2)!important}
-body .app>.table #turnLight2,body .app>.table #turnLight4{top:calc((100% - var(--dealt-long))/2)!important}
 @media(orientation:landscape) and (max-height:520px){
  body .app>#hand3{position:absolute!important;left:50%!important;top:calc(env(safe-area-inset-top,0px) + 2px)!important;margin:0!important;transform:translateX(-50%)!important;max-width:40%!important}
 }
@@ -532,23 +527,11 @@ body #modal.result-no-dim.show #card:has(button[onclick="openSetup()"]) :is(butt
 body .app>.table{background-size:93.15% var(--fit-art-height)!important}
 body .app>.table::before{left:10.715%;right:10.715%}
 body .app>.table #board{left:15.575%!important;right:15.575%!important}
-body .app>.table #turnLight2{left:90.2408%!important}
-body .app>.table #turnLight4{left:9.7592%!important}
 
 /* Match setup modes flow in separate cells instead of fixed screen positions. */
 body #modal #card:has(#partnerBtn){position:fixed!important;inset:auto!important;top:max(12px,env(safe-area-inset-top))!important;left:50%!important;transform:translateX(-50%)!important;translate:none!important;width:min(420px,calc(100vw - 24px))!important;min-width:0!important;max-width:calc(100vw - 24px)!important;max-height:calc(100dvh - 24px)!important;padding:12px!important;margin:0!important;box-sizing:border-box;display:grid!important;gap:12px;overflow:auto!important}
 body #modal #card .row:has(#partnerBtn){display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;width:100%;margin:0!important}
 body #modal #card :is(#partnerBtn,#individualBtn,#startMatchBtn){position:static!important;inset:auto!important;transform:none!important;translate:none!important;scale:1!important;width:100%!important;min-width:0!important;min-height:44px!important;margin:0!important;padding:10px 12px!important;box-sizing:border-box;white-space:normal!important;word-break:normal;font-size:16px!important;line-height:1.25!important}
 
-/* Players 2 and 4: position their one ORIGINAL red turn light to the
-   right of their domino hands. Override legacy per-frame inline coordinates. */
-body .app > .table #turnLight2{
-  left:var(--jv-p2-light-x,90.2408%)!important;
-  top:var(--jv-p2-light-y,50%)!important;
-  transform:translate(-50%,-50%)!important;
-}
-body .app > .table #turnLight4{
-  left:var(--jv-p4-light-x,16%)!important;
-  top:var(--jv-p4-light-y,50%)!important;
-  transform:translate(-50%,-50%)!important;
-}
+/* Side indicators live outside the transformed table, in viewport coordinates. */
+body > #playerTimers .turn-light{position:fixed;transform:none;z-index:40}

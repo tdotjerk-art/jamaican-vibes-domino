@@ -39,3 +39,22 @@ test('only the current player clock shows and it clears immediately on play or h
  assert.match(html,/updateTurnLights\(\);\s+paintTurnTimer\(\);/);
  assert.doesNotMatch(html,/fixedTimerPositions|TIMER POSITION — PLAYER'S RIGHT-HAND SIDE/);
 });
+
+
+test('side lamp and clock stay separate from wrapped and shrinking hands',()=>{
+ const {sideIndicators}=require('../public/player-timers');
+ const overlap=(a,b)=>a.left<b.left+b.width&&a.left+a.width>b.left&&a.top<b.top+b.height&&a.top+a.height>b.top;
+ for(const viewport of [{width:800,height:400},{width:390,height:700}]){
+  for(const right of [100,viewport.width-45,viewport.width-75]){
+   const seven=Array.from({length:7},(_,i)=>rect(right-55+(i%2)*28,60+Math.floor(i/2)*40,25,38));
+   for(const hand of [seven,seven.slice(0,1),seven.slice(0,4)]){
+    const pos=sideIndicators(hand,viewport.width,viewport.height);
+    const lamp={...pos.light,width:16,height:16};
+    assert.ok(pos.light.left>Math.max(...hand.map(r=>r.right)));
+    assert.ok(!overlap(lamp,pos.timer));
+    for(const domino of hand){assert.ok(!overlap(lamp,domino));assert.ok(!overlap(pos.timer,domino));}
+    assert.ok(pos.timer.left+pos.timer.width<=viewport.width-3);
+   }
+  }
+ }
+});

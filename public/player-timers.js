@@ -10,11 +10,31 @@
     const width=Math.min(28,Math.max(16,viewportWidth-right-gap-3));
     return {left:right+gap,top:Math.max(3,Math.min((top+bottom-height)/2,viewportHeight-height-3)),width,height};
   }
+  function sideIndicators(rects,viewportWidth,viewportHeight,lightSize=16){
+    const timer=besideHand(rects,viewportWidth,viewportHeight);
+    if(!timer)return null;
+    const visible=rects.filter(r=>r.width>0&&r.height>0);
+    const right=Math.max(...visible.map(r=>r.right));
+    const top=Math.min(...visible.map(r=>r.top));
+    const bottom=Math.max(...visible.map(r=>r.bottom));
+    const left=right+9,center=(top+bottom)/2;
+    const light={left,top:Math.max(3,Math.min(center-lightSize/2,viewportHeight-lightSize-3))};
+    // Stack the clock below the lamp when the screen edge cannot fit both.
+    const clockLeft=left+lightSize+8;
+    if(clockLeft+28<=viewportWidth-3){timer.left=clockLeft;timer.width=28;}
+    else {timer.left=Math.min(left,viewportWidth-31);timer.width=28;timer.top=Math.min(viewportHeight-31,light.top+lightSize+8);}
+    return {light,timer};
+  }
   function mount(){
     const layer=document.getElementById('playerTimers');
     if(!layer)return;
     // Outside the transformed table so positions use the same coordinates as tiles.
     document.body.appendChild(layer);
+    // Reuse the original elements. No cloned indicators or masking layers.
+    for(const player of [2,4]){
+      const light=document.getElementById('turnLight'+player);
+      if(light)layer.appendChild(light);
+    }
     let pending=false;
     function place(){
       pending=false;
@@ -24,25 +44,15 @@
         const pos=besideHand(Array.from(hand.children,el=>el.getBoundingClientRect()),root.innerWidth,root.innerHeight);
         if(!pos){timer.classList.remove('active');continue;}
         if(player===2||player===4){
-          // The original game has exactly one turnLight element per player.
-          // Place that existing red light using CSS custom properties so the
-          // old fixed-position renderer cannot overwrite this position.
-          const rects=Array.from(hand.children,el=>el.getBoundingClientRect())
-            .filter(r=>r.width>0&&r.height>0);
-          const table=document.querySelector('.table');
           const light=document.getElementById('turnLight'+player);
-          if(rects.length&&table&&light){
-            const right=Math.max(...rects.map(r=>r.right));
-            const top=Math.min(...rects.map(r=>r.top));
-            const bottom=Math.max(...rects.map(r=>r.bottom));
-            const tableBox=table.getBoundingClientRect();
-            const radius=Math.max(8,light.offsetWidth/2||8);
-            const x=right+9+radius;
-            const y=(top+bottom)/2;
-            table.style.setProperty('--jv-p'+player+'-light-x',(x-tableBox.left)+'px');
-            table.style.setProperty('--jv-p'+player+'-light-y',(y-tableBox.top)+'px');
-            // The countdown stays on the same side, beyond the red light.
-            pos.left=Math.min(root.innerWidth-pos.width-3,right+9+radius*2+12);
+          if(light){
+            const lightSize=light.getBoundingClientRect().width||16;
+            const layout=sideIndicators(Array.from(hand.children,el=>el.getBoundingClientRect()),root.innerWidth,root.innerHeight,lightSize);
+            if(layout){
+              light.style.left=layout.light.left+'px';
+              light.style.top=layout.light.top+'px';
+              Object.assign(pos,layout.timer);
+            }
           }
         }
         for(const key of ['left','top','width','height'])timer.style.setProperty(key,pos[key]+'px','important');
@@ -61,6 +71,6 @@
     root.JVPlayerTimers={schedule};
     schedule();
   }
-  if(typeof module!=='undefined')module.exports={besideHand};
+  if(typeof module!=='undefined')module.exports={besideHand,sideIndicators};
   if(typeof document!=='undefined')mount();
 })(typeof window!=='undefined'?window:globalThis);
