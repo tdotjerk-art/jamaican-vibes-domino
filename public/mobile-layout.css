@@ -552,3 +552,43 @@ body .app > .table #turnLight4{
   top:var(--jv-p4-light-y,50%)!important;
   transform:translate(-50%,-50%)!important;
 }
+
+/* Keep Cut Throat setup controls reachable inside the visible viewport. */
+body #modal #card.individual-setup {
+ inset:auto!important;
+ top:max(8px,env(safe-area-inset-top,0px))!important;
+ left:50%!important;
+ transform:translateX(-50%)!important;
+ translate:none!important;
+ width:min(420px,calc(100vw - 24px))!important;
+ min-width:0!important;
+ min-height:0!important;
+ max-height:calc(100dvh - max(8px,env(safe-area-inset-top,0px)) - max(8px,env(safe-area-inset-bottom,0px)))!important;
+ padding:12px!important;
+ box-sizing:border-box!important;
+ overflow:auto!important;
+ overscroll-behavior:contain;
+ -webkit-overflow-scrolling:touch;
+}
+body #modal #card.individual-setup h2 {
+ font-size:20px!important;line-height:1.2!important;margin:0 0 8px!important;
+}
+body #modal #card.individual-setup p {
+ font-size:13px!important;line-height:1.35!important;margin:0 0 8px!important;
+}
+body #modal #card.individual-setup label {
+ font-size:13px!important;line-height:1.25!important;margin:8px 0 4px!important;
+}
+body #modal #card.individual-setup select {
+ width:100%!important;min-width:0!important;height:36px!important;
+ margin:0!important;padding:4px 8px!important;font-size:14px!important;
+}
+body #modal #card.individual-setup button[onclick="startMatch()"] {
+ display:block!important;position:static!important;transform:none!important;
+ width:100%!important;min-height:44px!important;margin:10px 0 0!important;
+ padding:8px 12px!important;font-size:15px!important;line-height:1.25!important;
+ white-space:normal!important;
+}
+@media (orientation:landscape) {
+ body #modal #card.individual-setup {width:min(520px,calc(100vw - 24px))!important;}
+}
