@@ -6919,6 +6919,11 @@ function readSettings(){
 fillSettings();
 
 /* ------------------------- PLAYER NAMES -------------------------- */
+window.addEventListener('jv-signup-name',event=>{
+  settings.names[0]=event.detail.name;
+  saveJSON('jvCompleteSettings',settings);
+  fillSettings();
+});
 const previousPlayerName=window.playerName;
 window.playerName=function(i){
   if(isOnline()&&typeof previousPlayerName==='function')return previousPlayerName(i);
@@ -7568,5 +7573,53 @@ window.JamaicanVibesCompleteFeatures={
 .app>#hand3 .back,.app>#hand3 .dom-physical{width:var(--dealt-short)!important;height:var(--dealt-long)!important;flex:0 0 var(--dealt-short)!important;transform:none!important;min-height:0!important;min-width:0!important}
 .app>#contactTicker{position:relative!important;inset:auto!important;transform:none!important;translate:none!important;width:96%!important;max-width:96%!important;margin:10px auto!important;order:5;flex:none!important;height:30px!important}
 </style>
+<script id="jv-signup-name">
+(()=>{
+ const key='jvSignupName';
+ const clean=value=>typeof value==='string'?value.replace(/[\u0000-\u001f\u007f-\u009f<>]/g,'').replace(/\s+/g,' ').trim().slice(0,20):'';
+ const read=(storage,key)=>{try{return storage.getItem(key)||''}catch{return ''}};
+ let name=clean(read(localStorage,key)||read(localStorage,'jvLastName')||read(sessionStorage,'jamaicanVibesMyOnlineName'));
+ function apply(){
+  if(!name)return;
+  try{localStorage.setItem(key,name);localStorage.setItem('jvLastName',name);sessionStorage.setItem('jamaicanVibesMyOnlineName',name)}catch{}
+  window.dispatchEvent(new CustomEvent('jv-signup-name',{detail:{name}}));
+  for(const id of ['jvName','myOnlinePlayerName','jvNameP1']){
+   const input=document.getElementById(id);if(input){input.value=name;input.readOnly=true;input.title='Your signup name is used online and offline.';}
+  }
+  try{const settings=JSON.parse(localStorage.getItem('jvCompleteSettings')||'{}');if(Array.isArray(settings.names)){settings.names[0]=name;localStorage.setItem('jvCompleteSettings',JSON.stringify(settings))}}catch{}
+ }
+ const previousDisplayName=window.getPlayerDisplayName;
+ window.getPlayerDisplayName=function(index){if(window.gameConnectionMode!=='online'&&index===0&&name)return name;return previousDisplayName.apply(this,arguments)};
+ const previousName=window.playerName;
+ window.playerName=function(index){
+  if(window.gameConnectionMode!=='online'&&index===0&&name)return name;
+  return previousName.apply(this,arguments);
+ };
+ const dialog=document.createElement('dialog');dialog.id='jvSignupDialog';
+ dialog.setAttribute('aria-labelledby','jvSignupTitle');
+ dialog.innerHTML='<form method="dialog"><h2 id="jvSignupTitle">Your player name</h2><p>Use your signup name for online and offline games.</p><label for="jvSignupInput">Signup name</label><input id="jvSignupInput" maxlength="20" autocomplete="nickname" required><p id="jvSignupError" role="alert"></p><button type="submit">Continue</button><button type="button" id="jvSignupCancel">Cancel</button></form>';
+ const style=document.createElement('style');style.textContent='#jvSignupDialog{width:min(380px,calc(100vw - 32px));box-sizing:border-box;max-height:calc(100dvh - 24px);overflow:auto;background:#082d18;color:white;border:2px solid #ffd92f;border-radius:14px;padding:18px}#jvSignupDialog::backdrop{background:#000b}#jvSignupDialog input{display:block;width:100%;box-sizing:border-box;font-size:16px;padding:12px;margin:10px 0}#jvSignupDialog button{position:static!important;display:block;width:100%;margin-top:10px;padding:12px}';
+ document.head.appendChild(style);document.body.appendChild(dialog);
+ let pending=null;
+ document.addEventListener('click',event=>{
+  const button=event.target.closest('button');if(!button||dialog.contains(button))return;
+  const play=['jvSingle','jvIndividualSix','jvOnline','jvReconnect','jvMatchSetupBtn','jvCreate','jvJoin','jvPublicJoin','startMatchBtn'].includes(button.id)||button.getAttribute('onclick')==='startMatch()';
+  if(!play)return;
+  if(name){apply();return}
+  event.preventDefault();event.stopImmediatePropagation();pending=button;
+  if(!dialog.open)dialog.showModal();document.getElementById('jvSignupInput').focus();
+ },true);
+ dialog.querySelector('form').addEventListener('submit',event=>{
+  event.preventDefault();const value=clean(document.getElementById('jvSignupInput').value);
+  if(!value){document.getElementById('jvSignupError').textContent='Enter your signup name.';return}
+  name=value;apply();dialog.close();const button=pending;pending=null;if(button)button.click();
+ });
+ document.getElementById('jvSignupCancel').onclick=()=>{pending=null;dialog.close()};
+ dialog.addEventListener('cancel',()=>{pending=null});
+ window.addEventListener('storage',event=>{if(event.key===key&&clean(event.newValue)){name=clean(event.newValue);apply();try{render()}catch{}}});
+ apply();
+})();
+</script>
+
 </body>
 </html>
