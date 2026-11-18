@@ -94,6 +94,7 @@ app.use(express.static("public"));
 app.get("/",(req,res)=>{const fs=require("node:fs");fs.readFile(__dirname+"/index.html","utf8",(error,html)=>{if(error)return res.sendStatus(500);res.type("html").send(html.replace("<head>",'<head><script src="/analytics-client.js"></script>'+(creditsEnabled?'<script defer src="/domino-wallet-client.js"></script>':"")))})});
 app.get("/health",(req,res)=>res.status(200).send("ok"));
 const rooms=new Map();
+const tournamentRooms=new Map();
 const GRACE_MS=90000;
 const NEXT_HAND_DELAY_MS=5000;
 
@@ -117,6 +118,13 @@ const connectedPlayers=r=>r.players.filter(p=>p&&p.connected).length;
 const addHistory=(r,s)=>{r.history.push(s);if(r.history.length>60)r.history.shift()};
 
 function clearTimer(r){if(r.timer){clearTimeout(r.timer);r.timer=null}}
+function settleTournamentFixture(r,winnerSeat){
+ if(!r.tournamentFixture||!wallet?.recordTournamentWinner)return;
+ const {id,round,slot}=r.tournamentFixture;
+ const winner=r.players[winnerSeat];
+ if(!winner?.accountId)throw Error("Tournament winner has no verified account.");
+ wallet.recordTournamentWinner(id,round,slot,winner.accountId);
+}
 function finishPaidPublicMatch(r){
  if(!creditsEnabled||!r.publicTable||!wallet.finishPublic)return;
  for(const player of r.players){
@@ -289,7 +297,7 @@ function finishWin(r,seat){
  if(match>=0){
    r.phase="match-over";r.turn=null;r.rematchVotes.clear();
    r.message=r.mode==="partner"?`Team ${match===0?"A":"B"} wins the Bruck and Start game by going 6.`:`${r.players[match]?.name||"Player"} wins the match.`;
-   addHistory(r,r.message);r.lastEvent="match-win";finishPaidPublicMatch(r);emitAll(r);return
+   addHistory(r,r.message);r.lastEvent="match-win";if(r.tournamentFixture)settleTournamentFixture(r,match);finishPaidPublicMatch(r);emitAll(r);return
  }
  r.phase="hand-over";r.turn=null;r.message=`${n} wins the hand. Next hand starts in ${NEXT_HAND_DELAY_MS/1000} seconds.`;r.lastEvent="hand-win";emitAll(r);scheduleNextHand(r)
 }
@@ -319,14 +327,14 @@ function finishBlocked(r){
    if(bs.won){
      r.phase="match-over";r.turn=null;r.rematchVotes.clear();
      r.message=`Team ${bs.team===0?"A":"B"} wins the Bruck and Start game by going 6.`;
-     r.lastEvent="match-win";finishPaidPublicMatch(r);emitAll(r);return
+     r.lastEvent="match-win";if(r.tournamentFixture)settleTournamentFixture(r,winner);finishPaidPublicMatch(r);emitAll(r);return
    }
  }else{
    r.scores[winner]=Math.min(6,r.scores[winner]+r.handValue);r.lastIndividualWinner=winner;
    if(r.scores[winner]===6){
      r.phase="match-over";r.turn=null;r.rematchVotes.clear();
      r.message=`${n} wins the Cut Throat game by reaching 6.`;
-     addHistory(r,r.message);r.lastEvent="match-win";finishPaidPublicMatch(r);emitAll(r);return
+     addHistory(r,r.message);r.lastEvent="match-win";if(r.tournamentFixture)settleTournamentFixture(r,winner);finishPaidPublicMatch(r);emitAll(r);return
    }
    addHistory(r,`${n} wins the blocked hand with ${low}. Counts: ${counts.join(", ")}.`);
  }
@@ -465,13 +473,59 @@ require("./analytics").setSampler(sampleAnalytics);
 const analyticsTimer=setInterval(sampleAnalytics,15000);analyticsTimer.unref();server.on("close",()=>{clearInterval(analyticsTimer);require("./analytics").setSampler(null);analytics.persist()});
 
 io.on("connection",socket=>{
- const payloadEvents=new Set(['create-room','join-public-table','join-room','join-spectator','reconnect-player','set-room-options','play-domino','choose-poser']);
+ const payloadEvents=new Set(['join-tournament-match','create-room','join-public-table','join-room','join-spectator','reconnect-player','set-room-options','play-domino','choose-poser']);
  socket.use(([event,data],next)=>{
    if(!actionAllowed(socket)){socket.emit('action-error','Too many actions. Please slow down.');return;}
    if(payloadEvents.has(event)&&(!data||typeof data!=='object'||Array.isArray(data))){socket.emit('room-error','Invalid room request.');return;}
    next();
  });
 
+ socket.on("join-tournament-match",({tournamentId,round,slot,accountId,accountToken})=>{
+   if(!sqliteCredits||!wallet?.recordTournamentWinner)
+     return socket.emit("room-error","Tournament matches are unavailable.");
+   let account,match;
+   try{
+     account=wallet.authenticate(accountId,accountToken);
+     const bracket=wallet.tournamentStatus(tournamentId);
+     if(bracket.status!=="started")throw Error("Tournament is not in progress.");
+     if(!Number.isInteger(round)||!Number.isInteger(slot))
+       throw Error("Invalid tournament fixture.");
+     match=bracket.matches.find(m=>m.round===round&&m.slot===slot);
+     if(!match||match.status!=="pending"||!match.playerB)
+       throw Error("Tournament match is not awaiting players.");
+     if(account.id!==match.playerA&&account.id!==match.playerB)
+       throw Error("Your account is not assigned to this tournament match.");
+   }catch(e){return socket.emit("room-error",e.message)}
+   const key=tournamentId+":"+round+":"+slot;
+   const current=seatedRoom(socket);
+   if(current?.tournamentFixture?.key===key&&current.players[socket.data.seat]?.accountId===account.id){
+     const p=current.players[socket.data.seat];
+     socket.emit("seat-assigned",{code:current.code,seat:p.seat,token:p.token});emitAll(current);return;
+   }
+   if(current)return socket.emit("room-error","Leave the current game before joining your tournament match.");
+   if([...rooms.values()].some(r=>r.tournamentFixture&&r.players.some(p=>p?.accountId===account.id)))
+     return socket.emit("room-error","Reconnect to your existing tournament seat first.");
+   let room=rooms.get(tournamentRooms.get(key));
+   if(room&&room.phase!=="waiting")
+     return socket.emit("room-error","Tournament match already in progress. Reconnect to your assigned seat.");
+   if(!room){
+     const created=newRoom(account.name,"individual",6,socket,"double-six-two",2);
+     room=created.room;room.tournamentFixture={id:tournamentId,round,slot,key};
+     tournamentRooms.set(key,room.code);
+     room.players[0].accountId=account.id;room.players[0].ready=true;
+     socket.data.roomCode=room.code;socket.data.seat=0;socket.join(room.code);
+     socket.emit("seat-assigned",{code:room.code,seat:0,token:created.token});
+   }else{
+     const seat=room.players.findIndex(p=>!p);
+     if(seat<0)return socket.emit("room-error","Tournament seats are full.");
+     const token=randToken();
+     room.players[seat]={id:socket.id,name:account.name,seat,token,accountId:account.id,connected:true,ready:true,graceTimer:null};
+     socket.data.roomCode=room.code;socket.data.seat=seat;socket.join(room.code);
+     socket.emit("seat-assigned",{code:room.code,seat,token});
+   }
+   room.message="Tournament match: both assigned players must join to begin.";
+   startIfReady(room);
+ });
  socket.on("join-public-table",({name,playerCount,mode,accountId,accountToken})=>{
    // Reject unverified public entries only when the pilot is explicitly enabled.
    // Names for a paid public game always come from the trusted account record.
@@ -552,7 +606,7 @@ io.on("connection",socket=>{
  });
  socket.on("join-room",({name,code})=>{
    name=String(name||"").trim().slice(0,20);code=String(code||"").trim().toUpperCase();const r=rooms.get(code);
-   if(!r)return socket.emit("room-error","Room not found.");if(r.publicTable)return socket.emit("room-error","Use Join Public Table to join public play.");if(!name)return socket.emit("room-error","A name is required.");
+   if(!r)return socket.emit("room-error","Room not found.");if(r.publicTable||r.tournamentFixture)return socket.emit("room-error","Use the tournament or public join flow.");if(!name)return socket.emit("room-error","A name is required.");
    if(r.phase!=="waiting"&&r.phase!=="paused")return socket.emit("room-error","That game has already started.");
    const seat=r.players.findIndex(p=>!p);if(seat<0)return socket.emit("room-error","That room is full.");
    leaveCurrentRoom(socket);
@@ -593,7 +647,7 @@ io.on("connection",socket=>{
    choosePoser(r,Number(chosen))
  });
  socket.on("rematch-vote",()=>{
-   const r=seatedRoom(socket),seat=socket.data.seat;if(!r||r.phase!=="match-over"||!Number.isInteger(seat))return;
+   const r=seatedRoom(socket),seat=socket.data.seat;if(!r||r.tournamentFixture||r.phase!=="match-over"||!Number.isInteger(seat))return;
    r.rematchVotes.add(seat);r.message=`Rematch votes: ${r.rematchVotes.size}/${r.players.length}`;emitAll(r);
    if(r.rematchVotes.size===r.players.length){
      if(creditsEnabled&&r.publicTable){
