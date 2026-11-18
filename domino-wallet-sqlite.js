@@ -58,6 +58,18 @@ function createSqliteWallet(filename) {
       PRIMARY KEY(tournament_id,round,slot),
       CHECK(player_b IS NULL OR player_a <> player_b)
     );
+    -- Each attempt represents a new room for an unfinished bracket fixture.
+    -- On restart, old in-memory boards are deliberately abandoned and a new
+    -- attempt starts at a fresh deal. No extra tournament entry is charged.
+    CREATE TABLE IF NOT EXISTS tournament_fixture_attempts (
+      tournament_id TEXT NOT NULL,
+      round INTEGER NOT NULL,
+      slot INTEGER NOT NULL,
+      attempts INTEGER NOT NULL DEFAULT 0 CHECK(attempts >= 0),
+      PRIMARY KEY(tournament_id,round,slot),
+      FOREIGN KEY(tournament_id,round,slot)
+        REFERENCES tournament_matches(tournament_id,round,slot)
+    );
   `);
   const accountById=db.prepare('SELECT id,name,token_hash AS tokenHash,balance FROM accounts WHERE id=?');
   const operationById=db.prepare('SELECT delta,reason FROM operations WHERE account_id=? AND operation_id=?');
@@ -205,9 +217,11 @@ function createSqliteWallet(filename) {
     const players=db.prepare(`SELECT a.id,a.name FROM tournament_entries e
       JOIN accounts a ON a.id=e.account_id
       WHERE e.tournament_id=? AND e.status='registered' ORDER BY e.rowid`).all(id);
-    const matches=db.prepare(`SELECT round,slot,player_a AS playerA,player_b AS playerB,
-      winner_id AS winnerId,status FROM tournament_matches
-      WHERE tournament_id=? ORDER BY round,slot`).all(id);
+    const matches=db.prepare(`SELECT m.round,m.slot,m.player_a AS playerA,m.player_b AS playerB,
+      m.winner_id AS winnerId,m.status,coalesce(a.attempts,0) AS attempts
+      FROM tournament_matches m LEFT JOIN tournament_fixture_attempts a
+        ON a.tournament_id=m.tournament_id AND a.round=m.round AND a.slot=m.slot
+      WHERE m.tournament_id=? ORDER BY m.round,m.slot`).all(id);
     return {id:t.id,status:t.status,capacity:t.capacity,players,matches,
       placesRemaining:t.capacity-players.length};
   }
@@ -275,6 +289,24 @@ function createSqliteWallet(filename) {
       db.prepare("UPDATE tournament_entries SET status='cancelled' WHERE tournament_id=? AND status='registered'").run(id);
       db.prepare("UPDATE tournaments SET status='cancelled' WHERE id=?").run(id);
       return tournamentStatus(id);
+    });
+  }
+  function openTournamentFixtureAttempt(id,round,slot) {
+    return tx(()=>{
+      const t=tour(id);
+      if(t.status!=='started')throw Error('Tournament is not in progress.');
+      if(!Number.isInteger(round)||round<1||!Number.isInteger(slot)||slot<1)
+        throw Error('Invalid tournament fixture.');
+      const match=db.prepare(`SELECT status,player_b AS playerB FROM tournament_matches
+        WHERE tournament_id=? AND round=? AND slot=?`).get(id,round,slot);
+      if(!match||match.status!=='pending'||!match.playerB)
+        throw Error('Tournament match is not awaiting players.');
+      db.prepare(`INSERT INTO tournament_fixture_attempts(tournament_id,round,slot,attempts)
+        VALUES(?,?,?,1) ON CONFLICT(tournament_id,round,slot)
+        DO UPDATE SET attempts=attempts+1`).run(id,round,slot);
+      const {attempts}=db.prepare(`SELECT attempts FROM tournament_fixture_attempts
+        WHERE tournament_id=? AND round=? AND slot=?`).get(id,round,slot);
+      return {attempt:attempts,replay:attempts>1};
     });
   }
   function createRound(id,round,ids) {
@@ -353,7 +385,7 @@ function createSqliteWallet(filename) {
       return tx(()=>change(id,'daily:'+day,20,'daily-login'));
     },
     enterPublic,reservePublicRematch,refundPublic,finishPublic,refundInterruptedPublicMatches,
-    createTournament,joinTournament,withdrawTournament,cancelTournament,startTournament,recordTournamentWinner,tournamentStatus,listTournaments,myTournamentMatches,
+    createTournament,joinTournament,withdrawTournament,cancelTournament,startTournament,recordTournamentWinner,openTournamentFixtureAttempt,tournamentStatus,listTournaments,myTournamentMatches,
     close:()=>db.close()
   };
 }
