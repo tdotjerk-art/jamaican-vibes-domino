@@ -132,6 +132,24 @@ function createSqliteWallet(filename) {
       return result;
     });
   }
+  function reservePublicRematch(entries) {
+    if(!Array.isArray(entries)||entries.length<2||entries.length>4)
+      throw Error('Invalid public rematch entries.');
+    if(new Set(entries.map(e=>e?.accountId)).size!==entries.length)
+      throw Error('Duplicate account in public rematch.');
+    return tx(()=>{
+      const result=[];
+      for(const e of entries) {
+        const charge=enterInternal(e.accountId,'public',e.entryId);
+        if(!charge.applied)throw Error('Duplicate public rematch debit.');
+        db.prepare("INSERT INTO public_match_entries(account_id,entry_id,status) VALUES(?,?,'reserved')")
+          .run(e.accountId,e.entryId);
+        result.push({...charge,accountId:e.accountId,entryId:e.entryId});
+      }
+      return result;
+    });
+  }
+
   function refundPublic(id,entryId) {
     return tx(()=>{
       const previous=db.prepare('SELECT status FROM public_match_entries WHERE account_id=? AND entry_id=?').get(id,entryId);
@@ -262,7 +280,7 @@ function createSqliteWallet(filename) {
       if(typeof day!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(day))throw Error('Invalid login day.');
       return tx(()=>change(id,'daily:'+day,20,'daily-login'));
     },
-    enterPublic,refundPublic,finishPublic,refundInterruptedPublicMatches,
+    enterPublic,reservePublicRematch,refundPublic,finishPublic,refundInterruptedPublicMatches,
     createTournament,joinTournament,withdrawTournament,cancelTournament,startTournament,tournamentStatus,listTournaments,
     close:()=>db.close()
   };
