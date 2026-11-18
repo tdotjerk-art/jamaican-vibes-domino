@@ -106,3 +106,43 @@ test('a pregame seat abandonment is refunded and cannot be settled or replayed',
   assert.throws(()=>wallet.finishPublic(a.id,'seat-1'),/cannot be completed/);
   assert.throws(()=>wallet.enterPublic(a.id,'seat-1'),/cannot be reused/);
 });
+
+test('a public rematch charges all seats or none, with no partial debit',t=>{
+  const {wallet}=setup(t);
+  const a=wallet.createAccount('RematchA');
+  const b=wallet.createAccount('RematchB');
+  const oldA=wallet.enterPublic(a.id,'first-a');
+  const oldB=wallet.enterPublic(b.id,'first-b');
+  assert.equal(oldA.balance,90);
+  assert.equal(oldB.balance,90);
+  wallet.finishPublic(a.id,'first-a');
+  wallet.finishPublic(b.id,'first-b');
+  const charges=wallet.reservePublicRematch([
+    {accountId:a.id,entryId:'second-a'},
+    {accountId:b.id,entryId:'second-b'}
+  ]);
+  assert.deepEqual(charges.map(x=>x.balance),[80,80]);
+  assert.throws(()=>wallet.reservePublicRematch([
+    {accountId:a.id,entryId:'second-a'},
+    {accountId:b.id,entryId:'third-b'}
+  ]),/Duplicate public rematch debit/);
+  assert.equal(wallet.balance(a.id),80);
+  assert.equal(wallet.balance(b.id),80);
+  assert.equal(wallet.refundPublic(a.id,'second-a').balance,90);
+  assert.equal(wallet.refundPublic(b.id,'second-b').balance,90);
+});
+
+test('insufficient balance on one rematch seat rolls back all charges',t=>{
+  const {wallet}=setup(t);
+  const a=wallet.createAccount('RichSeat');
+  const b=wallet.createAccount('EmptySeat');
+  for(let i=0;i<10;i++)wallet.enter(b.id,'public','spent-'+i);
+  assert.equal(wallet.balance(b.id),0);
+  assert.throws(()=>wallet.reservePublicRematch([
+    {accountId:a.id,entryId:'new-a'},
+    {accountId:b.id,entryId:'new-b'}
+  ]),/Insufficient credits/);
+  assert.equal(wallet.balance(a.id),100);
+  assert.equal(wallet.balance(b.id),0);
+  assert.equal(wallet.enterPublic(a.id,'new-a').balance,90);
+});
