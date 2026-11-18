@@ -91,13 +91,14 @@
             btn.type = 'button';
             btn.textContent = 'Play round ' + match.round + ', match ' + match.slot;
             btn.onclick = async () => {
-              if (!isValid(credentials) || !gameSocket) {
+              if (!isValid(credentials) || !gameSocket?.connected) {
                 message('Connect to the online Domino lobby and sign in before joining your match.');
                 return;
               }
               try {
                 const me = await post('me', credentials);
                 if (me.name !== walletName()) throw Error('Wallet name does not match signup name.');
+                message('Connecting to tournament round ' + match.round + '…');
                 gameSocket.emit('join-tournament-match', {
                   tournamentId: event.id, round: match.round, slot: match.slot,
                   accountId: credentials.id, accountToken: credentials.token
@@ -142,7 +143,7 @@
         summary.textContent = bracket.id + ' — ' + (bracket.playerCount || 2) + '-player Cut Throat — ' + bracket.registered + '/' + bracket.capacity + ' registered';
         const join = document.createElement('button');
         join.type = 'button'; join.textContent = 'Join: 25 credits';
-        join.disabled = bracket.registered >= bracket.capacity;
+        join.disabled = bracket.status !== 'open' || bracket.registered >= bracket.capacity;
         join.onclick = async () => {
           try {
             if (!isValid(credentials)) throw Error('Create or recover your wallet first.');
@@ -150,7 +151,7 @@
             if (account.name !== walletName()) throw Error('Your signup name must match your wallet.');
             const entry = await post('tournaments/' + encodeURIComponent(bracket.id) + '/join', credentials);
             update(entry.balance);
-            message(entry.applied ? 'Registered for ' + bracket.id + '. Match assignments are not active yet.' :
+            message(entry.applied ? 'Registered for ' + bracket.id + '. Check My Matches after the tournament starts.' :
               'Already registered for ' + bracket.id + '.');
             await refreshTournaments();
             await refreshMyTournaments();
@@ -237,6 +238,9 @@
         }
         return originalEmit.call(this, event, data, ...rest);
       };
+      socket.on('room-error', error => { message('Unable to join match: ' + String(error)); });
+      socket.on('seat-assigned', () => { message('Tournament seat assigned. Follow the game screen to play.'); });
+      socket.on('disconnect', () => { message('Disconnected from online Domino. Reconnect before using Play Round.'); });
       socket.on('wallet-balance', data => {
         if (Number.isSafeInteger(data?.balance)) update(data.balance);
       });
