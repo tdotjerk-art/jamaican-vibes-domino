@@ -193,6 +193,7 @@ function createSqliteWallet(filename) {
   function awardVerifiedReward(id,eventId) {
     if(!opOK(eventId))throw Error('Invalid reward event ID.');
     return tx(()=>{
+      get(id); // Validate the credited account before recording the provider event.
       // Global uniqueness prevents one provider event rewarding multiple accounts.
       const previous=db.prepare('SELECT account_id FROM verified_ad_events WHERE event_id=?').get(eventId);
       if(previous&&previous.account_id!==id)throw Error('Reward event already assigned to another account.');
