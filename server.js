@@ -526,8 +526,16 @@ io.on("connection",socket=>{
    if(room&&room.phase!=="waiting")
      return socket.emit("room-error","Tournament match already in progress. Reconnect to your assigned seat.");
    if(!room){
+     // A process restart loses the board but never the durable bracket or entry.
+     // Each new room is a fresh attempt, with no extra 25-credit charge.
+     let attempt;
+     try{attempt=wallet.openTournamentFixtureAttempt(tournamentId,round,slot)}
+     catch(e){return socket.emit("room-error",e.message)}
      const created=newRoom(account.name,"individual",6,socket,"double-six-two",2);
-     room=created.room;room.tournamentFixture={id:tournamentId,round,slot,key};
+     room=created.room;room.tournamentFixture={id:tournamentId,round,slot,key,attempt:attempt.attempt};
+     room.message=attempt.replay?
+       "Tournament match replay after interruption: previous unfinished board was reset. No extra credits charged.":
+       "Tournament match: waiting for both assigned players.";
      tournamentRooms.set(key,room.code);
      room.players[0].accountId=account.id;room.players[0].ready=true;
      socket.data.roomCode=room.code;socket.data.seat=0;socket.join(room.code);
@@ -540,7 +548,9 @@ io.on("connection",socket=>{
      socket.data.roomCode=room.code;socket.data.seat=seat;socket.join(room.code);
      socket.emit("seat-assigned",{code:room.code,seat,token});
    }
-   room.message="Tournament match: both assigned players must join to begin.";
+   if(room.tournamentFixture?.attempt>1&&room.handNo===0)
+     room.message="Replay of interrupted tournament match. Fresh deal, no additional credits charged.";
+   else room.message="Tournament match: both assigned players must join to begin.";
    startIfReady(room);
  });
  socket.on("join-public-table",({name,playerCount,mode,accountId,accountToken})=>{
