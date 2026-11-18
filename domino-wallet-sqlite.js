@@ -211,6 +211,19 @@ function createSqliteWallet(filename) {
     return {id:t.id,status:t.status,capacity:t.capacity,players,matches,
       placesRemaining:t.capacity-players.length};
   }
+  function myTournamentMatches(accountId,token) {
+    const account=authenticate(accountId,token);
+    const entries=db.prepare(`SELECT t.id,t.status,e.status AS registrationStatus
+      FROM tournament_entries e JOIN tournaments t ON t.id=e.tournament_id
+      WHERE e.account_id=? ORDER BY t.rowid DESC LIMIT 30`).all(account.id);
+    return entries.map(entry=>{
+      const matches=db.prepare(`SELECT round,slot,player_a AS playerA,player_b AS playerB,
+        winner_id AS winnerId,status FROM tournament_matches
+        WHERE tournament_id=? AND (player_a=? OR player_b=?)
+        ORDER BY round,slot`).all(entry.id,account.id,account.id);
+      return {...entry,matches};
+    });
+  }
   function listTournaments() {
     return db.prepare(`SELECT t.id,t.capacity,t.status,
       (SELECT count(*) FROM tournament_entries e
@@ -340,7 +353,7 @@ function createSqliteWallet(filename) {
       return tx(()=>change(id,'daily:'+day,20,'daily-login'));
     },
     enterPublic,reservePublicRematch,refundPublic,finishPublic,refundInterruptedPublicMatches,
-    createTournament,joinTournament,withdrawTournament,cancelTournament,startTournament,recordTournamentWinner,tournamentStatus,listTournaments,
+    createTournament,joinTournament,withdrawTournament,cancelTournament,startTournament,recordTournamentWinner,tournamentStatus,listTournaments,myTournamentMatches,
     close:()=>db.close()
   };
 }
