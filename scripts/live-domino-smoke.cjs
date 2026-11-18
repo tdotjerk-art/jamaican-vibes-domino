@@ -37,6 +37,45 @@ async function main(){
  await probe('Socket.IO server accepts a connection',async()=>{
   const s=await connect();assert.equal(s.connected,true);s.disconnect();
  });
+ await probe('4-player Partners starts and accepts a legal domino move',async()=>{
+  const prefix='SmokePartners'+crypto.randomBytes(3).toString('hex');
+  const first=await connect();
+  const seats=[first],assigned=wait(first,'seat-assigned');
+  first.emit('create-room',{name:prefix+'0',mode:'partner',target:6,playerCount:4});
+  const room=await assigned;
+  for(let n=1;n<4;n++){
+    const socket=await connect();
+    const seated=wait(socket,'seat-assigned');
+    socket.emit('join-room',{code:room.code,name:prefix+n});
+    await seated;seats.push(socket);
+  }
+  const playing=wait(first,'private-state',x=>x.phase==='playing');
+  seats.forEach(p=>p.emit('toggle-ready'));
+  const game=await playing;
+  assert.equal(game.mode,'partner');
+  assert.equal(game.playerCount,4);
+  const states=seats.map(()=>null);
+  seats.forEach((socket,i)=>socket.on('private-state',x=>{states[i]=x}));
+  // During the deal animation moves must be rejected. Wait until playable.
+  const intro=Math.max(0,game.dealUntil-Date.now())+125;
+  await new Promise(resolve=>setTimeout(resolve,intro));
+  const current=states[0]||game;
+  const player=seats[current.turn];
+  assert.ok(player,'Expected a current player');
+  const hand=states[current.turn]?.hand;
+  assert.ok(Array.isArray(hand),'Current player hand missing');
+  const left=current.board[0].a===current.board[0].b?6:current.board[0].a;
+  const right=current.board[current.board.length-1].b;
+  const move=hand.find(d=>d.a===left||d.b===left||d.a===right||d.b===right);
+  assert.ok(move,'No legal playable domino');
+  const update=wait(first,'private-state',x=>x.board.length>current.board.length);
+  const side=move.a===left||move.b===left?'left':'right';
+  player.emit('play-domino',{tileId:move.id,side});
+  const moved=await update;
+  assert.ok(moved.board.length>current.board.length);
+  seats.forEach(p=>p.disconnect());
+ });
+
  for(const count of [2,3,4]){
   await probe('Live private '+count+'-player table, ready, pause and reconnect',async()=>{
    const prefix='Smoke'+crypto.randomBytes(3).toString('hex');
