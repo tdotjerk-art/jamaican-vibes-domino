@@ -118,8 +118,37 @@ function createWalletStore(directory) {
     return transact(id, 'refund:' + entryId, cost, 'refund:' + mode);
   }
 
+  // Tournament registration is a server-side wallet operation, not a live tournament lobby.
+  // A single account can register once per bracket ID. A cancelled registration
+  // is retired to prevent duplicate refunds or charge-free re-entry.
+  function tournamentEntryId(tournamentId) {
+    if (typeof tournamentId !== 'string' || !/^[a-zA-Z0-9_-]{1,48}$/.test(tournamentId))
+      throw Error('Invalid tournament ID.');
+    return 'tournament-' + tournamentId;
+  }
+
+  function tournamentRegistration(id, tournamentId) {
+    const entryId = tournamentEntryId(tournamentId);
+    const operations = get(id).operations;
+    const charged = Object.hasOwn(operations, 'entry:' + entryId);
+    const cancelled = Object.hasOwn(operations, 'refund:' + entryId);
+    return { tournamentId, registered: charged && !cancelled, cancelled };
+  }
+
+  function registerTournament(id, tournamentId) {
+    const entryId = tournamentEntryId(tournamentId);
+    const result = enter(id, 'tournament', entryId);
+    return { ...result, ...tournamentRegistration(id, tournamentId) };
+  }
+
+  function cancelTournamentRegistration(id, tournamentId) {
+    const entryId = tournamentEntryId(tournamentId);
+    const result = refund(id, 'tournament', entryId);
+    return { ...result, ...tournamentRegistration(id, tournamentId) };
+  }
+
   return {
-    createAccount, authenticate, balance: id => get(id).balance, price, enter, refund,
+    createAccount, authenticate, balance: id => get(id).balance, price, enter, refund, tournamentRegistration, registerTournament, cancelTournamentRegistration,
     // Rewarded ads must be validated on the server by the ad provider before calling this.
     awardVerifiedReward: (id, verifiedProviderEventId) =>
       transact(id, 'reward:' + verifiedProviderEventId, 30, 'verified-reward'),
