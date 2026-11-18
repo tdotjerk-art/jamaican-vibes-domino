@@ -343,6 +343,11 @@ function promoteHost(r){
 function abandonSeat(r,seat){
  const p=r.players[seat];if(!p)return;
  if(p.graceTimer)clearTimeout(p.graceTimer);
+ // Refund an entry abandoned before any hand has started.
+ if(creditsEnabled&&r.publicTable&&r.handNo===0&&p.accountId&&p.entryId){
+   try{wallet.refund(p.accountId,"public",p.entryId)}
+   catch(e){console.error("Domino credit refund failed:",e.message)}
+ }
  r.players[seat]=null;r.ready=false;promoteHost(r);clearTimer(r);
  r.hands=r.players.map(()=>[]);r.board=[];r.turn=null;r.phase="waiting";r.revealHands=false;r.message="A seat opened. Waiting for all selected players to be ready.";
  if(r.publicTable&&!r.players.some(Boolean)&&!r.spectators.size){clearTimeout(r.restartTimer);rooms.delete(r.code);return;}
@@ -408,6 +413,7 @@ io.on("connection",socket=>{
    if(current){
      if(!current.publicTable)return socket.emit("room-error","Leave your private room before joining a public table.");
      const player=current.players[socket.data.seat];
+     if(creditsEnabled&&player.accountId!==account.id)return socket.emit("room-error","This public seat belongs to a different account.");
      socket.emit("seat-assigned",{code:current.code,seat:player.seat,token:player.token});
      emitAll(current);
      return;
@@ -439,8 +445,10 @@ io.on("connection",socket=>{
    if(creditsEnabled){
      try{
        // One operation per account per match room; reconnect does not use this path.
-       wallet.enter(account.id,"public",room.code);
+       const entryId=room.code+":"+token.slice(0,16);
+       wallet.enter(account.id,"public",entryId);
        room.players[seat].accountId=account.id;
+       room.players[seat].entryId=entryId;
        socket.emit("wallet-balance",{balance:wallet.balance(account.id)});
      }catch(e){
        // Undo only the newly reserved seat, without deleting the player's wallet.
