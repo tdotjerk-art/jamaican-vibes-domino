@@ -78,3 +78,37 @@ test('refunded entry IDs cannot be reused, even after restart', t => {
   assert.equal(restarted.balance(id), 100);
   assert.equal(restarted.enter(id, 'tournament', 'bracket2').balance, 75);
 });
+
+
+test('tournament signup charges once and cancellation refunds once', t => {
+  const { wallet } = fixture(t);
+  const { id } = wallet.createAccount('TournamentPlayer');
+  assert.deepEqual(wallet.tournamentRegistration(id, 'round_1'), {
+    tournamentId: 'round_1', registered: false, cancelled: false
+  });
+  assert.equal(wallet.registerTournament(id, 'round_1').balance, 75);
+  assert.equal(wallet.registerTournament(id, 'round_1').applied, false);
+  assert.equal(wallet.tournamentRegistration(id, 'round_1').registered, true);
+  assert.equal(wallet.cancelTournamentRegistration(id, 'round_1').balance, 100);
+  assert.equal(wallet.cancelTournamentRegistration(id, 'round_1').applied, false);
+  assert.deepEqual(wallet.tournamentRegistration(id, 'round_1'), {
+    tournamentId: 'round_1', registered: false, cancelled: true
+  });
+  assert.throws(() => wallet.registerTournament(id, 'round_1'), /cannot be reused/);
+  assert.throws(() => wallet.registerTournament(id, '../bad'), /Invalid tournament ID/);
+  assert.equal(wallet.registerTournament(id, 'round_2').balance, 75);
+});
+
+test('tournament registration survives a server wallet reload', t => {
+  const { directory, wallet } = fixture(t);
+  const { id } = wallet.createAccount('BracketPlayer');
+  wallet.registerTournament(id, 'championship');
+  const restored = createWalletStore(directory);
+  assert.equal(restored.tournamentRegistration(id, 'championship').registered, true);
+  assert.equal(restored.registerTournament(id, 'championship').applied, false);
+  assert.equal(restored.balance(id), 75);
+  restored.cancelTournamentRegistration(id, 'championship');
+  const reopened = createWalletStore(directory);
+  assert.equal(reopened.tournamentRegistration(id, 'championship').cancelled, true);
+  assert.equal(reopened.balance(id), 100);
+});
