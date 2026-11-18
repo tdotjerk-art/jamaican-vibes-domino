@@ -580,6 +580,25 @@ io.on("connection",socket=>{
    const r=seatedRoom(socket),seat=socket.data.seat;if(!r||r.phase!=="match-over"||!Number.isInteger(seat))return;
    r.rematchVotes.add(seat);r.message=`Rematch votes: ${r.rematchVotes.size}/${r.players.length}`;emitAll(r);
    if(r.rematchVotes.size===r.players.length){
+     if(creditsEnabled&&r.publicTable){
+       try{
+         if(!wallet.reservePublicRematch)throw Error("Public rematches require transactional wallet storage.");
+         if(!r.players.every(p=>p?.connected))throw Error("All players must reconnect before a public rematch.");
+         const entries=r.players.map(p=>({accountId:p.accountId,
+           entryId:r.code+":"+crypto.randomBytes(8).toString("hex")}));
+         const charges=wallet.reservePublicRematch(entries);
+         charges.forEach((charge,i)=>{
+           r.players[i].entryId=charge.entryId;
+           if(r.players[i].id)io.to(r.players[i].id).emit("wallet-balance",{balance:charge.balance});
+         });
+       }catch(e){
+         r.rematchVotes.clear();
+         r.message="Public rematch not started: "+e.message;
+         io.to(r.code).emit("room-error",r.message);
+         emitAll(r);
+         return;
+       }
+     }
      r.scores=[0,0,0,0];r.teamScores=[0,0];r.bruckStartTeam=null;r.bruckStartCount=0;r.oneOnePlayTwo=false;r.doubleSixPoseAfterBruck=false;r.nextPlayFor=1;r.handNo=0;r.tiedCarry=false;r.lastWinnerTeam=null;r.lastIndividualWinner=null;r.rematchVotes.clear();
      r.analyticsMatch=crypto.randomUUID();r.history=[];r.players.forEach(p=>{if(p)p.ready=false});r.phase="waiting";r.message="Rematch ready. Press READY.";emitAll(r)
    }
