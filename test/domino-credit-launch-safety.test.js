@@ -11,5 +11,5 @@ test('production Render must reject the provisional filesystem credit wallet', (
     encoding: 'utf8', timeout: 10000
   });
   assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /cannot run on Render with the filesystem wallet/);
+  assert.match(result.stderr, /cannot run on Render without a confirmed durable SQLite disk/);
 });
