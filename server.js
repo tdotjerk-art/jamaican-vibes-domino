@@ -25,7 +25,7 @@ const ludiRouter=require("./ludi-online").createLUDIRouter();
 app.use("/api/ludi",ludiRouter);
 server.on("close",()=>ludiRouter.close());
 app.use(express.static("public"));
-app.get("/",(req,res)=>{const fs=require("node:fs");fs.readFile(__dirname+"/index.html","utf8",(error,html)=>{if(error)return res.sendStatus(500);res.type("html").send(html.replace("<head>",'<head><script src="/analytics-client.js"></script>'))})});
+app.get("/",(req,res)=>{const fs=require("node:fs");fs.readFile(__dirname+"/index.html","utf8",(error,html)=>{if(error)return res.sendStatus(500);res.type("html").send(html.replace("<head>",'<head><script src="/analytics-client.js"></script>'+(creditsEnabled?'<script defer src="/domino-wallet-client.js"></script>':"")))})});
 app.get("/health",(req,res)=>res.status(200).send("ok"));
 const rooms=new Map();
 const GRACE_MS=90000;
