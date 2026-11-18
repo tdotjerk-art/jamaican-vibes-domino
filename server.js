@@ -419,6 +419,10 @@ io.on("connection",socket=>{
      return;
    }
 
+   // An account may hold one public seat at a time, even across socket connections.
+   // Reconnections to an existing seat must use the room's reconnect token.
+   if(creditsEnabled&&[...rooms.values()].some(r=>r.publicTable&&r.players.some(p=>p&&p.accountId===account.id)))
+     return socket.emit("room-error","This account already has a public seat. Reconnect to that seat or leave it before joining another table.");
    if(creditsEnabled&&wallet.balance(account.id)<wallet.price("public"))
      return socket.emit("room-error","Not enough credits for a public match. Computer and private friends games are free.");
    leaveCurrentRoom(socket);
