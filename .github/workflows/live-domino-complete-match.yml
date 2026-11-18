@@ -1,4 +1,5 @@
 name: Production Domino complete matches
+run-name: Private full-match verification (${{ github.sha }})
 
 on:
   push:
