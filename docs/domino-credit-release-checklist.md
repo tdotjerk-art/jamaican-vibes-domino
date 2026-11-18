@@ -25,7 +25,9 @@
 - [ ] Replace unlimited unverified account creation with verified identity or sufficiently strong registration-abuse controls, account recovery and privacy notices.
 - [x] Add persistent tournament fixtures, round progression, byes, and administrator-authorized result recording to the SQLite development pilot (automated tests).
 - [x] Add authenticated two-player tournament match rooms, restricted to assigned accounts, with server-owned game results recording bracket winners.
-- [ ] Verify gameplay end-to-end through a completed tournament match (not only room assignment), UI tournament match launch, rotation/no-scroll on iPhone, and automatic round progression.
+- [x] Add authenticated `/api/domino/wallet/tournaments/mine` listing and a pilot "My Matches" / "Play round" launcher for registered accounts; API automated checks passed.
+- [ ] Verify actual lobby-to-Socket.IO launch in a real browser, complete an entire tournament game and confirm automatic advancement. The launcher depends on access to the existing game's active socket; this has not yet been browser-verified.
+- [ ] Verify iPhone portrait/landscape, controls and no-scroll sizing for the tournament lobby and playing table.
 - [ ] Decide and implement tournament disconnect/forfeit rules and resumable gameplay across server restarts; the current game rooms remain in memory. Do not call this production-ready tournament play until verified.
 - [ ] Configure an approved rewarded-web advertising account and ad unit, with signed server-to-server verification. Never grant credits on browser-reported ad completions. Validate account linkage, single use, rate limits, age restrictions and ad policy.
 - [ ] Complete physical iPhone Safari testing in portrait/landscape plus login, public multiplayer, rematch, tournament, timers, reload, lost connectivity and no scrolling.
