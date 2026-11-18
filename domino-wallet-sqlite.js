@@ -127,6 +127,12 @@ function createSqliteWallet(filename) {
     return {id:t.id,status:t.status,capacity:t.capacity,players,
       placesRemaining:t.capacity-players.length};
   }
+  function listTournaments() {
+    return db.prepare(`SELECT t.id,t.capacity,t.status,
+      (SELECT count(*) FROM tournament_entries e
+       WHERE e.tournament_id=t.id AND e.status='registered') AS registered
+      FROM tournaments t WHERE t.status='open' ORDER BY t.rowid DESC LIMIT 30`).all();
+  }
   function createTournament(id,capacity) {
     if(!tourOK(id))throw Error('Invalid tournament ID.');
     if(!Number.isInteger(capacity)||capacity<2||capacity>128)throw Error('Invalid tournament capacity.');
@@ -203,7 +209,7 @@ function createSqliteWallet(filename) {
       if(typeof day!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(day))throw Error('Invalid login day.');
       return tx(()=>change(id,'daily:'+day,20,'daily-login'));
     },
-    createTournament,joinTournament,withdrawTournament,cancelTournament,startTournament,tournamentStatus,
+    createTournament,joinTournament,withdrawTournament,cancelTournament,startTournament,tournamentStatus,listTournaments,
     close:()=>db.close()
   };
 }
