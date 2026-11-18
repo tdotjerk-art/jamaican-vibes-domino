@@ -426,6 +426,14 @@ function promoteHost(r){
  if(r.players[r.hostSeat])return;
  const idx=r.players.findIndex(Boolean);r.hostSeat=idx>=0?idx:0
 }
+function holdTournamentSeat(r,seat){
+ const p=r.players[seat];if(!p)return;
+ if(p.graceTimer){clearTimeout(p.graceTimer);p.graceTimer=null}
+ p.connected=false;p.id=null;p.ready=false;
+ // Never forfeit or discard tournament boards after a connection timeout.
+ if(r.phase!=="match-over")pauseForDisconnect(r);
+ emitAll(r);
+}
 function abandonSeat(r,seat){
  const p=r.players[seat];if(!p)return;
  if(p.graceTimer)clearTimeout(p.graceTimer);
@@ -448,7 +456,10 @@ function leaveCurrentRoom(socket){
  const r=rooms.get(socket.data.roomCode);
  if(r){
   if(socket.data.spectator){r.spectators.delete(socket.id);emitAll(r);}
-  else if(r.players[socket.data.seat]?.id===socket.id)abandonSeat(r,socket.data.seat);
+  else if(r.players[socket.data.seat]?.id===socket.id){
+   if(r.tournamentFixture&&r.phase!=="match-over")holdTournamentSeat(r,socket.data.seat);
+   else abandonSeat(r,socket.data.seat);
+  }
   socket.leave(r.code);
  }
  delete socket.data.roomCode;delete socket.data.seat;delete socket.data.spectator;
@@ -505,8 +516,9 @@ io.on("connection",socket=>{
      const p=current.players[socket.data.seat];
      socket.emit("seat-assigned",{code:current.code,seat:p.seat,token:p.token});emitAll(current);return;
    }
-   if(current)return socket.emit("room-error","Leave the current game before joining your tournament match.");
-   if([...rooms.values()].some(r=>r.tournamentFixture&&r.players.some(p=>p?.accountId===account.id)))
+   if(current?.tournamentFixture&&current.phase==="match-over")leaveCurrentRoom(socket);
+   else if(current)return socket.emit("room-error","Leave the current game before joining your tournament match.");
+   if([...rooms.values()].some(r=>r.tournamentFixture&&r.phase!=="match-over"&&r.players.some(p=>p?.accountId===account.id)))
      return socket.emit("room-error","Reconnect to your existing tournament seat first.");
    // Release a spectator role before assigning a player role to this socket.
    if(socket.data.spectator)leaveCurrentRoom(socket);
@@ -684,6 +696,7 @@ io.on("connection",socket=>{
    if(socket.data.spectator){r.spectators.delete(socket.id);emitAll(r);return}
    const seat=socket.data.seat,p=r.players[seat];if(!p||p.id!==socket.id)return;
    if(r.publicTable&&r.phase==="waiting"&&r.handNo===0){abandonSeat(r,seat);return;}
+   if(r.tournamentFixture){holdTournamentSeat(r,seat);return;}
    p.connected=false;p.id=null;p.ready=false;pauseForDisconnect(r);
    p.graceTimer=setTimeout(()=>abandonSeat(r,seat),GRACE_MS);
    // The reconnect grace period should not keep a shutting-down process alive.
