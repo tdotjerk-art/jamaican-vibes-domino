@@ -16,6 +16,7 @@ test('new account starts with 100 credits and authenticates by secret', t => {
   const { wallet } = fixture(t);
   const account = wallet.createAccount('Junior');
   assert.equal(account.balance, 100);
+  assert.throws(() => wallet.createAccount('junior'), /already registered/i);
   assert.equal(wallet.authenticate(account.id, account.token).balance, 100);
   assert.throws(() => wallet.authenticate(account.id, '0'.repeat(64)), /credentials/);
   assert.throws(() => wallet.createAccount('TdotPlayer'), /reserved/);
