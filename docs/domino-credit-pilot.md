@@ -33,3 +33,9 @@ This is a development-only staged implementation, not a complete functional cred
 ## Verified in development
 
 GitHub Actions run 44225846933 completed successfully after the wallet API, public-seat gate, and integration tests were added. This is automated test verification, not physical iPhone Safari verification. **Never activate on ephemeral storage, and do not merge yet.**
+
+## Lobby integration (pilot)
+
+When `DOMINO_CREDITS_ENABLED=true`, the server injects `/domino-wallet-client.js` into the root page. It adds wallet controls alongside Join Public Table, supports new account registration, recovery with `accountID:token`, session-only credentials, live balance retrieval, and forwarding authenticated account credentials with public joins. The signed-in account name is enforced server-side. Private-room and computer modes are unchanged.
+
+**Known blockers before launch:** Production wallet storage needs verification (no ephemeral disk); registration needs a signup/recovery experience review and abuse controls; full iPhone portrait/landscape checks are unverified; this does not add a Domino tournament lobby or actual tournament registration yet. An account recovery code must be saved by its user. No rewarded ads have been connected. GitHub Actions #407 passed automated tests for the client integration branch.
