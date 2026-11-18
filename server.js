@@ -15,6 +15,13 @@ if(creditsEnabled){
    return {account:{id:account.id,name:account.name,balance:account.balance},token:account.token};
  }));
  app.post("/api/domino/wallet/me",(req,res)=>result(res,()=>wallet.authenticate(req.body?.id,req.body?.token)));
+ // The date is chosen by the server, never supplied by a browser.
+ app.post("/api/domino/wallet/daily",(req,res)=>result(res,()=>{
+   const account=wallet.authenticate(req.body?.id,req.body?.token);
+   const calendarDay=new Date().toISOString().slice(0,10);
+   const reward=wallet.awardDailyLogin(account.id,calendarDay);
+   return {balance:reward.balance,applied:reward.applied,credits:reward.applied?20:0,calendarDay};
+ }));
  // No endpoint accepts claimed completed ads or arbitrary credit awards.
 }
 
