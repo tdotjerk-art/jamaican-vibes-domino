@@ -77,3 +77,32 @@ test('SQLite verified ad IDs cannot pay multiple accounts, and malformed account
   assert.throws(()=>wallet.awardVerifiedReward('0'.repeat(32),'provider-event-2'),/Account not found/);
   assert.equal(wallet.awardVerifiedReward(b.id,'provider-event-2').balance,130);
 });
+
+test('interrupted public games refund on restart without refunding finished matches',t=>{
+  const {wallet,filename}=setup(t);
+  const a=wallet.createAccount('InterruptA');
+  const b=wallet.createAccount('FinishB');
+  assert.equal(wallet.enterPublic(a.id,'join-1').balance,90);
+  assert.equal(wallet.enterPublic(a.id,'join-1').applied,false);
+  wallet.enterPublic(b.id,'join-2');
+  assert.equal(wallet.finishPublic(b.id,'join-2').applied,true);
+  assert.equal(wallet.finishPublic(b.id,'join-2').applied,false);
+  const reopened=createSqliteWallet(filename);
+  assert.equal(reopened.refundInterruptedPublicMatches(),1);
+  assert.equal(reopened.balance(a.id),100);
+  assert.equal(reopened.balance(b.id),90);
+  assert.equal(reopened.refundInterruptedPublicMatches(),0);
+  assert.throws(()=>reopened.enterPublic(a.id,'join-1'),/cannot be reused/);
+  assert.throws(()=>reopened.refundPublic(b.id,'join-2'),/cannot be refunded/);
+  reopened.close();
+});
+
+test('a pregame seat abandonment is refunded and cannot be settled or replayed',t=>{
+  const {wallet}=setup(t);
+  const a=wallet.createAccount('SeatExit');
+  assert.equal(wallet.enterPublic(a.id,'seat-1').balance,90);
+  assert.equal(wallet.refundPublic(a.id,'seat-1').balance,100);
+  assert.equal(wallet.refundPublic(a.id,'seat-1').applied,false);
+  assert.throws(()=>wallet.finishPublic(a.id,'seat-1'),/cannot be completed/);
+  assert.throws(()=>wallet.enterPublic(a.id,'seat-1'),/cannot be reused/);
+});
