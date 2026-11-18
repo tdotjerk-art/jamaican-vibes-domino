@@ -6,6 +6,10 @@ const crypto=require("crypto");
 const app=express(),server=http.createServer(app),io=new Server(server,{cors:{origin:"*"}});
 // The pilot is OFF by default. Enable only with persistent storage and end-to-end tests.
 const creditsEnabled=process.env.DOMINO_CREDITS_ENABLED==="true";
+// Render free services do not provide the durable shared transactional storage
+// required to operate a credit economy safely. Fail closed if accidentally enabled.
+if(creditsEnabled&&process.env.RENDER==="true")
+ throw Error("Domino credits cannot run on Render with the filesystem wallet; connect a transactional database first.");
 const wallet=creditsEnabled?require("./domino-wallet").createWalletStore(process.env.DOMINO_WALLET_DIR):null;
 if(creditsEnabled){
  app.use("/api/domino/wallet",express.json({limit:"2kb"}));
