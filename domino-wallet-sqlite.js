@@ -39,6 +39,7 @@ function createSqliteWallet(filename) {
     );
     CREATE TABLE IF NOT EXISTS tournaments (
       id TEXT PRIMARY KEY, capacity INTEGER NOT NULL CHECK(capacity BETWEEN 2 AND 128),
+      player_count INTEGER NOT NULL DEFAULT 2 CHECK(player_count IN (2,3,4)),
       status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open','started','cancelled','completed'))
     );
     CREATE TABLE IF NOT EXISTS tournament_entries (
@@ -61,6 +62,14 @@ function createSqliteWallet(filename) {
     -- Each attempt represents a new room for an unfinished bracket fixture.
     -- On restart, old in-memory boards are deliberately abandoned and a new
     -- attempt starts at a fresh deal. No extra tournament entry is charged.
+    CREATE TABLE IF NOT EXISTS tournament_match_seats (
+      tournament_id TEXT NOT NULL, round INTEGER NOT NULL, slot INTEGER NOT NULL,
+      seat INTEGER NOT NULL CHECK(seat BETWEEN 0 AND 3),
+      account_id TEXT NOT NULL REFERENCES accounts(id),
+      PRIMARY KEY(tournament_id,round,slot,seat),
+      UNIQUE(tournament_id,round,slot,account_id),
+      FOREIGN KEY(tournament_id,round,slot) REFERENCES tournament_matches(tournament_id,round,slot)
+    );
     CREATE TABLE IF NOT EXISTS tournament_fixture_attempts (
       tournament_id TEXT NOT NULL,
       round INTEGER NOT NULL,
@@ -71,9 +80,11 @@ function createSqliteWallet(filename) {
         REFERENCES tournament_matches(tournament_id,round,slot)
     );
   `);
+  if(!db.prepare('PRAGMA table_info(tournaments)').all().some(c=>c.name==='player_count'))
+    db.exec('ALTER TABLE tournaments ADD COLUMN player_count INTEGER NOT NULL DEFAULT 2 CHECK(player_count IN (2,3,4))');
   const accountById=db.prepare('SELECT id,name,token_hash AS tokenHash,balance FROM accounts WHERE id=?');
   const operationById=db.prepare('SELECT delta,reason FROM operations WHERE account_id=? AND operation_id=?');
-  const tournamentById=db.prepare('SELECT id,capacity,status FROM tournaments WHERE id=?');
+  const tournamentById=db.prepare('SELECT id,capacity,status,player_count AS playerCount FROM tournaments WHERE id=?');
 
   function tx(work) {
     db.exec('BEGIN IMMEDIATE');
@@ -212,17 +223,27 @@ function createSqliteWallet(filename) {
     if(!t)throw Error('Tournament not found.');
     return t;
   }
-  function tournamentStatus(id) {
-    const t=tour(id);
-    const players=db.prepare(`SELECT a.id,a.name FROM tournament_entries e
-      JOIN accounts a ON a.id=e.account_id
-      WHERE e.tournament_id=? AND e.status='registered' ORDER BY e.rowid`).all(id);
+  function tournamentMatches(id,accountId=null){
     const matches=db.prepare(`SELECT m.round,m.slot,m.player_a AS playerA,m.player_b AS playerB,
       m.winner_id AS winnerId,m.status,coalesce(a.attempts,0) AS attempts
       FROM tournament_matches m LEFT JOIN tournament_fixture_attempts a
         ON a.tournament_id=m.tournament_id AND a.round=m.round AND a.slot=m.slot
       WHERE m.tournament_id=? ORDER BY m.round,m.slot`).all(id);
-    return {id:t.id,status:t.status,capacity:t.capacity,players,matches,
+    const seats=db.prepare(`SELECT round,slot,seat,account_id AS accountId
+      FROM tournament_match_seats WHERE tournament_id=? ORDER BY round,slot,seat`).all(id);
+    return matches.map(m=>{
+      const playerIds=seats.filter(p=>p.round===m.round&&p.slot===m.slot).map(p=>p.accountId);
+      if(!playerIds.length)playerIds.push(...[m.playerA,m.playerB].filter(Boolean));
+      return {...m,playerIds};
+    }).filter(m=>accountId===null||m.playerIds.includes(accountId));
+  }
+  function tournamentStatus(id) {
+    const t=tour(id);
+    const players=db.prepare(`SELECT a.id,a.name FROM tournament_entries e
+      JOIN accounts a ON a.id=e.account_id
+      WHERE e.tournament_id=? AND e.status='registered' ORDER BY e.rowid`).all(id);
+    const matches=tournamentMatches(id);
+    return {id:t.id,status:t.status,capacity:t.capacity,playerCount:t.playerCount,players,matches,
       placesRemaining:t.capacity-players.length};
   }
   function myTournamentMatches(accountId,token) {
@@ -231,26 +252,22 @@ function createSqliteWallet(filename) {
       FROM tournament_entries e JOIN tournaments t ON t.id=e.tournament_id
       WHERE e.account_id=? ORDER BY t.rowid DESC LIMIT 30`).all(account.id);
     return entries.map(entry=>{
-      const matches=db.prepare(`SELECT m.round,m.slot,m.player_a AS playerA,m.player_b AS playerB,
-        m.winner_id AS winnerId,m.status,coalesce(a.attempts,0) AS attempts
-        FROM tournament_matches m LEFT JOIN tournament_fixture_attempts a
-          ON a.tournament_id=m.tournament_id AND a.round=m.round AND a.slot=m.slot
-        WHERE m.tournament_id=? AND (m.player_a=? OR m.player_b=?)
-        ORDER BY m.round,m.slot`).all(entry.id,account.id,account.id);
-      return {...entry,matches};
+      const matches=tournamentMatches(entry.id,account.id);
+      return {...entry,playerCount:tour(entry.id).playerCount,matches};
     });
   }
   function listTournaments() {
-    return db.prepare(`SELECT t.id,t.capacity,t.status,
+    return db.prepare(`SELECT t.id,t.capacity,t.status,t.player_count AS playerCount,
       (SELECT count(*) FROM tournament_entries e
        WHERE e.tournament_id=t.id AND e.status='registered') AS registered
       FROM tournaments t WHERE t.status='open' ORDER BY t.rowid DESC LIMIT 30`).all();
   }
-  function createTournament(id,capacity) {
+  function createTournament(id,capacity,playerCount=2) {
     if(!tourOK(id))throw Error('Invalid tournament ID.');
     if(!Number.isInteger(capacity)||capacity<2||capacity>128)throw Error('Invalid tournament capacity.');
+    if(![2,3,4].includes(playerCount))throw Error('Tournament table size must be 2, 3 or 4.');
     return tx(()=>{
-      db.prepare('INSERT INTO tournaments(id,capacity) VALUES(?,?)').run(id,capacity);
+      db.prepare('INSERT INTO tournaments(id,capacity,player_count) VALUES(?,?,?)').run(id,capacity,playerCount);
       return tournamentStatus(id);
     });
   }
@@ -313,12 +330,21 @@ function createSqliteWallet(filename) {
   }
   function createRound(id,round,ids) {
     if(ids.length<2)throw Error('Cannot create a round with fewer than two competitors.');
-    const stmt=db.prepare(`INSERT INTO tournament_matches
+    const count=tour(id).playerCount;
+    const insert=db.prepare(`INSERT INTO tournament_matches
       (tournament_id,round,slot,player_a,player_b,winner_id,status) VALUES(?,?,?,?,?,?,?)`);
-    for(let i=0;i<ids.length;i+=2) {
-      const first=ids[i],second=ids[i+1]||null;
-      stmt.run(id,round,Math.floor(i/2)+1,first,second,second?null:first,second?'pending':'bye');
-    }
+    const seatInsert=db.prepare(`INSERT INTO tournament_match_seats
+      (tournament_id,round,slot,seat,account_id) VALUES(?,?,?,?,?)`);
+    const full=Math.floor(ids.length/count),groups=[];
+    if(full){
+      for(let i=0;i<full;i++)groups.push(ids.slice(i*count,(i+1)*count));
+      for(const id of ids.slice(full*count))groups.push([id]);
+    }else groups.push(ids); // Final or small tournament: two or more can play.
+    groups.forEach((players,i)=>{
+      const slot=i+1,bye=players.length===1;
+      insert.run(id,round,slot,players[0],players[1]||null,bye?players[0]:null,bye?'bye':'pending');
+      players.forEach((account,seat)=>seatInsert.run(id,round,slot,seat,account));
+    });
   }
   function startTournament(id) {
     return tx(()=>{
@@ -346,7 +372,8 @@ function createSqliteWallet(filename) {
         .get(id,round,slot);
       if(!match)throw Error('Tournament match not found.');
       if(match.status==='bye')throw Error('Bye results cannot be changed.');
-      if(winnerId!==match.a&&winnerId!==match.b)throw Error('Winner is not seated in this match.');
+      const assigned=tournamentMatches(id).find(m=>m.round===round&&m.slot===slot)?.playerIds||[];
+      if(!assigned.includes(winnerId))throw Error('Winner is not seated in this match.');
       if(match.status==='completed') {
         if(match.winner!==winnerId)throw Error('Tournament match already has a different winner.');
         return {...tournamentStatus(id),applied:false};
