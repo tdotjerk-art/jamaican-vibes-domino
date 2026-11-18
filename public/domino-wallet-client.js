@@ -64,6 +64,45 @@
     update(account.balance); message('Wallet recovered for ' + account.name);
   }
 
+  async function refreshTournaments() {
+    const list = $('jvTournamentList'), details = $('jvTournamentDetails');
+    if (!list || !details) return;
+    try {
+      const response = await fetch('/api/domino/wallet/tournaments', {cache:'no-store'});
+      if (response.status === 404) { details.hidden = true; return; }
+      if (!response.ok) throw Error('Tournament list unavailable.');
+      const tournaments = await response.json();
+      details.hidden = false;
+      list.replaceChildren();
+      if (!Array.isArray(tournaments) || !tournaments.length) {
+        list.textContent = 'No tournaments are accepting registration.';
+        return;
+      }
+      for (const bracket of tournaments) {
+        const line = document.createElement('div');
+        line.style.cssText = 'display:flex;align-items:center;gap:8px;margin:6px 0;flex-wrap:wrap';
+        const summary = document.createElement('span');
+        summary.textContent = bracket.id + ' — ' + bracket.registered + '/' + bracket.capacity + ' registered';
+        const join = document.createElement('button');
+        join.type = 'button'; join.textContent = 'Join: 25 credits';
+        join.disabled = bracket.registered >= bracket.capacity;
+        join.onclick = async () => {
+          try {
+            if (!isValid(credentials)) throw Error('Create or recover your wallet first.');
+            const account = await post('me', credentials);
+            if (account.name !== walletName()) throw Error('Your signup name must match your wallet.');
+            const entry = await post('tournaments/' + encodeURIComponent(bracket.id) + '/join', credentials);
+            update(entry.balance);
+            message(entry.applied ? 'Registered for ' + bracket.id + '. Match assignments are not active yet.' :
+              'Already registered for ' + bracket.id + '.');
+            await refreshTournaments();
+          } catch (error) { message(error.message); }
+        };
+        line.append(summary,join); list.append(line);
+      }
+    } catch (error) { list.textContent = error.message; }
+  }
+
   function install() {
     if (ready) return;
     const join = $('jvPublicJoin'), setup = $('jvOnlineSetup');
@@ -79,12 +118,17 @@
       ' <button type="button" id="jvWalletDaily">Claim Daily 20 Credits</button>'+
       '<p style="margin:5px 0"><label>Recovery code <input id="jvWalletRecovery" readonly hidden aria-label="Your recovery code" style="width:100%;font-size:12px"></label></p>'+
       '<label>Existing recovery code <input id="jvWalletRecoveryInput" autocomplete="off" aria-label="Existing recovery code" style="width:100%"></label>'+
-      '<button type="button" id="jvWalletRestore">Recover Wallet</button>';
+      '<button type="button" id="jvWalletRestore">Recover Wallet</button>'+
+      '<details id="jvTournamentDetails" hidden style="margin-top:8px"><summary>Tournament registration (pilot)</summary>'+
+      '<p style="margin:4px 0">Entry: 25 credits. Tournament match assignments are not yet active.</p>'+
+      '<button type="button" id="jvTournamentRefresh">Refresh tournaments</button>'+
+      '<div id="jvTournamentList" aria-live="polite"></div></details>';
     join.parentNode.insertBefore(panel, join);
     $('jvWalletRegister').onclick = async () => {
       try { await register(); } catch (e) { message(e.message); }
     };
     $('jvWalletRefresh').onclick = refresh;
+    $('jvTournamentRefresh').onclick = refreshTournaments;
     $('jvWalletDaily').onclick = async () => {
       try {
         if (!isValid(credentials)) throw Error('Sign in to claim your daily credits.');
@@ -113,6 +157,7 @@
       finally { busy = false; }
     }, true);
     refresh();
+    refreshTournaments();
   }
 
   // Preserve the existing online socket implementation, attaching credentials
