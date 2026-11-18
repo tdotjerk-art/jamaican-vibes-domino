@@ -231,10 +231,12 @@ function createSqliteWallet(filename) {
       FROM tournament_entries e JOIN tournaments t ON t.id=e.tournament_id
       WHERE e.account_id=? ORDER BY t.rowid DESC LIMIT 30`).all(account.id);
     return entries.map(entry=>{
-      const matches=db.prepare(`SELECT round,slot,player_a AS playerA,player_b AS playerB,
-        winner_id AS winnerId,status FROM tournament_matches
-        WHERE tournament_id=? AND (player_a=? OR player_b=?)
-        ORDER BY round,slot`).all(entry.id,account.id,account.id);
+      const matches=db.prepare(`SELECT m.round,m.slot,m.player_a AS playerA,m.player_b AS playerB,
+        m.winner_id AS winnerId,m.status,coalesce(a.attempts,0) AS attempts
+        FROM tournament_matches m LEFT JOIN tournament_fixture_attempts a
+          ON a.tournament_id=m.tournament_id AND a.round=m.round AND a.slot=m.slot
+        WHERE m.tournament_id=? AND (m.player_a=? OR m.player_b=?)
+        ORDER BY m.round,m.slot`).all(entry.id,account.id,account.id);
       return {...entry,matches};
     });
   }
