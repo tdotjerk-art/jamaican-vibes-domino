@@ -74,6 +74,11 @@ if(creditsEnabled){
      administrative(req,res,()=>wallet.startTournament(req.params.id)));
    app.post("/api/domino/wallet/tournaments/:id/cancel",(req,res)=>
      administrative(req,res,()=>wallet.cancelTournament(req.params.id)));
+   // Admin-only result reporting until completed Domino games can be bound
+   // to bracket fixtures by a trusted server-side match/session identifier.
+   app.post("/api/domino/wallet/tournaments/:id/results",(req,res)=>
+     administrative(req,res,()=>wallet.recordTournamentWinner(
+       req.params.id,req.body?.round,req.body?.slot,req.body?.winnerId)));
  }
 
  // No endpoint accepts claimed completed ads or arbitrary credit awards.
