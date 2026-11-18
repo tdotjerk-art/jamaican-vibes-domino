@@ -371,7 +371,7 @@
  try{const storedReport=JSON.parse(localStorage.getItem(reportKey)||'null');if(storedReport?.report)lastReportState={report:R.clean(storedReport.report),id:/^[a-f0-9]{24}$/.test(storedReport.id)?storedReport.id:''}}catch{}
  try{const savedPlayer=JSON.parse(localStorage.getItem(profileKey)||'null');if(savedPlayer&&/^[a-f0-9]{32}$/.test(savedPlayer.id)&&/^[a-f0-9]{64}$/.test(savedPlayer.token))profile=savedPlayer}catch{}
  renderProfile();if(profile)refreshProfile();
- try{$('name').value=E.cleanName(localStorage.getItem(nameKey))}catch{}
+ try{$('name').value=E.cleanName(localStorage.getItem(nameKey))||E.cleanName(localStorage.getItem('jvSignupName'))}catch{}
  const invite=new URL(location.href).searchParams.get('room');if(invite){$('mode').value='online';$('code').value=invite.toUpperCase()}
  globalThis.addEventListener?.('offline',()=>{if(room){connection(false);message='Connection interrupted. Reconnecting…';render()}});
  globalThis.addEventListener?.('online',()=>{if(room)return refresh()});

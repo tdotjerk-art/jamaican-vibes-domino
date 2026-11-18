@@ -2,6 +2,17 @@
  'use strict';
  const $=id=>document.getElementById(id),E=JVThreeCards;
  let local=null,remote=null,socket=null,timer=null,match=null,other=null,key='',last='';
+ const nameKey='jv-three-player-name';
+ try{
+  const name=localStorage.getItem(nameKey)||localStorage.getItem('jvSignupName');
+  if(name)$('name').value=name.slice(0,20);
+ }catch{}
+ function playerName(){
+  const name=$('name').value.trim().slice(0,20);
+  if(!name)throw Error('Enter your name.');
+  try{localStorage.setItem(nameKey,name);}catch{}
+  return name;
+ }
  const saved=()=>{try{return JSON.parse(localStorage.getItem('jv-three-seat')||'null');}catch{return null;}};
  function remember(value){try{if(value)localStorage.setItem('jv-three-seat',JSON.stringify(value));else localStorage.removeItem('jv-three-seat');}catch{}}
  function node(tag,text,cls){const el=document.createElement(tag);if(text!==undefined)el.textContent=text;if(cls)el.className=cls;return el;}
@@ -77,8 +88,8 @@
   if(seat===undefined||seat===null||seat<0)return;
   timer=setTimeout(()=>{if(g!==local)return;if(g.phase==='pick')g.pick(seat);else if(g.phase==='deal')g.deal(seat);else if(g.phase==='declare')g.declare(seat,!!E.evaluateCall(g.players[seat].hand));else if(g.phase==='draw')g.draw(seat);else{const hand=g.players[seat].hand,m=hand.find(c=>c.rank===g.pile.at(-1).rank),o=hand.find(c=>c!==m);g.play(seat,m.id,o?.id);}render();},1600);
  }
- $('solo').onclick=()=>{try{const count=Number($('count').value);if(!Number.isInteger(count)||count<2||count>4)throw Error('Choose 2, 3, or 4 players.');const names=['You','Andre','Simone','Winston'].slice(0,count);names[0]=$('name').value.trim().slice(0,20)||'You';local=new E.Game(names,total('total'));render();}catch(e){error(e.message);}};
- for(const type of ['create','join'])$(type).onclick=()=>{try{const name=$('name').value.trim();if(!name)throw Error('Enter your name.');const data={name,playerCount:Number($('count').value),total:total('total'),code:$('code').value};remember(null);const s=connect();if(s.connected)s.emit(type,data);else s.once('connect',()=>s.emit(type,data));}catch(e){error(e.message);}};
+ $('solo').onclick=()=>{try{const count=Number($('count').value);if(!Number.isInteger(count)||count<2||count>4)throw Error('Choose 2, 3, or 4 players.');const names=['You','Andre','Simone','Winston'].slice(0,count);names[0]=playerName();local=new E.Game(names,total('total'));render();}catch(e){error(e.message);}};
+ for(const type of ['create','join'])$(type).onclick=()=>{try{const data={name:playerName(),playerCount:Number($('count').value),total:total('total'),code:$('code').value};remember(null);const s=connect();if(s.connected)s.emit(type,data);else s.once('connect',()=>s.emit(type,data));}catch(e){error(e.message);}};
  $('lobbyTotal').onchange=()=>{try{socket.emit('choice',{total:total('lobbyTotal')});}catch(e){error(e.message);}};
  $('ready').onclick=()=>socket.emit('ready');$('start').onclick=()=>socket.emit('start');
  $('extend').onclick=()=>{try{const amount=total('extra');if(local){if(!local.extend(amount))throw Error('Cannot extend this session beyond 1000 games.');render();}else socket.emit('extend',{amount});}catch(e){error(e.message);}};

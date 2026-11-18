@@ -98,6 +98,15 @@ function leaveFriends(notify = true) {
   $('friendsStatus').textContent = '';
   render();
 }
+const friendsNameKey = 'holdem-player-name';
+function storedPlayerName(key) {
+  try { return (localStorage.getItem(key) || '').trim().slice(0,20); }
+  catch { return ''; }
+}
+function applyPracticeName() {
+  const name = storedPlayerName('jvSignupName') || storedPlayerName(friendsNameKey);
+  if (name) game.players[0].name = name;
+}
 function requestRoom(create, publicTable = false, selectedCode = '', tournament = false) {
   const name = $('friendsName').value.trim();
   if (!name) {
@@ -105,6 +114,7 @@ function requestRoom(create, publicTable = false, selectedCode = '', tournament 
     $('friendsName').focus();
     return;
   }
+  try { localStorage.setItem(friendsNameKey, name); } catch {}
   const input = {create, publicTable, tournament, name, code:publicTable ? selectedCode : $('friendsCode').value};
   const client = connectFriends();
   enableSound();
@@ -599,7 +609,7 @@ function addBetControls(legal, pot) {
   button('All-in ' + legal.max, () => act('raise', legal.max), 'all-in');
 }
 function bot(){const i=game.turn,l=game.legal(i);if(!l)return;const p=game.players[i],r=p.hand.map(c=>c.rank),rank=game.board.length>=3?E.best([...p.hand,...game.board]).value[0]:r[0]===r[1]?2:Math.max(...r)>=12?1:0;const strength=rank+Math.random();if(l.call&&l.call>p.chips*.35&&strength<1.15){game.act(i,'fold');return;}if(l.canRaise&&l.max>=l.min&&strength>1.7&&Math.random()<.28){game.act(i,'raise',Math.min(l.max,Math.max(l.min,game.currentBet+40)));return;}game.act(i,l.call?'call':'check');}
-function reset(tournament=game.tournament){if(online)return false;if(game.handNumber&&!confirm('Start a new table with 1,000 chips each?'))return;clearTimeout(timer);pausedAt=0;localTurn=undefined;game=new E.Game(Math.random,8,tournament);render();return true;}$('reset').onclick=()=>reset();$('rulesBtn').onclick=()=>$('rules').showModal();$('closeRules').onclick=()=>$('rules').close();
+function reset(tournament=game.tournament){if(online)return false;if(game.handNumber&&!confirm('Start a new table with 1,000 chips each?'))return;clearTimeout(timer);pausedAt=0;localTurn=undefined;game=new E.Game(Math.random,8,tournament);applyPracticeName();render();return true;}$('reset').onclick=()=>reset();$('rulesBtn').onclick=()=>$('rules').showModal();$('closeRules').onclick=()=>$('rules').close();
 $('pauseTable').onclick=()=>{
   if (online || game.turn == null) return;
   if (pausedAt) {
@@ -648,6 +658,8 @@ motion.onchange=saveEffects;
 fourColour.onchange=()=>{saveEffects();render();};
 $('refreshTables').onclick=()=>connectFriends().emit('table-list');
 restoreLocalGame();
+applyPracticeName();
+$('friendsName').value = storedPlayerName(friendsNameKey) || storedPlayerName('jvSignupName');
 if (globalThis.io && sessionStorage.getItem('holdem-private-seat')) connectFriends();
 render();
 const invitedRoom = new URLSearchParams(location.search).get('room');
