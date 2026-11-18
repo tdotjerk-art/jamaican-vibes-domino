@@ -1,6 +1,6 @@
 # Domino credit wallet pilot (not live)
 
-This branch introduces the **wallet foundation only**. It does not turn on payment gates, issue browser tokens, show ads, or change the deployed application.
+This branch introduces a **disabled-by-default pilot**: a wallet, registration/authentication API, and server-side public-seat charges and pregame refunds. It does not change the deployed application or show ads. The existing browser lobby has NOT been connected to signup credentials, so the pilot must remain disabled.
 
 ## Proposed entry rules
 
@@ -15,9 +15,9 @@ New verified accounts receive 100 credits. A new day may grant 20 credits once a
 
 ## Integration requirements before enabling
 
-1. Integrate trusted login and authenticated account IDs with the Socket.IO server. **Do not use a client-supplied display name as wallet identity.** Existing public-table entry accepts names, so no gate should be activated until this is solved.
+1. Integrate the browser login/lobby UI with the new `/api/domino/wallet/register` and `/api/domino/wallet/me` endpoints, and send verified account credentials to the public-table Socket.IO event. **Do not use a client-supplied display name as wallet identity.** When enabled, the server now derives the name from the verified account.
 2. Store wallet records on confirmed durable storage or a transactional shared database. The filesystem adapter uses atomic replacement but is not a multi-instance database and does not support cross-process locking.
-3. Charge **once per complete match or tournament registration**, not for each hand. Explicitly define rematch as a new paid match or keep it free; never silently charge.
+3. The public-seat charge is wired behind `DOMINO_CREDITS_ENABLED=true`, using `DOMINO_WALLET_DIR` for data storage, and pregame seat exit refunds are wired. Tournament entry is a wallet price but **no Domino tournament registration flow exists in this integration yet**. Rematches currently incur no additional charge.
 4. Perform atomic entry charge and seat reservation. Refund when joining fails before the match starts and prevent second charges on reconnection, refresh and duplicate events.
 5. Verify reward completion with the advertising provider on the server; do not accept client claims of completed ads. Enforce provider policy, privacy and abuse limits.
 6. Provide visible wallet balance and insufficient-credits recovery in the public lobby. Practice and private friends games must work without balance.
@@ -29,3 +29,7 @@ New verified accounts receive 100 credits. A new day may grant 20 credits once a
 Run `npm test` or `node --test test/domino-wallet.test.js`.
 
 This is a development-only staged implementation, not a complete functional credit system.
+
+## Verified in development
+
+GitHub Actions run 44225846933 completed successfully after the wallet API, public-seat gate, and integration tests were added. This is automated test verification, not physical iPhone Safari verification. **Never activate on ephemeral storage, and do not merge yet.**
