@@ -190,3 +190,40 @@ test('odd sized bracket creates deterministic bye and advances remaining competi
   assert.equal(advanced.matches[2].round,2);
   assert.equal(advanced.matches[2].playerB,players[2].id);
 });
+
+test('three-player Cut Throat tournament advances one winner per table and byes',t=>{
+  const {wallet}=setup(t);
+  const players=Array.from({length:7},(_,i)=>wallet.createAccount('Three'+i));
+  wallet.createTournament('three_seats',9,3);
+  players.forEach(p=>wallet.joinTournament('three_seats',p.id,p.token));
+  let bracket=wallet.startTournament('three_seats');
+  assert.equal(bracket.playerCount,3);
+  assert.deepEqual(bracket.matches.map(m=>m.playerIds.length),[3,3,1]);
+  assert.equal(bracket.matches[2].status,'bye');
+  assert.equal(bracket.matches[2].winnerId,players[6].id);
+  assert.throws(()=>wallet.recordTournamentWinner('three_seats',1,1,players[4].id),/not seated/);
+  wallet.recordTournamentWinner('three_seats',1,1,players[2].id);
+  bracket=wallet.recordTournamentWinner('three_seats',1,2,players[4].id);
+  assert.equal(bracket.matches.length,4);
+  assert.deepEqual(bracket.matches[3].playerIds,[players[2].id,players[4].id,players[6].id]);
+  assert.equal(wallet.myTournamentMatches(players[6].id,players[6].token)[0].matches.length,2);
+  bracket=wallet.recordTournamentWinner('three_seats',2,1,players[6].id);
+  assert.equal(bracket.status,'completed');
+  assert.equal(bracket.matches[3].winnerId,players[6].id);
+});
+
+test('four-player Cut Throat has four-player fixtures and a two-player final',t=>{
+  const {wallet}=setup(t);
+  const players=Array.from({length:5},(_,i)=>wallet.createAccount('Four'+i));
+  wallet.createTournament('four_seats',8,4);
+  players.forEach(p=>wallet.joinTournament('four_seats',p.id,p.token));
+  let bracket=wallet.startTournament('four_seats');
+  assert.equal(bracket.playerCount,4);
+  assert.deepEqual(bracket.matches.map(m=>m.playerIds.length),[4,1]);
+  bracket=wallet.recordTournamentWinner('four_seats',1,1,players[3].id);
+  assert.equal(bracket.matches[2].status,'pending');
+  assert.deepEqual(bracket.matches[2].playerIds,[players[3].id,players[4].id]);
+  assert.throws(()=>wallet.recordTournamentWinner('four_seats',2,1,players[0].id),/not seated/);
+  assert.equal(wallet.recordTournamentWinner('four_seats',2,1,players[4].id).status,'completed');
+  assert.throws(()=>wallet.createTournament('invalid_format',4,5),/table size/);
+});
