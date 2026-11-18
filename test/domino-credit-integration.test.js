@@ -53,6 +53,12 @@ test('flagged credit pilot: authenticated public entry charged, private free, pr
   assert.equal((await request('me', { id, token })).body.balance, 90);
   assert.equal((await request('me', { id, token: '0'.repeat(64) })).status, 400);
 
+  // A second socket must not consume another seat with the same wallet identity.
+  error = event(guest, 'room-error');
+  guest.emit('join-public-table', { name: 'Spoof', accountId: id, accountToken: token });
+  assert.match(await error, /already has a public seat/i);
+  assert.equal((await request('me', { id, token })).body.balance, 90);
+
   // Joining the occupied seat again with the same authenticated socket does not charge twice.
   assigned = event(player, 'seat-assigned');
   player.emit('join-public-table', { accountId: id, accountToken: token });
