@@ -643,7 +643,11 @@ io.on("connection",socket=>{
    if(p.id!==socket.id)leaveCurrentRoom(socket);
    else delete socket.data.spectator;
    if(p.graceTimer){clearTimeout(p.graceTimer);p.graceTimer=null}p.id=socket.id;p.connected=true;
-   socket.data.roomCode=code;socket.data.seat=seat;socket.join(code);socket.emit("reconnect-ok",{code,seat,token});resumeIfPossible(r);emitAll(r)
+   socket.data.roomCode=code;socket.data.seat=seat;socket.join(code);socket.emit("reconnect-ok",{code,seat,token});
+   if(r.tournamentFixture&&r.phase==="waiting"&&r.handNo===0){
+     p.ready=true;startIfReady(r);
+   }else resumeIfPossible(r);
+   emitAll(r)
  });
  socket.on("set-room-options",({mode,target,tieRule})=>{
    const r=seatedRoom(socket),seat=socket.data.seat;if(!r||r.publicTable||seat!==r.hostSeat||r.phase!=="waiting")return;
