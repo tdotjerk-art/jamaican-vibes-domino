@@ -72,6 +72,16 @@ Unfinished tournament rooms no longer lose a player's seat after the ordinary 90
 - Rematch phase was **not tested** because the first match did not complete. Do not interpret these as confirmed live gameplay bugs or as a successful completion test.
 - **Next:** improve test instrumentation to capture `action-error` and verify move processing using state version/sequence, expand reasonable hand/match time limits and isolate scenarios in separate CI jobs. After a full match completes, verify all-player replay votes and reset.
 
+## Full-match regression rerun — 2026-11-18
+
+- [Run 44374811461](https://github.com/tdotjerk-art/jamaican-vibes-domino/actions/runs/44374811461) tested the currently deployed main game in isolated private rooms using the updated synchronized test harness from development commit `e94c16f`.
+- **PASS:** 2-player Cut Throat, 66 moves / 6 hands; scored to six, and the rematch vote/reset/fresh deal also passed.
+- **PASS:** 3-player Cut Throat, 179 moves / 10 hands; scored to six.
+- **PASS:** 4-player Cut Throat, 371 moves / 16 hands; scored to six.
+- **NOT PASSED:** 4-player Partners, 864 moves / 39 hands; no team scored six in 420 seconds. No move-rejection error was reported. Bruck-and-start scoring legitimately resets progress when the opposite team wins, so this outcome does not establish a gameplay bug or a full-match pass.
+- Earlier four-format failures in run 44372008199 were all `Domino not found in your hand` rejections, consistent with a race between independently delivered seat snapshots and server turns. Synchronization has removed that failure in all four latest runs, but additional repeated/regression testing is needed before calling it fully resolved.
+- **Still required:** deterministic Partners Bruck scoring/winner checks and a bounded endurance check separate from the random full-match-to-six outcome; tournament browser-to-bracket completion; mobile Safari testing and credit economy launch gates. No production credit deployment.
+
 ## Player counts and format scope (2026-11-18)
 
 - [x] Cut Throat tournament format accepts 2-, 3-, and 4-player table sizes. Matches persist exact authenticated player rosters in `tournament_match_seats`. Existing SQLite databases are migrated to default two-player tournaments for compatibility.
