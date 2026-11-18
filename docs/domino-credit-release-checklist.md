@@ -62,6 +62,16 @@ Development server now accepts authenticated `join-tournament-match` Socket.IO r
 
 Unfinished tournament rooms no longer lose a player's seat after the ordinary 90-second public-match timeout; voluntary departure also pauses and holds the board. A disconnected player can reconnect using the existing room code and reconnect token. For a pregame fixture, restoring the seat restores readiness. No forfeits are automatically assigned. **This is an in-process reconnect guarantee only**: a server restart still wipes active boards and requires a replay of the pending fixture. Tournament-bracket data and wallet debits are persisted independently. Browser and physical iPhone verification remain outstanding.
 
+## Player counts and format scope (2026-11-18)
+
+- [x] Cut Throat tournament format accepts 2-, 3-, and 4-player table sizes. Matches persist exact authenticated player rosters in `tournament_match_seats`. Existing SQLite databases are migrated to default two-player tournaments for compatibility.
+- [x] Admin tournament creation accepts a validated `playerCount` value, stored with each tournament; client tournament lists and "My Matches" display that size.
+- [x] Server tournament join flow dynamically sizes dedicated two-, three-, or four-seat Cut Throat games. Regular online rooms already accept player counts 2, 3, and 4; private games remain free.
+- [ ] Complete 4-player **Partners** tournament format separately, with explicit two-person teams and advancing **winning teams**, not individual winners. The current tournament bracket does not yet support this and must not label itself as Partners.
+- [ ] Independently verify and, if necessary, adjust 2-, 3-, and 4-player selections across offline and computer practice UI. The main `index.html` is too large for the current GitHub file retrieval path, so this UI has not been inspected or modified in this branch.
+- [ ] Test all three tournament table sizes in a real browser and iPhone; automated socket/integration tests are separate.
+- [ ] Confirm whether undersized finals (for example a 2-player final in a 4-player Cut Throat tournament) are acceptable. The pilot uses full-size tables wherever possible and gives excess registrants automatic byes, but will use a smaller final when necessary.
+
 ## Tournament server-restart replay policy (2026-11-18)
 
 A tournament bracket's pending match survives a Node process restart in SQLite. A restarted server has no trustworthy game board, so it does **not** restore an arbitrary partial hand, declare a winner, or charge the 25-credit tournament entry again. Both assigned players can join a new two-player room and restart with a fresh shuffle and initial score. The new `tournament_fixture_attempts` SQLite table counts each room creation across server restarts and exposes `attempts` in authenticated match assignments and read-only bracket status. When an unfinished fixture is reopened (attempt 2+), the room message explicitly tells players it is a no-extra-charge replay. The server-side match result remains authoritative for bracket progression. A dedicated actual-process SIGKILL/restart regression test validates this. Handling post-restart old reconnect tokens is a deliberate fallback to new authenticated fixture joining through My Matches.
