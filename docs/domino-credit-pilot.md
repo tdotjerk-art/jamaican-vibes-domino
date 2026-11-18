@@ -49,3 +49,15 @@ These methods are intentionally **not exposed as HTTP or Socket.IO routes**. The
 ## Tournament roster coordinator (development only)
 
 `domino-tournament-roster.js` adds a **non-networked**, server-controlled tournament roster with strict 2–128 player capacity, one seat per verified wallet, registration closing at start, cancellation/refund protection, and regression tests. The coordinator deliberately has no HTTP/Socket.IO routes and is not available in the live lobby. The roster currently lives only in process memory. **Do not enable real tournament payments yet**: bracket state must become durable and transactions between a roster seat and wallet charge must become atomic across server processes/restarts. The current wallet filesystem adapter is also not multi-instance safe. Once transactional shared storage, bracket lifecycle and recovery tests are complete, introduce a server-authorized tournament lobby.
+
+## SQLite transactional pilot (development only)
+
+The branch now includes `domino-wallet-sqlite.js` based on Node 22's `node:sqlite`. It uses BEGIN IMMEDIATE transactions, wallet operation keys, a globally unique verified-ad event ledger, and a durable tournament roster in the same SQLite database. This is an **alternative prototype** to the earlier JSON wallet; it is not enabled in production.
+
+For *local development only*, set `DOMINO_CREDITS_ENABLED=true`, `DOMINO_CREDIT_STORAGE=sqlite`, `DOMINO_CREDIT_DB_PATH=/absolute/path/to/wallet.sqlite`. This enables a pilot API for tournament list, read-only status, registration and withdrawal. Admin create/start/cancel APIs require a server-only `DOMINO_TOURNAMENT_ADMIN_TOKEN` of at least 32 characters. Never put this secret into browser JS. The current app has no bracket match assignment or tournament match results, so it is **not a finished playable tournament**.
+
+On Render, the branch fails closed unless SQLite storage is selected and `DOMINO_CREDIT_DURABLE_CONFIRMED=true`. That flag is only meaningful **after** a paid persistent disk has been provisioned and tested at the SQLite file path. Do not set it based merely on an absolute path. Render free's ephemeral filesystem cannot preserve credits. Before launch, verify Node 22 support, persistent disk mount, backup/recovery, a single deployment instance, tests across service restarts, and tournament match/game lifecycle.
+
+A transactional PostgreSQL schema and migration plan are also in `db/domino-credit-schema.sql` and `docs/domino-credit-postgres.md`. Those are not wired to application code. PostgreSQL is preferable for future horizontal scaling; SQLite is acceptable only with reliable persistent disk and operational constraints.
+
+The daily award route is authenticated and chooses the UTC day on the server; it returns 20 credits once per day. No browser endpoint can award advertised rewards, and rewarded ads still require a configured provider and signed server-side verification.
