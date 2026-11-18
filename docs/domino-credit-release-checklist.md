@@ -28,7 +28,8 @@
 - [x] Add authenticated `/api/domino/wallet/tournaments/mine` listing and a pilot "My Matches" / "Play round" launcher for registered accounts; API automated checks passed.
 - [ ] Verify actual lobby-to-Socket.IO launch in a real browser, complete an entire tournament game and confirm automatic advancement. The launcher depends on access to the existing game's active socket; this has not yet been browser-verified.
 - [ ] Verify iPhone portrait/landscape, controls and no-scroll sizing for the tournament lobby and playing table.
-- [ ] Decide and implement tournament disconnect/forfeit rules and resumable gameplay across server restarts; the current game rooms remain in memory. Do not call this production-ready tournament play until verified.
+- [x] Protect live-process tournament disconnections: hold the assigned seat and board, pause the match, and resume with the existing reconnect token. No automatic forfeit; disconnect/reconnect automated test passed.
+- [ ] Establish a fair, explicit tournament forfeit/adjudication policy and player notifications. Server restart still clears in-memory boards; persist active matches or implement a formal restart/replay policy before launch.
 - [ ] Configure an approved rewarded-web advertising account and ad unit, with signed server-to-server verification. Never grant credits on browser-reported ad completions. Validate account linkage, single use, rate limits, age restrictions and ad policy.
 - [ ] Complete physical iPhone Safari testing in portrait/landscape plus login, public multiplayer, rematch, tournament, timers, reload, lost connectivity and no scrolling.
 - [ ] Validate real Render restart/redeployment, simultaneous joins, load, storage permissions, health checks, backups and observability.
@@ -55,3 +56,7 @@ The SQLite pilot now stores matches and bracket winners in `tournament_matches`.
 ## Tournament match integration (2026-11-18)
 
 Development server now accepts authenticated `join-tournament-match` Socket.IO requests for assigned players in an active, pending fixture. A dedicated two-player Cut Throat Domino room is created for each fixture; other accounts are rejected from joining by room code. When the authoritative server game finishes, its winner account is passed to the transaction-backed bracket progression logic. The client tournament lobby still needs to launch the match through the existing screen, and full game-to-bracket verification is pending. Existing reconnect tokens can reconnect within a live server process; a server restart drops in-memory boards and rooms, while fixture assignment persists. Tournament forfeit and replay policy are not yet implemented.
+
+## Reconnect safety update
+
+Unfinished tournament rooms no longer lose a player's seat after the ordinary 90-second public-match timeout; voluntary departure also pauses and holds the board. A disconnected player can reconnect using the existing room code and reconnect token. For a pregame fixture, restoring the seat restores readiness. No forfeits are automatically assigned. **This is an in-process reconnect guarantee only**: a server restart still wipes active boards and requires a replay of the pending fixture. Tournament-bracket data and wallet debits are persisted independently. Browser and physical iPhone verification remain outstanding.
