@@ -24,7 +24,9 @@
 - [ ] Confirm Render runtime Node.js version supports node:sqlite and that runtime flags are appropriate.
 - [ ] Replace unlimited unverified account creation with verified identity or sufficiently strong registration-abuse controls, account recovery and privacy notices.
 - [x] Add persistent tournament fixtures, round progression, byes, and administrator-authorized result recording to the SQLite development pilot (automated tests).
-- [ ] Integrate actual Domino match seating and result verification into fixtures; prevent self-reported victories, add reconnect, disconnect/forfeit rules, and verify cross-restart tournament matches. Only then may tournaments be described as playable.
+- [x] Add authenticated two-player tournament match rooms, restricted to assigned accounts, with server-owned game results recording bracket winners.
+- [ ] Verify gameplay end-to-end through a completed tournament match (not only room assignment), UI tournament match launch, rotation/no-scroll on iPhone, and automatic round progression.
+- [ ] Decide and implement tournament disconnect/forfeit rules and resumable gameplay across server restarts; the current game rooms remain in memory. Do not call this production-ready tournament play until verified.
 - [ ] Configure an approved rewarded-web advertising account and ad unit, with signed server-to-server verification. Never grant credits on browser-reported ad completions. Validate account linkage, single use, rate limits, age restrictions and ad policy.
 - [ ] Complete physical iPhone Safari testing in portrait/landscape plus login, public multiplayer, rematch, tournament, timers, reload, lost connectivity and no scrolling.
 - [ ] Validate real Render restart/redeployment, simultaneous joins, load, storage permissions, health checks, backups and observability.
@@ -47,3 +49,7 @@ Do **not** create another paid resource solely for the credit pilot. Before acti
 ## Bracket engine added (2026-11-18)
 
 The SQLite pilot now stores matches and bracket winners in `tournament_matches`. The first round is seeded deterministically by signup order, odd-player byes advance automatically, and the next round is created transactionally only when every result in the current round is settled. The status endpoint exposes fixtures without player credentials. Results are writable only through an authenticated administrator API; players cannot directly report results. This **does not yet connect to live Domino match outcomes** or reserve online game rooms, so it remains a non-playable tournament coordinator. A future trusted match integration must settle results based on authoritative server game state, not on browser claims or unverified admin entry.
+
+## Tournament match integration (2026-11-18)
+
+Development server now accepts authenticated `join-tournament-match` Socket.IO requests for assigned players in an active, pending fixture. A dedicated two-player Cut Throat Domino room is created for each fixture; other accounts are rejected from joining by room code. When the authoritative server game finishes, its winner account is passed to the transaction-backed bracket progression logic. The client tournament lobby still needs to launch the match through the existing screen, and full game-to-bracket verification is pending. Existing reconnect tokens can reconnect within a live server process; a server restart drops in-memory boards and rooms, while fixture assignment persists. Tournament forfeit and replay policy are not yet implemented.
