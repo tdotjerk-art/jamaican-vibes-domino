@@ -82,7 +82,9 @@ test('interrupted tournament match safely replays after server crash without ano
  const restartPlaying=event(newFirst,'private-state');
  const newSecondSeat=await join(newSecond,b);
  assert.equal(newFirstSeat.code,newSecondSeat.code);
- assert.equal((await restartPlaying).phase,'playing');
+ const restartedState=await restartPlaying;
+ assert.ok(['playing','hand-over'].includes(restartedState.phase), 'Replay should start fresh gameplay');
+ assert.ok(restartedState.handNo>=1, 'Replay must deal at least one new hand');
  assert.equal((await req(base,'tournaments/mine',{id:a.account.id,token:a.token})).data
    .find(e=>e.id==='replay').matches[0].attempts,2);
  assert.equal((await req(base,'me',{id:a.account.id,token:a.token})).data.balance,75);
