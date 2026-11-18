@@ -605,3 +605,19 @@ body #jvExtrasCard {
  overscroll-behavior:contain;
  -webkit-overflow-scrolling:touch;
 }
+
+/* Credit pilot tournament controls: keep buttons reachable in phone portrait
+   and landscape. Scrolling is confined to the optional tournament details,
+   rather than stretching the gameplay surface. */
+#jvWalletPanel {box-sizing:border-box;max-width:min(450px,calc(100vw - 20px))!important;min-width:0}
+#jvWalletPanel :is(input,button) {max-width:100%;box-sizing:border-box}
+#jvWalletPanel input {min-width:0}
+#jvTournamentDetails {max-height:min(48dvh,340px);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+#jvMyTournamentMatches button,
+#jvTournamentList button {min-height:40px;white-space:normal;overflow-wrap:anywhere;touch-action:manipulation}
+#jvMyTournamentMatches > div {overflow-wrap:anywhere}
+@media(max-width:650px),(max-height:520px){
+ #jvWalletPanel {font-size:12px!important;margin:4px auto!important;padding:6px!important}
+ #jvTournamentDetails {max-height:min(39dvh,210px)}
+ #jvWalletPanel > button {min-height:36px;margin:3px 0}
+}
