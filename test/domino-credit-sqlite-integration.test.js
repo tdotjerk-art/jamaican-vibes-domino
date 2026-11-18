@@ -70,4 +70,17 @@ test('SQLite tournament pilot API requires admin key and persists transactional 
   assert.equal(finish.body.status,'completed');
   assert.equal(finish.body.matches[0].winnerId,a.account.id);
   assert.equal((await request('GET','tournaments/cup2')).body.matches[0].status,'completed');
+  // Registered multi-player tournament formats are visible to clients.
+  assert.equal((await request('POST','tournaments',{id:'cup3',capacity:3,playerCount:3},true)).status,200);
+  assert.equal((await request('POST','tournaments',{id:'cup4',capacity:4,playerCount:4},true)).status,200);
+  for(const account of [a,b,c]) {
+    const entry=await request('POST','tournaments/cup3/join',{id:account.account.id,token:account.token});
+    assert.equal(entry.status,200);
+  }
+  const three=await request('POST','tournaments/cup3/start',{},true);
+  assert.equal(three.status,200);
+  assert.equal(three.body.playerCount,3);
+  assert.deepEqual(three.body.matches[0].playerIds,[a.account.id,b.account.id,c.account.id]);
+  assert.equal((await request('POST','tournaments/cup3/results',{round:1,slot:1,winnerId:c.account.id},true)).body.status,'completed');
+  assert.equal((await request('GET','tournaments/cup4')).body.playerCount,4);
 });
