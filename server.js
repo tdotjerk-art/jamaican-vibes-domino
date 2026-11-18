@@ -123,7 +123,8 @@ function settleTournamentFixture(r,winnerSeat){
  const {id,round,slot}=r.tournamentFixture;
  const winner=r.players[winnerSeat];
  if(!winner?.accountId)throw Error("Tournament winner has no verified account.");
- wallet.recordTournamentWinner(id,round,slot,winner.accountId);
+ try{wallet.recordTournamentWinner(id,round,slot,winner.accountId)}
+ catch(e){console.error("Tournament match result requires reconciliation:",e.message)}
 }
 function finishPaidPublicMatch(r){
  if(!creditsEnabled||!r.publicTable||!wallet.finishPublic)return;
@@ -505,6 +506,8 @@ io.on("connection",socket=>{
    if(current)return socket.emit("room-error","Leave the current game before joining your tournament match.");
    if([...rooms.values()].some(r=>r.tournamentFixture&&r.players.some(p=>p?.accountId===account.id)))
      return socket.emit("room-error","Reconnect to your existing tournament seat first.");
+   // Release a spectator role before assigning a player role to this socket.
+   if(socket.data.spectator)leaveCurrentRoom(socket);
    let room=rooms.get(tournamentRooms.get(key));
    if(room&&room.phase!=="waiting")
      return socket.emit("room-error","Tournament match already in progress. Reconnect to your assigned seat.");
