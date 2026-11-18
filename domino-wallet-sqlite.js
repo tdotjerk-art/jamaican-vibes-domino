@@ -31,6 +31,12 @@ function createSqliteWallet(filename) {
     CREATE TABLE IF NOT EXISTS verified_ad_events (
       event_id TEXT PRIMARY KEY, account_id TEXT NOT NULL REFERENCES accounts(id)
     );
+    CREATE TABLE IF NOT EXISTS public_match_entries (
+      account_id TEXT NOT NULL REFERENCES accounts(id),
+      entry_id TEXT NOT NULL,
+      status TEXT NOT NULL CHECK(status IN ('reserved','finished','refunded')),
+      PRIMARY KEY(account_id,entry_id)
+    );
     CREATE TABLE IF NOT EXISTS tournaments (
       id TEXT PRIMARY KEY, capacity INTEGER NOT NULL CHECK(capacity BETWEEN 2 AND 128),
       status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open','started','cancelled','completed'))
@@ -113,6 +119,52 @@ function createSqliteWallet(filename) {
     if(!prior||prior.delta!==-cost||prior.reason!==mode)throw Error('Entry not charged.');
     return change(id,'refund:'+entryId,cost,'refund:'+mode);
   }
+  function enterPublic(id,entryId) {
+    return tx(()=>{
+      const result=enterInternal(id,'public',entryId);
+      const previous=db.prepare('SELECT status FROM public_match_entries WHERE account_id=? AND entry_id=?').get(id,entryId);
+      if(previous) {
+        if(previous.status==='refunded')throw Error('Refunded public entry cannot be reused.');
+        return result;
+      }
+      if(!result.applied)throw Error('Public entry debit has no matching reservation.');
+      db.prepare("INSERT INTO public_match_entries(account_id,entry_id,status) VALUES(?,?,'reserved')").run(id,entryId);
+      return result;
+    });
+  }
+  function refundPublic(id,entryId) {
+    return tx(()=>{
+      const previous=db.prepare('SELECT status FROM public_match_entries WHERE account_id=? AND entry_id=?').get(id,entryId);
+      if(!previous)throw Error('Public entry not found.');
+      if(previous.status==='finished')throw Error('Completed public entry cannot be refunded.');
+      const result=refundInternal(id,'public',entryId);
+      db.prepare("UPDATE public_match_entries SET status='refunded' WHERE account_id=? AND entry_id=?").run(id,entryId);
+      return result;
+    });
+  }
+  function finishPublic(id,entryId) {
+    return tx(()=>{
+      const previous=db.prepare('SELECT status FROM public_match_entries WHERE account_id=? AND entry_id=?').get(id,entryId);
+      if(!previous)throw Error('Public entry not found.');
+      if(previous.status==='refunded')throw Error('Refunded public entry cannot be completed.');
+      db.prepare("UPDATE public_match_entries SET status='finished' WHERE account_id=? AND entry_id=?").run(id,entryId);
+      return {balance:balance(id),applied:previous.status!=='finished'};
+    });
+  }
+  // Rooms are currently in memory. On process restart, every paid entry that
+  // was not durably marked finished must be refunded before new players join.
+  function refundInterruptedPublicMatches() {
+    return tx(()=>{
+      const pending=db.prepare("SELECT account_id,entry_id FROM public_match_entries WHERE status='reserved'").all();
+      for(const row of pending) {
+        refundInternal(row.account_id,'public',row.entry_id);
+        db.prepare("UPDATE public_match_entries SET status='refunded' WHERE account_id=? AND entry_id=?")
+          .run(row.account_id,row.entry_id);
+      }
+      return pending.length;
+    });
+  }
+
   function tour(id) {
     if(!tourOK(id))throw Error('Invalid tournament ID.');
     const t=tournamentById.get(id);
@@ -210,6 +262,7 @@ function createSqliteWallet(filename) {
       if(typeof day!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(day))throw Error('Invalid login day.');
       return tx(()=>change(id,'daily:'+day,20,'daily-login'));
     },
+    enterPublic,refundPublic,finishPublic,refundInterruptedPublicMatches,
     createTournament,joinTournament,withdrawTournament,cancelTournament,startTournament,tournamentStatus,listTournaments,
     close:()=>db.close()
   };
