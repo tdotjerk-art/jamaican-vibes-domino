@@ -47,6 +47,17 @@ function createSqliteWallet(filename) {
       status TEXT NOT NULL CHECK(status IN ('registered','withdrawn','cancelled')),
       PRIMARY KEY(tournament_id,account_id)
     );
+    CREATE TABLE IF NOT EXISTS tournament_matches (
+      tournament_id TEXT NOT NULL REFERENCES tournaments(id),
+      round INTEGER NOT NULL CHECK(round >= 1),
+      slot INTEGER NOT NULL CHECK(slot >= 1),
+      player_a TEXT NOT NULL REFERENCES accounts(id),
+      player_b TEXT REFERENCES accounts(id),
+      winner_id TEXT REFERENCES accounts(id),
+      status TEXT NOT NULL CHECK(status IN ('pending','completed','bye')),
+      PRIMARY KEY(tournament_id,round,slot),
+      CHECK(player_b IS NULL OR player_a <> player_b)
+    );
   `);
   const accountById=db.prepare('SELECT id,name,token_hash AS tokenHash,balance FROM accounts WHERE id=?');
   const operationById=db.prepare('SELECT delta,reason FROM operations WHERE account_id=? AND operation_id=?');
@@ -194,7 +205,10 @@ function createSqliteWallet(filename) {
     const players=db.prepare(`SELECT a.id,a.name FROM tournament_entries e
       JOIN accounts a ON a.id=e.account_id
       WHERE e.tournament_id=? AND e.status='registered' ORDER BY e.rowid`).all(id);
-    return {id:t.id,status:t.status,capacity:t.capacity,players,
+    const matches=db.prepare(`SELECT round,slot,player_a AS playerA,player_b AS playerB,
+      winner_id AS winnerId,status FROM tournament_matches
+      WHERE tournament_id=? ORDER BY round,slot`).all(id);
+    return {id:t.id,status:t.status,capacity:t.capacity,players,matches,
       placesRemaining:t.capacity-players.length};
   }
   function listTournaments() {
@@ -250,14 +264,59 @@ function createSqliteWallet(filename) {
       return tournamentStatus(id);
     });
   }
+  function createRound(id,round,ids) {
+    if(ids.length<2)throw Error('Cannot create a round with fewer than two competitors.');
+    const stmt=db.prepare(`INSERT INTO tournament_matches
+      (tournament_id,round,slot,player_a,player_b,winner_id,status) VALUES(?,?,?,?,?,?,?)`);
+    for(let i=0;i<ids.length;i+=2) {
+      const first=ids[i],second=ids[i+1]||null;
+      stmt.run(id,round,Math.floor(i/2)+1,first,second,second?null:first,second?'pending':'bye');
+    }
+  }
   function startTournament(id) {
     return tx(()=>{
       const t=tour(id);
       if(t.status!=='open')throw Error('Tournament registration is closed.');
-      const n=db.prepare("SELECT count(*) AS n FROM tournament_entries WHERE tournament_id=? AND status='registered'").get(id).n;
-      if(n<2)throw Error('Tournament needs at least two players.');
+      const players=db.prepare(`SELECT account_id FROM tournament_entries
+        WHERE tournament_id=? AND status='registered' ORDER BY rowid`).all(id).map(x=>x.account_id);
+      if(players.length<2)throw Error('Tournament needs at least two players.');
+      createRound(id,1,players);
       db.prepare("UPDATE tournaments SET status='started' WHERE id=?").run(id);
       return tournamentStatus(id);
+    });
+  }
+  // This is an ADMIN-ONLY adjudication primitive until the real Domino match
+  // server can cryptographically bind a completed game to its bracket fixture.
+  // Never expose as an unauthenticated or player-submitted result endpoint.
+  function recordTournamentWinner(id,round,slot,winnerId) {
+    return tx(()=>{
+      const t=tour(id);
+      if(t.status!=='started')throw Error('Tournament is not accepting results.');
+      if(!Number.isInteger(round)||round<1||!Number.isInteger(slot)||slot<1)
+        throw Error('Invalid tournament match number.');
+      const match=db.prepare(`SELECT player_a AS a,player_b AS b,winner_id AS winner,
+        status FROM tournament_matches WHERE tournament_id=? AND round=? AND slot=?`)
+        .get(id,round,slot);
+      if(!match)throw Error('Tournament match not found.');
+      if(match.status==='bye')throw Error('Bye results cannot be changed.');
+      if(winnerId!==match.a&&winnerId!==match.b)throw Error('Winner is not seated in this match.');
+      if(match.status==='completed') {
+        if(match.winner!==winnerId)throw Error('Tournament match already has a different winner.');
+        return {...tournamentStatus(id),applied:false};
+      }
+      db.prepare(`UPDATE tournament_matches SET status='completed',winner_id=?
+        WHERE tournament_id=? AND round=? AND slot=?`).run(winnerId,id,round,slot);
+      const fixtures=db.prepare(`SELECT winner_id AS winner, status FROM tournament_matches
+        WHERE tournament_id=? AND round=? ORDER BY slot`).all(id,round);
+      if(fixtures.every(m=>m.status!=='pending')) {
+        const winners=fixtures.map(m=>m.winner);
+        if(winners.length===1) {
+          db.prepare("UPDATE tournaments SET status='completed' WHERE id=?").run(id);
+        }else {
+          createRound(id,round+1,winners);
+        }
+      }
+      return {...tournamentStatus(id),applied:true};
     });
   }
   function awardVerifiedReward(id,eventId) {
@@ -281,7 +340,7 @@ function createSqliteWallet(filename) {
       return tx(()=>change(id,'daily:'+day,20,'daily-login'));
     },
     enterPublic,reservePublicRematch,refundPublic,finishPublic,refundInterruptedPublicMatches,
-    createTournament,joinTournament,withdrawTournament,cancelTournament,startTournament,tournamentStatus,listTournaments,
+    createTournament,joinTournament,withdrawTournament,cancelTournament,startTournament,recordTournamentWinner,tournamentStatus,listTournaments,
     close:()=>db.close()
   };
 }
