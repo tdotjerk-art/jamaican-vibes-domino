@@ -12,6 +12,17 @@ const sqliteCredits=creditsEnabled&&process.env.DOMINO_CREDIT_STORAGE==="sqlite"
 if(creditsEnabled&&process.env.RENDER==="true"&&
    (!sqliteCredits||process.env.DOMINO_CREDIT_DURABLE_CONFIRMED!=="true"))
  throw Error("Domino credits cannot run on Render without a confirmed durable SQLite disk.");
+if(creditsEnabled&&process.env.RENDER==="true"){
+ const fs=require("node:fs"),path=require("node:path");
+ const mount="/var/data",target=process.env.DOMINO_CREDIT_DB_PATH||"";
+ // Do not trust a confirmation flag alone. SQLite must live on the verified
+ // Render disk mount, never in the ephemeral build/runtime filesystem.
+ if(!path.isAbsolute(target)||!path.resolve(target).startsWith(mount+path.sep))
+   throw Error("Domino credit database must reside under Render's /var/data persistent disk.");
+ const disk=fs.statSync(mount),root=fs.statSync("/");
+ if(!disk.isDirectory()||disk.dev===root.dev)
+   throw Error("Domino credit persistent disk mount is missing; refusing to charge players.");
+}
 const wallet=creditsEnabled?
  (sqliteCredits?require("./domino-wallet-sqlite").createSqliteWallet(process.env.DOMINO_CREDIT_DB_PATH)
                :require("./domino-wallet").createWalletStore(process.env.DOMINO_WALLET_DIR)):null;
