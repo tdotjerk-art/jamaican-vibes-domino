@@ -73,4 +73,15 @@ test('flagged credit pilot: authenticated public entry charged, private free, pr
   player.emit('create-room', { name: 'Private player' });
   await assigned;
   assert.equal((await request('me', { id, token })).body.balance, 100);
+
+  // Daily rewards use server UTC date, require valid credentials and apply once.
+  const daily = await request('daily', { id, token });
+  assert.equal(daily.status, 200);
+  assert.equal(daily.body.credits, 20);
+  assert.equal(daily.body.applied, true);
+  assert.equal(daily.body.balance, 120);
+  const duplicate = await request('daily', { id, token });
+  assert.equal(duplicate.body.applied, false);
+  assert.equal(duplicate.body.balance, 120);
+  assert.equal((await request('daily', { id, token: '0'.repeat(64) })).status, 400);
 });
