@@ -52,6 +52,10 @@ test('SQLite tournament pilot API requires admin key and persists transactional 
   await request('POST','tournaments/cup2/join',{id:b.account.id,token:b.token});
   const started=await request('POST','tournaments/cup2/start',{},true);
   assert.equal(started.status,200);
+  const assigned=await request('POST','tournaments/mine',{id:a.account.id,token:a.token});
+  assert.equal(assigned.status,200);
+  assert.equal(assigned.body.find(x=>x.id==='cup2').matches[0].status,'pending');
+  assert.equal((await request('POST','tournaments/mine',{id:a.account.id,token:'0'.repeat(64)})).status,400);
   assert.equal(started.body.matches.length,1);
   assert.equal((await request('POST','tournaments/cup2/results',{
     round:1,slot:1,winnerId:a.account.id
