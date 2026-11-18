@@ -4,6 +4,20 @@ const {Server}=require("socket.io");
 const crypto=require("crypto");
 
 const app=express(),server=http.createServer(app),io=new Server(server,{cors:{origin:"*"}});
+// The pilot is OFF by default. Enable only with persistent storage and end-to-end tests.
+const creditsEnabled=process.env.DOMINO_CREDITS_ENABLED==="true";
+const wallet=creditsEnabled?require("./domino-wallet").createWalletStore(process.env.DOMINO_WALLET_DIR):null;
+if(creditsEnabled){
+ app.use("/api/domino/wallet",express.json({limit:"2kb"}));
+ const result=(res,fn)=>{try{return res.json(fn())}catch(e){return res.status(/Insufficient/.test(e.message)?402:400).json({error:e.message})}};
+ app.post("/api/domino/wallet/register",(req,res)=>result(res,()=>{
+   const account=wallet.createAccount(req.body?.name);
+   return {account:{id:account.id,name:account.name,balance:account.balance},token:account.token};
+ }));
+ app.post("/api/domino/wallet/me",(req,res)=>result(res,()=>wallet.authenticate(req.body?.id,req.body?.token)));
+ // No endpoint accepts claimed completed ads or arbitrary credit awards.
+}
+
 const analytics=require("./analytics").installAnalytics(app);
 const draffRouter=require("./draff-online").createDraffRouter();
 app.use("/api/draff",draffRouter);
@@ -378,7 +392,14 @@ io.on("connection",socket=>{
    next();
  });
 
- socket.on("join-public-table",({name,playerCount,mode})=>{
+ socket.on("join-public-table",({name,playerCount,mode,accountId,accountToken})=>{
+   // Reject unverified public entries only when the pilot is explicitly enabled.
+   // Names for a paid public game always come from the trusted account record.
+   let account=null;
+   if(creditsEnabled){
+     try{account=wallet.authenticate(accountId,accountToken);name=account.name}
+     catch(e){return socket.emit("room-error","Sign in to your Domino credit account before joining public play.")}
+   }
    const count=[2,3,4].includes(playerCount)?playerCount:4;
    const publicMode=count<4||mode==="individual"?"individual":"partner";
    name=typeof name==="string"?name.trim().slice(0,20):"";
@@ -392,6 +413,8 @@ io.on("connection",socket=>{
      return;
    }
 
+   if(creditsEnabled&&wallet.balance(account.id)<wallet.price("public"))
+     return socket.emit("room-error","Not enough credits for a public match. Computer and private friends games are free.");
    leaveCurrentRoom(socket);
    // Map iteration is insertion ordered, so the oldest available table fills first.
    let room;
@@ -412,6 +435,19 @@ io.on("connection",socket=>{
      room.publicTable=true;
      seat=0;
      room.players[0].ready=true;
+   }
+   if(creditsEnabled){
+     try{
+       // One operation per account per match room; reconnect does not use this path.
+       wallet.enter(account.id,"public",room.code);
+       room.players[seat].accountId=account.id;
+       socket.emit("wallet-balance",{balance:wallet.balance(account.id)});
+     }catch(e){
+       // Undo only the newly reserved seat, without deleting the player's wallet.
+       room.players[seat]=null;
+       if(room.publicTable&&!room.players.some(Boolean)&&!room.spectators.size)rooms.delete(room.code);
+       return socket.emit("room-error",e.message);
+     }
    }
    room.message=`Waiting for ${room.players.length} players. The public table starts automatically.`;
    socket.data.roomCode=room.code;
