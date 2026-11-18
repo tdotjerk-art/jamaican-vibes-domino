@@ -62,6 +62,8 @@ if(creditsEnabled){
      return result(res,fn);
    };
    app.get("/api/domino/wallet/tournaments",(req,res)=>result(res,()=>wallet.listTournaments()));
+   app.post("/api/domino/wallet/tournaments/mine",(req,res)=>result(res,()=>
+     wallet.myTournamentMatches(req.body?.id,req.body?.token)));
    app.get("/api/domino/wallet/tournaments/:id",(req,res)=>
      result(res,()=>wallet.tournamentStatus(req.params.id)));
    app.post("/api/domino/wallet/tournaments/:id/join",(req,res)=>result(res,()=>
