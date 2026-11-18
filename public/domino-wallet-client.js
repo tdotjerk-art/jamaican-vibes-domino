@@ -81,10 +81,10 @@
         const line = document.createElement('div');
         line.style.cssText = 'margin:6px 0;padding:4px 0;border-top:1px solid #446';
         const heading = document.createElement('strong');
-        heading.textContent = event.id + ' — ' + event.status;
+        heading.textContent = event.id + ' — ' + (event.playerCount || 2) + '-player Cut Throat — ' + event.status;
         line.append(heading);
         const pending = (event.matches || []).filter(match => match.status === 'pending' &&
-          match.playerB && (match.playerA === credentials.id || match.playerB === credentials.id));
+          Array.isArray(match.playerIds) && match.playerIds.length >= 2 && match.playerIds.includes(credentials.id));
         if (pending.length) {
           for (const match of pending) {
             const btn = document.createElement('button');
@@ -139,7 +139,7 @@
         const line = document.createElement('div');
         line.style.cssText = 'display:flex;align-items:center;gap:8px;margin:6px 0;flex-wrap:wrap';
         const summary = document.createElement('span');
-        summary.textContent = bracket.id + ' — ' + bracket.registered + '/' + bracket.capacity + ' registered';
+        summary.textContent = bracket.id + ' — ' + (bracket.playerCount || 2) + '-player Cut Throat — ' + bracket.registered + '/' + bracket.capacity + ' registered';
         const join = document.createElement('button');
         join.type = 'button'; join.textContent = 'Join: 25 credits';
         join.disabled = bracket.registered >= bracket.capacity;
@@ -178,7 +178,7 @@
       '<label>Existing recovery code <input id="jvWalletRecoveryInput" autocomplete="off" aria-label="Existing recovery code" style="width:100%"></label>'+
       '<button type="button" id="jvWalletRestore">Recover Wallet</button>'+
       '<details id="jvTournamentDetails" hidden style="margin-top:8px"><summary>Tournament registration (pilot)</summary>'+
-      '<p style="margin:4px 0">Entry: 25 credits. Join your assigned round below once the bracket starts.</p>'+
+      '<p style="margin:4px 0">Entry: 25 credits. 2, 3 and 4-player Cut Throat tournaments. Join your assigned round below once the bracket starts.</p>'+
       '<button type="button" id="jvTournamentRefresh">Refresh tournaments</button>'+
       '<div id="jvTournamentList" aria-live="polite"></div>'+ 
       '<button type="button" id="jvTournamentMineRefresh">My Matches</button>'+ 
