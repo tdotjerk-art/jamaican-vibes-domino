@@ -30,10 +30,11 @@ test('assigned tournament accounts join dedicated online rooms while outsiders a
    },body:JSON.stringify(body)});
    return {status:r.status,body:await r.json()};
  }
- function event(socket,name) {
+ function event(socket,name,predicate=()=>true) {
    return new Promise((resolve,reject)=>{
      const timer=setTimeout(()=>reject(Error('Timed out '+name)),5000);
-     socket.once(name,value=>{clearTimeout(timer);resolve(value)});
+     function on(value){if(!predicate(value))return;clearTimeout(timer);socket.off(name,on);resolve(value)}
+     socket.on(name,on);
    });
  }
  async function connect(){
@@ -59,7 +60,7 @@ test('assigned tournament accounts join dedicated online rooms while outsiders a
  const seat=await firstSeat;
  assert.equal(seat.seat,0);
  const second=await connect();
- const playing=event(first,'private-state');
+ const playing=event(first,'private-state',s=>s.phase==='playing');
  const secondSeat=event(second,'seat-assigned');
  second.emit('join-tournament-match',{tournamentId:'fixture1',round:1,slot:1,
    accountId:b.account.id,accountToken:b.token});
