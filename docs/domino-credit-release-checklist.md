@@ -62,6 +62,16 @@ Development server now accepts authenticated `join-tournament-match` Socket.IO r
 
 Unfinished tournament rooms no longer lose a player's seat after the ordinary 90-second public-match timeout; voluntary departure also pauses and holds the board. A disconnected player can reconnect using the existing room code and reconnect token. For a pregame fixture, restoring the seat restores readiness. No forfeits are automatically assigned. **This is an in-process reconnect guarantee only**: a server restart still wipes active boards and requires a replay of the pending fixture. Tournament-bracket data and wallet debits are persisted independently. Browser and physical iPhone verification remain outstanding.
 
+## Live full-match test findings — 2026-11-18
+
+- **Run [44360976070](https://github.com/tdotjerk-art/jamaican-vibes-domino/actions/runs/44360976070) failed** against the actual deployed `main` URL. Six preceding private-room smoke checks passed in [44359413028](https://github.com/tdotjerk-art/jamaican-vibes-domino/actions/runs/44359413028).
+- Two-player Cut Throat: the harness timed out waiting for a board/phase update after move 11 (seat 1, domino ID 26). No proof yet whether the server rejected the move or the harness used a stale state.
+- Three-player Cut Throat: similar timeout after move 162 (seat 1, domino ID 9), after many hands/turns.
+- Four-player Cut Throat: 13 hands and 298 requested moves; latest phase `hand-over` with scores `[3,5,1,4]`, but did not reach six inside 125 seconds.
+- Four-player Partners: 16 hands and 343 requested moves; latest phase `hand-over`, team scores `[0,2]`; no winner within 155 seconds. Bruck scoring can legitimately prolong this format.
+- Rematch phase was **not tested** because the first match did not complete. Do not interpret these as confirmed live gameplay bugs or as a successful completion test.
+- **Next:** improve test instrumentation to capture `action-error` and verify move processing using state version/sequence, expand reasonable hand/match time limits and isolate scenarios in separate CI jobs. After a full match completes, verify all-player replay votes and reset.
+
 ## Player counts and format scope (2026-11-18)
 
 - [x] Cut Throat tournament format accepts 2-, 3-, and 4-player table sizes. Matches persist exact authenticated player rosters in `tournament_match_seats`. Existing SQLite databases are migrated to default two-player tournaments for compatibility.
