@@ -78,11 +78,20 @@ async function playGame(game,maxMs){
   if(Date.now()<(current.dealUntil||0)+50){await delay(120);continue}
   const seat=current.turn;const my=states[seat];
   if(!Number.isInteger(seat)||!my||my.handNo!==current.handNo){await delay(60);continue}
+  // Each seat receives private-state in a separate Socket.IO packet. Do not
+  // play from player 0's newer board while the active player's hand is older.
+  // A stale hand can still have the same hand number during another turn.
+  if(signature(my)!==signature(current)||
+     my.board.length!==current.board.length||
+     my.hand.length!==current.handCounts?.[seat]){
+    await delay(40);continue;
+  }
   const sig=signature(current);
   if(sig===last){await delay(80);continue}
   const [left,right]=ends(current.board);
   const piece=my.hand.find(d=>!current.board.length||d.a===left||d.b===left||d.a===right||d.b===right);
   if(!piece){last=sig;await delay(150);continue}
+  if(current.deadline&&current.deadline-Date.now()<1000){await delay(90);continue}
   const side=piece.a===left||piece.b===left?'left':'right';
   // A board change, hand transition or match completion acknowledges the move.
   // Keep diagnostic server errors rather than reporting every rejection as a timeout.
@@ -104,6 +113,17 @@ async function playGame(game,maxMs){
    if(updated.phase==='hand-over'&&updated.lastEvent==='blocked-win')blocked++;
    if(updated.message?.toLowerCase().includes('pass'))passEvents++;
   }catch(e){
+   // If the timer or another server action advanced the board during transit,
+   // this client chose from an out-of-date snapshot; refresh and retry.
+   // Never silently discard an error when the authoritative board is unchanged.
+   if(/action-error: (Domino not found in your hand|Not your turn|Wait for the shuffle)/.test(e.message)){
+     await delay(400);
+     const fresh=states[0];
+     if(fresh&&(fresh.handNo!==current.handNo||
+       signature(fresh)!==sig||fresh.board.length!==current.board.length)){
+       last=null;continue;
+     }
+   }
    throw Error('Move '+moves+' not acknowledged: '+e.message+
     ' / seat '+seat+' domino '+piece.id+' side '+side+
     ' hand '+current.handNo+' ends '+left+','+right+
