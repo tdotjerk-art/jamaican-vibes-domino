@@ -104,6 +104,8 @@ function createWalletStore(directory) {
   function enter(id, mode, entryId) {
     const cost = price(mode);
     if (!cost) return { balance: get(id).balance, applied: false, cost: 0 };
+    // A refunded entry ID is permanently retired; it cannot grant a free re-entry.
+    if (Object.hasOwn(get(id).operations, 'refund:' + entryId)) throw Error('Refunded entry ID cannot be reused.');
     const result = transact(id, 'entry:' + entryId, -cost, mode);
     return { ...result, cost };
   }
