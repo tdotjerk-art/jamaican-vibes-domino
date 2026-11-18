@@ -6,11 +6,16 @@ const crypto=require("crypto");
 const app=express(),server=http.createServer(app),io=new Server(server,{cors:{origin:"*"}});
 // The pilot is OFF by default. Enable only with persistent storage and end-to-end tests.
 const creditsEnabled=process.env.DOMINO_CREDITS_ENABLED==="true";
-// Render free services do not provide the durable shared transactional storage
-// required to operate a credit economy safely. Fail closed if accidentally enabled.
-if(creditsEnabled&&process.env.RENDER==="true")
- throw Error("Domino credits cannot run on Render with the filesystem wallet; connect a transactional database first.");
-const wallet=creditsEnabled?require("./domino-wallet").createWalletStore(process.env.DOMINO_WALLET_DIR):null;
+const sqliteCredits=creditsEnabled&&process.env.DOMINO_CREDIT_STORAGE==="sqlite";
+// Render credits require explicit durable-disk confirmation. The JSON adapter is
+// development-only even if a writable local directory exists.
+if(creditsEnabled&&process.env.RENDER==="true"&&
+   (!sqliteCredits||process.env.DOMINO_CREDIT_DURABLE_CONFIRMED!=="true"))
+ throw Error("Domino credits cannot run on Render without a confirmed durable SQLite disk.");
+const wallet=creditsEnabled?
+ (sqliteCredits?require("./domino-wallet-sqlite").createSqliteWallet(process.env.DOMINO_CREDIT_DB_PATH)
+               :require("./domino-wallet").createWalletStore(process.env.DOMINO_WALLET_DIR)):null;
+if(wallet?.close)server.on("close",()=>wallet.close());
 if(creditsEnabled){
  app.use("/api/domino/wallet",express.json({limit:"2kb"}));
  const result=(res,fn)=>{try{return res.json(fn())}catch(e){return res.status(/Insufficient/.test(e.message)?402:400).json({error:e.message})}};
@@ -26,6 +31,36 @@ if(creditsEnabled){
    const reward=wallet.awardDailyLogin(account.id,calendarDay);
    return {balance:reward.balance,applied:reward.applied,credits:reward.applied?20:0,calendarDay};
  }));
+ if(sqliteCredits){
+   // Tournament APIs exist only for the SQLite pilot. The admin key must never
+   // be included in client code, URLs, logs, or browser storage.
+   const isAdmin=req=>{
+     const key=process.env.DOMINO_TOURNAMENT_ADMIN_TOKEN;
+     const supplied=req.get("authorization")?.replace(/^Bearer /i,"")||"";
+     return typeof key==="string"&&key.length>=32&&supplied.length===key.length&&
+       crypto.timingSafeEqual(Buffer.from(supplied),Buffer.from(key));
+   };
+   const administrative=(req,res,fn)=>{
+     if(!process.env.DOMINO_TOURNAMENT_ADMIN_TOKEN||process.env.DOMINO_TOURNAMENT_ADMIN_TOKEN.length<32)
+       return res.status(503).json({error:"Tournament administration is not configured."});
+     if(!isAdmin(req))return res.status(403).json({error:"Administrator authorization required."});
+     return result(res,fn);
+   };
+   app.get("/api/domino/wallet/tournaments",(req,res)=>result(res,()=>wallet.listTournaments()));
+   app.get("/api/domino/wallet/tournaments/:id",(req,res)=>
+     result(res,()=>wallet.tournamentStatus(req.params.id)));
+   app.post("/api/domino/wallet/tournaments/:id/join",(req,res)=>result(res,()=>
+     wallet.joinTournament(req.params.id,req.body?.id,req.body?.token)));
+   app.post("/api/domino/wallet/tournaments/:id/withdraw",(req,res)=>result(res,()=>
+     wallet.withdrawTournament(req.params.id,req.body?.id,req.body?.token)));
+   app.post("/api/domino/wallet/tournaments",(req,res)=>
+     administrative(req,res,()=>wallet.createTournament(req.body?.id,req.body?.capacity)));
+   app.post("/api/domino/wallet/tournaments/:id/start",(req,res)=>
+     administrative(req,res,()=>wallet.startTournament(req.params.id)));
+   app.post("/api/domino/wallet/tournaments/:id/cancel",(req,res)=>
+     administrative(req,res,()=>wallet.cancelTournament(req.params.id)));
+ }
+
  // No endpoint accepts claimed completed ads or arbitrary credit awards.
 }
 
