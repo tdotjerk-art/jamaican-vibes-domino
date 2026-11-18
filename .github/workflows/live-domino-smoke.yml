@@ -1,0 +1,26 @@
+name: Production Domino safe smoke test
+
+on:
+  push:
+    branches:
+      - feature/domino-credit-wallet-pilot
+    paths:
+      - scripts/live-domino-smoke.cjs
+      - .github/workflows/live-domino-smoke.yml
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Probe production without touching public matchmaking
+        env:
+          DOMINO_SMOKE_URL: https://jamaican-vibes-domino.onrender.com
+        run: node scripts/live-domino-smoke.cjs
