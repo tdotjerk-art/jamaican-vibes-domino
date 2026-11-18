@@ -12,7 +12,11 @@ on:
 jobs:
   full-match:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario: ['2-individual', '3-individual', '4-individual', '4-partner']
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -23,4 +27,5 @@ jobs:
       - name: Play isolated private full matches and replay on production
         env:
           DOMINO_SMOKE_URL: https://jamaican-vibes-domino.onrender.com
+          DOMINO_MATCH_SCENARIO: ${{ matrix.scenario }}
         run: node scripts/live-domino-complete-match.cjs
