@@ -76,6 +76,7 @@
       '<div id="jvWalletStatus" role="status" style="margin:6px 0">Create or recover a wallet before public play.</div>'+
       '<button type="button" id="jvWalletRegister">Create Wallet</button> '+
       '<button type="button" id="jvWalletRefresh">Refresh Balance</button>'+
+      ' <button type="button" id="jvWalletDaily">Claim Daily 20 Credits</button>'+
       '<p style="margin:5px 0"><label>Recovery code <input id="jvWalletRecovery" readonly hidden aria-label="Your recovery code" style="width:100%;font-size:12px"></label></p>'+
       '<label>Existing recovery code <input id="jvWalletRecoveryInput" autocomplete="off" aria-label="Existing recovery code" style="width:100%"></label>'+
       '<button type="button" id="jvWalletRestore">Recover Wallet</button>';
@@ -84,6 +85,14 @@
       try { await register(); } catch (e) { message(e.message); }
     };
     $('jvWalletRefresh').onclick = refresh;
+    $('jvWalletDaily').onclick = async () => {
+      try {
+        if (!isValid(credentials)) throw Error('Sign in to claim your daily credits.');
+        const result = await post('daily', credentials);
+        update(result.balance);
+        message(result.applied ? 'Daily 20 credits added.' : 'Today\'s 20 credits were already claimed.');
+      } catch (error) { message(error.message); }
+    };
     $('jvWalletRestore').onclick = async () => {
       try { await restore(); } catch (e) { message(e.message); }
     };
