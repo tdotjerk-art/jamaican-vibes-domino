@@ -3,7 +3,7 @@
   'use strict';
   const KEY = 'jvDominoWalletAccount';
   const $ = id => document.getElementById(id);
-  let credentials = null, busy = false, ready = false;
+  let credentials = null, busy = false, ready = false, gameSocket = null;
   try { credentials = JSON.parse(sessionStorage.getItem(KEY) || 'null'); } catch {}
   const isValid = a => a && /^[a-f0-9]{32}$/.test(a.id || '') && /^[a-f0-9]{64}$/.test(a.token || '');
   if (!isValid(credentials)) credentials = null;
@@ -48,6 +48,7 @@
     message('Wallet created. Save your recovery code securely before changing devices.');
     const code = $('jvWalletRecovery');
     if (code) { code.value = response.account.id + ':' + response.token; code.hidden = false; }
+    await refreshMyTournaments();
     return credentials;
   }
   async function restore() {
@@ -62,6 +63,62 @@
     sessionStorage.setItem(KEY, JSON.stringify(credentials));
     if (input) input.value = '';
     update(account.balance); message('Wallet recovered for ' + account.name);
+    await refreshMyTournaments();
+  }
+
+  async function refreshMyTournaments() {
+    const list = $('jvMyTournamentMatches');
+    if (!list) return;
+    list.replaceChildren();
+    if (!isValid(credentials)) { list.textContent = 'Sign in to see your assigned matches.'; return; }
+    try {
+      const events = await post('tournaments/mine', credentials);
+      if (!Array.isArray(events) || !events.length) {
+        list.textContent = 'No tournament registrations yet.';
+        return;
+      }
+      for (const event of events) {
+        const line = document.createElement('div');
+        line.style.cssText = 'margin:6px 0;padding:4px 0;border-top:1px solid #446';
+        const heading = document.createElement('strong');
+        heading.textContent = event.id + ' — ' + event.status;
+        line.append(heading);
+        const pending = (event.matches || []).filter(match => match.status === 'pending' &&
+          match.playerB && (match.playerA === credentials.id || match.playerB === credentials.id));
+        if (pending.length) {
+          for (const match of pending) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.textContent = 'Play round ' + match.round + ', match ' + match.slot;
+            btn.onclick = async () => {
+              if (!isValid(credentials) || !gameSocket) {
+                message('Connect to the online Domino lobby and sign in before joining your match.');
+                return;
+              }
+              try {
+                const me = await post('me', credentials);
+                if (me.name !== walletName()) throw Error('Wallet name does not match signup name.');
+                gameSocket.emit('join-tournament-match', {
+                  tournamentId: event.id, round: match.round, slot: match.slot,
+                  accountId: credentials.id, accountToken: credentials.token
+                });
+              } catch (error) { message(error.message); }
+            };
+            line.append(btn);
+          }
+        } else {
+          const note = document.createElement('p');
+          note.style.margin = '4px 0';
+          note.textContent = event.registrationStatus !== 'registered' ?
+            'Your registration is no longer active.' :
+            event.status === 'open' ? 'Waiting for the tournament to start.' :
+            event.status === 'completed' ? 'Tournament completed.' :
+            'No match is currently assigned to you.';
+          line.append(note);
+        }
+        list.append(line);
+      }
+    } catch (error) { list.textContent = error.message; }
   }
 
   async function refreshTournaments() {
@@ -96,6 +153,7 @@
             message(entry.applied ? 'Registered for ' + bracket.id + '. Match assignments are not active yet.' :
               'Already registered for ' + bracket.id + '.');
             await refreshTournaments();
+            await refreshMyTournaments();
           } catch (error) { message(error.message); }
         };
         line.append(summary,join); list.append(line);
@@ -120,15 +178,18 @@
       '<label>Existing recovery code <input id="jvWalletRecoveryInput" autocomplete="off" aria-label="Existing recovery code" style="width:100%"></label>'+
       '<button type="button" id="jvWalletRestore">Recover Wallet</button>'+
       '<details id="jvTournamentDetails" hidden style="margin-top:8px"><summary>Tournament registration (pilot)</summary>'+
-      '<p style="margin:4px 0">Entry: 25 credits. Tournament match assignments are not yet active.</p>'+
+      '<p style="margin:4px 0">Entry: 25 credits. Join your assigned round below once the bracket starts.</p>'+
       '<button type="button" id="jvTournamentRefresh">Refresh tournaments</button>'+
-      '<div id="jvTournamentList" aria-live="polite"></div></details>';
+      '<div id="jvTournamentList" aria-live="polite"></div>'+ 
+      '<button type="button" id="jvTournamentMineRefresh">My Matches</button>'+ 
+      '<div id="jvMyTournamentMatches" aria-live="polite"></div></details>';
     join.parentNode.insertBefore(panel, join);
     $('jvWalletRegister').onclick = async () => {
       try { await register(); } catch (e) { message(e.message); }
     };
     $('jvWalletRefresh').onclick = refresh;
     $('jvTournamentRefresh').onclick = refreshTournaments;
+    $('jvTournamentMineRefresh').onclick = refreshMyTournaments;
     $('jvWalletDaily').onclick = async () => {
       try {
         if (!isValid(credentials)) throw Error('Sign in to claim your daily credits.');
@@ -158,6 +219,7 @@
     }, true);
     refresh();
     refreshTournaments();
+    refreshMyTournaments();
   }
 
   // Preserve the existing online socket implementation, attaching credentials
@@ -166,6 +228,7 @@
   if (typeof originalIo === 'function') {
     window.io = function (...args) {
       const socket = originalIo.apply(this, args);
+      gameSocket = socket;
       const originalEmit = socket.emit;
       socket.emit = function (event, data, ...rest) {
         if (event === 'join-public-table') {
