@@ -39,3 +39,9 @@ GitHub Actions run 44225846933 completed successfully after the wallet API, publ
 When `DOMINO_CREDITS_ENABLED=true`, the server injects `/domino-wallet-client.js` into the root page. It adds wallet controls alongside Join Public Table, supports new account registration, recovery with `accountID:token`, session-only credentials, live balance retrieval, and forwarding authenticated account credentials with public joins. The signed-in account name is enforced server-side. Private-room and computer modes are unchanged.
 
 **Known blockers before launch:** Production wallet storage needs verification (no ephemeral disk); registration needs a signup/recovery experience review and abuse controls; full iPhone portrait/landscape checks are unverified; this does not add a Domino tournament lobby or actual tournament registration yet. An account recovery code must be saved by its user. No rewarded ads have been connected. GitHub Actions #407 passed automated tests for the client integration branch.
+
+## Tournament entry wallet operations (development only)
+
+The wallet now exposes `registerTournament(id, tournamentId)`, `tournamentRegistration(id, tournamentId)`, and `cancelTournamentRegistration(id, tournamentId)`. A registration charges 25 credits at most once for a server-supplied bracket ID. A cancellation refunds the same registration once; the cancelled bracket ID cannot be reused by that account. State is reconstructed from the wallet transaction history after restart.
+
+These methods are intentionally **not exposed as HTTP or Socket.IO routes**. There is no working Domino tournament bracket or registration lobby to authenticate an actual event and control when signups close. A trusted tournament controller, persistent bracket roster, server-side lifecycle, and atomic cross-process enrollment/capacity enforcement are required before any public-facing tournament charge. No live deploy is authorized.
