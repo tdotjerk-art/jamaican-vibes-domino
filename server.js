@@ -71,7 +71,7 @@ if(creditsEnabled){
    app.post("/api/domino/wallet/tournaments/:id/withdraw",(req,res)=>result(res,()=>
      wallet.withdrawTournament(req.params.id,req.body?.id,req.body?.token)));
    app.post("/api/domino/wallet/tournaments",(req,res)=>
-     administrative(req,res,()=>wallet.createTournament(req.body?.id,req.body?.capacity)));
+     administrative(req,res,()=>wallet.createTournament(req.body?.id,req.body?.capacity,req.body?.playerCount??2)));
    app.post("/api/domino/wallet/tournaments/:id/start",(req,res)=>
      administrative(req,res,()=>wallet.startTournament(req.params.id)));
    app.post("/api/domino/wallet/tournaments/:id/cancel",(req,res)=>
@@ -505,9 +505,9 @@ io.on("connection",socket=>{
      if(!Number.isInteger(round)||!Number.isInteger(slot))
        throw Error("Invalid tournament fixture.");
      match=bracket.matches.find(m=>m.round===round&&m.slot===slot);
-     if(!match||match.status!=="pending"||!match.playerB)
+     if(!match||match.status!=="pending"||match.playerIds.length<2)
        throw Error("Tournament match is not awaiting players.");
-     if(account.id!==match.playerA&&account.id!==match.playerB)
+     if(!match.playerIds.includes(account.id))
        throw Error("Your account is not assigned to this tournament match.");
    }catch(e){return socket.emit("room-error",e.message)}
    const key=tournamentId+":"+round+":"+slot;
@@ -531,7 +531,7 @@ io.on("connection",socket=>{
      let attempt;
      try{attempt=wallet.openTournamentFixtureAttempt(tournamentId,round,slot)}
      catch(e){return socket.emit("room-error",e.message)}
-     const created=newRoom(account.name,"individual",6,socket,"double-six-two",2);
+     const created=newRoom(account.name,"individual",6,socket,"double-six-two",match.playerIds.length);
      room=created.room;room.tournamentFixture={id:tournamentId,round,slot,key,attempt:attempt.attempt};
      room.message=attempt.replay?
        "Tournament match replay after interruption: previous unfinished board was reset. No extra credits charged.":
