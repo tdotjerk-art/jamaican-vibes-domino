@@ -45,4 +45,25 @@ test('SQLite tournament pilot API requires admin key and persists transactional 
   assert.equal((await request('POST','me',{id:b.account.id,token:b.token})).body.balance,100);
   assert.equal((await request('GET','tournaments/cup1')).body.status,'cancelled');
   assert.equal((await request('POST','tournaments/cup1/start',{},true)).status,400);
+
+  // Second bracket: only the administrator can report results.
+  assert.equal((await request('POST','tournaments',{id:'cup2',capacity:2},true)).status,200);
+  await request('POST','tournaments/cup2/join',{id:a.account.id,token:a.token});
+  await request('POST','tournaments/cup2/join',{id:b.account.id,token:b.token});
+  const started=await request('POST','tournaments/cup2/start',{},true);
+  assert.equal(started.status,200);
+  assert.equal(started.body.matches.length,1);
+  assert.equal((await request('POST','tournaments/cup2/results',{
+    round:1,slot:1,winnerId:a.account.id
+  })).status,403);
+  assert.equal((await request('POST','tournaments/cup2/results',{
+    round:1,slot:1,winnerId:c.account.id
+  },true)).status,400);
+  const finish=await request('POST','tournaments/cup2/results',{
+    round:1,slot:1,winnerId:a.account.id
+  },true);
+  assert.equal(finish.status,200);
+  assert.equal(finish.body.status,'completed');
+  assert.equal(finish.body.matches[0].winnerId,a.account.id);
+  assert.equal((await request('GET','tournaments/cup2')).body.matches[0].status,'completed');
 });
