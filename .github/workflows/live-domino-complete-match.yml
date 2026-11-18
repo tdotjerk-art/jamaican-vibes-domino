@@ -1,0 +1,26 @@
+name: Production Domino complete matches
+
+on:
+  push:
+    branches:
+      - feature/domino-credit-wallet-pilot
+    paths:
+      - scripts/live-domino-complete-match.cjs
+      - .github/workflows/live-domino-complete-match.yml
+  workflow_dispatch:
+
+jobs:
+  full-match:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Play isolated private full matches and replay on production
+        env:
+          DOMINO_SMOKE_URL: https://jamaican-vibes-domino.onrender.com
+        run: node scripts/live-domino-complete-match.cjs
