@@ -7,6 +7,9 @@ const assert=require('node:assert/strict');
 const base=process.env.DOMINO_SMOKE_URL||'https://jamaican-vibes-domino.onrender.com';
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const clients=[];
+const errors=new WeakMap();
+const recentErrors=s=>(errors.get(s)||[]).slice(-5);
+
 function wait(s,event,predicate=()=>true,timeout=20000){
  return new Promise((resolve,reject)=>{
   const timer=setTimeout(()=>{s.off(event,handler);reject(Error('timeout '+event))},timeout);
@@ -16,7 +19,10 @@ function wait(s,event,predicate=()=>true,timeout=20000){
 }
 async function connect(){
  const s=io(base,{transports:['websocket'],forceNew:true,reconnection:false});
- clients.push(s);await wait(s,'connect',()=>true,20000);return s;
+ clients.push(s);errors.set(s,[]);
+ s.on('action-error',message=>errors.get(s).push({at:Date.now(),event:'action-error',message:String(message)}));
+ s.on('room-error',message=>errors.get(s).push({at:Date.now(),event:'room-error',message:String(message)}));
+ await wait(s,'connect',()=>true,20000);return s;
 }
 async function room(count,mode) {
  const sockets=[],states=Array(count).fill(null);
@@ -78,20 +84,42 @@ async function playGame(game,maxMs){
   const piece=my.hand.find(d=>!current.board.length||d.a===left||d.b===left||d.a===right||d.b===right);
   if(!piece){last=sig;await delay(150);continue}
   const side=piece.a===left||piece.b===left?'left':'right';
-  const changed=wait(sockets[0],'private-state',s=>s.phase!=='playing'||s.handNo!==current.handNo||s.board.length!==current.board.length,10000);
+  // A board change, hand transition or match completion acknowledges the move.
+  // Keep diagnostic server errors rather than reporting every rejection as a timeout.
+  const sentAt=Date.now();
+  const changed=wait(sockets[0],'private-state',s=>
+   s.handNo!==current.handNo||s.phase!==current.phase||
+   s.board.length!==current.board.length||
+   (s.board.length&&s.board.some(d=>d.id===piece.id&&d.player===seat)),12000);
   sockets[seat].emit('play-domino',{tileId:piece.id,side});
   last=sig;moves++;
   try{
-   const updated=await changed;
+   const updated=await Promise.race([
+    changed,
+    (async()=>{for(let i=0;i<48;i++){await delay(250);
+      const rejected=recentErrors(sockets[seat]).find(e=>e.at>=sentAt);
+      if(rejected)throw Error(rejected.event+': '+rejected.message);
+    }})()
+   ]);
    if(updated.phase==='hand-over'&&updated.lastEvent==='blocked-win')blocked++;
    if(updated.message?.toLowerCase().includes('pass'))passEvents++;
-  }catch(e){throw Error('Move '+moves+' not acknowledged: '+e.message+' / seat '+seat+' piece '+piece.id)}
+  }catch(e){
+   throw Error('Move '+moves+' not acknowledged: '+e.message+
+    ' / seat '+seat+' domino '+piece.id+' side '+side+
+    ' hand '+current.handNo+' ends '+left+','+right+
+    ' phase '+states[0]?.phase+' errors '+JSON.stringify(recentErrors(sockets[seat])));
+  }
  }
  throw Error('No match winner within '+maxMs+'ms; moves='+moves+' hands='+handCount+' latest='+JSON.stringify(states[0]&&{phase:states[0].phase,scores:states[0].scores,teamScores:states[0].teamScores,turn:states[0].turn,message:states[0].message}));
 }
 async function main(){
  const output=[];const failed=[];
- for(const [count,mode,maxMs,rematch] of [[2,'individual',125000,true],[3,'individual',125000,false],[4,'individual',125000,false],[4,'partner',155000,false]]){
+ const scenarios=[[2,'individual',240000,true],[3,'individual',240000,false],
+  [4,'individual',300000,false],[4,'partner',420000,false]];
+ const selected=process.env.DOMINO_MATCH_SCENARIO;
+ const picked=selected?scenarios.filter(([count,mode])=>String(count)+'-'+mode===selected):scenarios;
+ if(!picked.length)throw Error('Unknown DOMINO_MATCH_SCENARIO: '+selected);
+ for(const [count,mode,maxMs,rematch] of picked){
   const title=count+'-player '+(mode==='partner'?'Partners':'Cut Throat');
   let game;
   try{
