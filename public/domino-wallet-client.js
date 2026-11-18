@@ -79,7 +79,7 @@
       '<p style="margin:5px 0"><label>Recovery code <input id="jvWalletRecovery" readonly hidden aria-label="Your recovery code" style="width:100%;font-size:12px"></label></p>'+
       '<label>Existing recovery code <input id="jvWalletRecoveryInput" autocomplete="off" aria-label="Existing recovery code" style="width:100%"></label>'+
       '<button type="button" id="jvWalletRestore">Recover Wallet</button>';
-    setup.insertBefore(panel, join);
+    join.parentNode.insertBefore(panel, join);
     $('jvWalletRegister').onclick = async () => {
       try { await register(); } catch (e) { message(e.message); }
     };
