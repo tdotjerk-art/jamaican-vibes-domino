@@ -29,7 +29,8 @@
 - [ ] Verify actual lobby-to-Socket.IO launch in a real browser, complete an entire tournament game and confirm automatic advancement. The launcher depends on access to the existing game's active socket; this has not yet been browser-verified.
 - [ ] Verify iPhone portrait/landscape, controls and no-scroll sizing for the tournament lobby and playing table.
 - [x] Protect live-process tournament disconnections: hold the assigned seat and board, pause the match, and resume with the existing reconnect token. No automatic forfeit; disconnect/reconnect automated test passed.
-- [ ] Establish a fair, explicit tournament forfeit/adjudication policy and player notifications. Server restart still clears in-memory boards; persist active matches or implement a formal restart/replay policy before launch.
+- [x] Implement explicit unfinished-match restart policy: persist the bracket and registration; offer both assigned players a fresh-deal replay at no extra tournament fee. Track durable fixture attempt number and replay visibility.
+- [ ] Complete end-to-end process-crash replay verification and iPhone/browser notice visibility; then define a fair forfeit/adjudication policy with clear player notifications. In-progress boards are deliberately reset after server restart.
 - [ ] Configure an approved rewarded-web advertising account and ad unit, with signed server-to-server verification. Never grant credits on browser-reported ad completions. Validate account linkage, single use, rate limits, age restrictions and ad policy.
 - [ ] Complete physical iPhone Safari testing in portrait/landscape plus login, public multiplayer, rematch, tournament, timers, reload, lost connectivity and no scrolling.
 - [ ] Validate real Render restart/redeployment, simultaneous joins, load, storage permissions, health checks, backups and observability.
@@ -60,3 +61,9 @@ Development server now accepts authenticated `join-tournament-match` Socket.IO r
 ## Reconnect safety update
 
 Unfinished tournament rooms no longer lose a player's seat after the ordinary 90-second public-match timeout; voluntary departure also pauses and holds the board. A disconnected player can reconnect using the existing room code and reconnect token. For a pregame fixture, restoring the seat restores readiness. No forfeits are automatically assigned. **This is an in-process reconnect guarantee only**: a server restart still wipes active boards and requires a replay of the pending fixture. Tournament-bracket data and wallet debits are persisted independently. Browser and physical iPhone verification remain outstanding.
+
+## Tournament server-restart replay policy (2026-11-18)
+
+A tournament bracket's pending match survives a Node process restart in SQLite. A restarted server has no trustworthy game board, so it does **not** restore an arbitrary partial hand, declare a winner, or charge the 25-credit tournament entry again. Both assigned players can join a new two-player room and restart with a fresh shuffle and initial score. The new `tournament_fixture_attempts` SQLite table counts each room creation across server restarts and exposes `attempts` in authenticated match assignments and read-only bracket status. When an unfinished fixture is reopened (attempt 2+), the room message explicitly tells players it is a no-extra-charge replay. The server-side match result remains authoritative for bracket progression. A dedicated actual-process SIGKILL/restart regression test validates this. Handling post-restart old reconnect tokens is a deliberate fallback to new authenticated fixture joining through My Matches.
+
+This is a **replay policy, not full board persistence**. Until a tournament forfeit policy, physical iPhone UX verification, ad verification, and real Render restart testing are complete, keep credits and tournament play disabled in production.
