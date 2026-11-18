@@ -16,6 +16,10 @@ const wallet=creditsEnabled?
  (sqliteCredits?require("./domino-wallet-sqlite").createSqliteWallet(process.env.DOMINO_CREDIT_DB_PATH)
                :require("./domino-wallet").createWalletStore(process.env.DOMINO_WALLET_DIR)):null;
 if(wallet?.close)server.on("close",()=>wallet.close());
+if(wallet?.refundInterruptedPublicMatches){
+ const refunds=wallet.refundInterruptedPublicMatches();
+ if(refunds)console.warn("Domino recovered",refunds,"interrupted public entries with refunds.");
+}
 if(creditsEnabled){
  app.use("/api/domino/wallet",express.json({limit:"2kb"}));
  const result=(res,fn)=>{try{return res.json(fn())}catch(e){return res.status(/Insufficient/.test(e.message)?402:400).json({error:e.message})}};
@@ -97,6 +101,15 @@ const connectedPlayers=r=>r.players.filter(p=>p&&p.connected).length;
 const addHistory=(r,s)=>{r.history.push(s);if(r.history.length>60)r.history.shift()};
 
 function clearTimer(r){if(r.timer){clearTimeout(r.timer);r.timer=null}}
+function finishPaidPublicMatch(r){
+ if(!creditsEnabled||!r.publicTable||!wallet.finishPublic)return;
+ for(const player of r.players){
+   if(player?.accountId&&player.entryId){
+     try{wallet.finishPublic(player.accountId,player.entryId)}
+     catch(e){console.error("Domino credit match settlement failed:",e.message)}
+   }
+ }
+}
 function publicPlayers(r){return r.players.map(p=>p?{name:p.name,seat:p.seat,connected:!!p.connected,ready:!!p.ready}:null)}
 function roomState(r){return {
  code:r.code,playerCount:r.players.length,players:publicPlayers(r),hostSeat:r.hostSeat,mode:r.mode,target:r.target,tieRule:tieRuleOf(r.tieRule),phase:r.phase,publicTable:!!r.publicTable,
@@ -260,7 +273,7 @@ function finishWin(r,seat){
  if(match>=0){
    r.phase="match-over";r.turn=null;r.rematchVotes.clear();
    r.message=r.mode==="partner"?`Team ${match===0?"A":"B"} wins the Bruck and Start game by going 6.`:`${r.players[match]?.name||"Player"} wins the match.`;
-   addHistory(r,r.message);r.lastEvent="match-win";emitAll(r);return
+   addHistory(r,r.message);r.lastEvent="match-win";finishPaidPublicMatch(r);emitAll(r);return
  }
  r.phase="hand-over";r.turn=null;r.message=`${n} wins the hand. Next hand starts in ${NEXT_HAND_DELAY_MS/1000} seconds.`;r.lastEvent="hand-win";emitAll(r);scheduleNextHand(r)
 }
@@ -290,14 +303,14 @@ function finishBlocked(r){
    if(bs.won){
      r.phase="match-over";r.turn=null;r.rematchVotes.clear();
      r.message=`Team ${bs.team===0?"A":"B"} wins the Bruck and Start game by going 6.`;
-     r.lastEvent="match-win";emitAll(r);return
+     r.lastEvent="match-win";finishPaidPublicMatch(r);emitAll(r);return
    }
  }else{
    r.scores[winner]=Math.min(6,r.scores[winner]+r.handValue);r.lastIndividualWinner=winner;
    if(r.scores[winner]===6){
      r.phase="match-over";r.turn=null;r.rematchVotes.clear();
      r.message=`${n} wins the Cut Throat game by reaching 6.`;
-     addHistory(r,r.message);r.lastEvent="match-win";emitAll(r);return
+     addHistory(r,r.message);r.lastEvent="match-win";finishPaidPublicMatch(r);emitAll(r);return
    }
    addHistory(r,`${n} wins the blocked hand with ${low}. Counts: ${counts.join(", ")}.`);
  }
@@ -391,7 +404,7 @@ function abandonSeat(r,seat){
  if(p.graceTimer)clearTimeout(p.graceTimer);
  // Refund an entry abandoned before any hand has started.
  if(creditsEnabled&&r.publicTable&&r.handNo===0&&p.accountId&&p.entryId){
-   try{wallet.refund(p.accountId,"public",p.entryId)}
+   try{wallet.refundPublic?wallet.refundPublic(p.accountId,p.entryId):wallet.refund(p.accountId,"public",p.entryId)}
    catch(e){console.error("Domino credit refund failed:",e.message)}
  }
  r.players[seat]=null;r.ready=false;promoteHost(r);clearTimer(r);
@@ -496,7 +509,8 @@ io.on("connection",socket=>{
      try{
        // One operation per account per match room; reconnect does not use this path.
        const entryId=room.code+":"+token.slice(0,16);
-       wallet.enter(account.id,"public",entryId);
+       if(wallet.enterPublic)wallet.enterPublic(account.id,entryId);
+       else wallet.enter(account.id,"public",entryId);
        room.players[seat].accountId=account.id;
        room.players[seat].entryId=entryId;
        socket.emit("wallet-balance",{balance:wallet.balance(account.id)});
