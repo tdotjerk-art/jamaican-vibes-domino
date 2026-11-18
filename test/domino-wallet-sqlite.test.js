@@ -146,3 +146,47 @@ test('insufficient balance on one rematch seat rolls back all charges',t=>{
   assert.equal(wallet.balance(b.id),0);
   assert.equal(wallet.enterPublic(a.id,'new-a').balance,90);
 });
+
+test('tournament bracket advances through recorded results and survives database reopening',t=>{
+  const {wallet,filename}=setup(t);
+  const players=['One','Two','Three','Four'].map(name=>wallet.createAccount(name));
+  wallet.createTournament('bracket4',4);
+  for(const p of players)wallet.joinTournament('bracket4',p.id,p.token);
+  const started=wallet.startTournament('bracket4');
+  assert.equal(started.matches.length,2);
+  assert.equal(started.matches[0].round,1);
+  assert.deepEqual(started.matches.map(m=>m.status),['pending','pending']);
+  assert.throws(()=>wallet.recordTournamentWinner('bracket4',1,1,players[3].id),/not seated/);
+  assert.equal(wallet.recordTournamentWinner('bracket4',1,1,players[0].id).applied,true);
+  assert.equal(wallet.recordTournamentWinner('bracket4',1,1,players[0].id).applied,false);
+  assert.throws(()=>wallet.recordTournamentWinner('bracket4',1,1,players[1].id),/different winner/);
+  const reopened=createSqliteWallet(filename);
+  assert.equal(reopened.tournamentStatus('bracket4').matches.length,2);
+  reopened.recordTournamentWinner('bracket4',1,2,players[2].id);
+  const round2=reopened.tournamentStatus('bracket4');
+  assert.equal(round2.matches.length,3);
+  assert.equal(round2.matches[2].round,2);
+  assert.equal(round2.matches[2].playerA,players[0].id);
+  assert.equal(round2.matches[2].playerB,players[2].id);
+  assert.throws(()=>reopened.recordTournamentWinner('bracket4',2,1,players[1].id),/not seated/);
+  assert.equal(reopened.recordTournamentWinner('bracket4',2,1,players[2].id).status,'completed');
+  assert.equal(reopened.tournamentStatus('bracket4').matches[2].winnerId,players[2].id);
+  assert.throws(()=>reopened.recordTournamentWinner('bracket4',2,1,players[0].id),/not accepting results/);
+  reopened.close();
+});
+
+test('odd sized bracket creates deterministic bye and advances remaining competitors',t=>{
+  const {wallet}=setup(t);
+  const players=['ByeA','ByeB','ByeC'].map(name=>wallet.createAccount(name));
+  wallet.createTournament('odd3',4);
+  for(const p of players)wallet.joinTournament('odd3',p.id,p.token);
+  const started=wallet.startTournament('odd3');
+  assert.equal(started.matches.length,2);
+  assert.equal(started.matches[1].status,'bye');
+  assert.equal(started.matches[1].winnerId,players[2].id);
+  assert.throws(()=>wallet.recordTournamentWinner('odd3',1,2,players[2].id),/Bye results cannot/);
+  const advanced=wallet.recordTournamentWinner('odd3',1,1,players[0].id);
+  assert.equal(advanced.matches.length,3);
+  assert.equal(advanced.matches[2].round,2);
+  assert.equal(advanced.matches[2].playerB,players[2].id);
+});
