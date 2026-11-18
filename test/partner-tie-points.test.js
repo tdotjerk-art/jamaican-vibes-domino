@@ -23,3 +23,20 @@ test('local computer-game adapter carries the two-point hand into actual scores'
  context.root.applyOfflineBruckAndStartWin(2);assert.deepEqual(Array.from(context.scores),[2,0,0,0]);assert.equal(context.offlineBruckCount,2);assert.equal(context.offlineNextPlayFor,1);
  context.handValue=1;context.root.applyOfflineBruckAndStartWin(0);assert.equal(context.scores[0],3);
 });
+
+test('Partners normal and blocked sixth-point wins finish the match exactly at six',()=>{
+ for(const blocked of [false,true]){
+  const r=room();
+  try{
+   r.bruckStartTeam=0;r.bruckStartCount=5;r.teamScores=[5,0];r.handValue=1;
+   if(blocked){
+    r.hands=[[{a:0,b:0}],[{a:5,b:5}],[{a:1,b:1}],[{a:4,b:4}]];
+    finishBlocked(r);
+   }else finishWin(r,0);
+   assert.equal(r.phase,'match-over');
+   assert.deepEqual(r.teamScores,[6,0]);
+   assert.equal(r.bruckStartCount,6);
+   assert.match(r.message,/wins.*6/);
+  }finally{cleanup(r)}
+ }
+});
