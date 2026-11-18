@@ -66,6 +66,13 @@ function createWalletStore(directory) {
     if (typeof name !== 'string') throw Error('Invalid player name.');
     name = name.trim();
     if (!name || name.length > 20 || /tdot/i.test(name)) throw Error('Invalid or reserved player name.');
+    // A signup name is reserved for one wallet, including after a server restart.
+    for (const filename of fs.readdirSync(root)) {
+      if (!/^[a-f0-9]{32}\\.json$/.test(filename)) continue;
+      const existing = get(filename.slice(0, 32));
+      if (existing.name.toLocaleLowerCase('en') === name.toLocaleLowerCase('en'))
+        throw Error('Signup name is already registered. Recover your original wallet.');
+    }
     const id = crypto.randomBytes(16).toString('hex');
     const token = crypto.randomBytes(32).toString('hex');
     persist({ id, name, tokenHash: hash(token), balance: STARTING_CREDITS, operations: Object.create(null) });
