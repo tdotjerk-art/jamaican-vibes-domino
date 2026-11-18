@@ -65,3 +65,16 @@ test('daily reward and verified ad event are idempotent', t => {
   wallet.awardVerifiedReward(id, 'provider-456');
   assert.equal(wallet.balance(id), 150);
 });
+
+
+test('refunded entry IDs cannot be reused, even after restart', t => {
+  const { directory, wallet } = fixture(t);
+  const { id } = wallet.createAccount('RefundGuard');
+  wallet.enter(id, 'tournament', 'bracket1');
+  wallet.refund(id, 'tournament', 'bracket1');
+  assert.throws(() => wallet.enter(id, 'tournament', 'bracket1'), /cannot be reused/);
+  const restarted = createWalletStore(directory);
+  assert.throws(() => restarted.enter(id, 'tournament', 'bracket1'), /cannot be reused/);
+  assert.equal(restarted.balance(id), 100);
+  assert.equal(restarted.enter(id, 'tournament', 'bracket2').balance, 75);
+});
