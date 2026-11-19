@@ -480,6 +480,19 @@ function createSqliteWallet(filename) {
       return {nonce,accountId:account.id,expiresAt:now+15*60*1000};
     });
   }
+  // An authenticated player may poll only their own reward-intent state.
+  // This never awards credits; only a verified provider settlement can do that.
+  function rewardIntentStatus(id,token,nonce,now=Date.now()) {
+    const account=authenticate(id,token);
+    if(typeof nonce!=='string'||!/^[a-f0-9]{48}$/.test(nonce))
+      throw Error('Invalid reward request.');
+    if(!Number.isSafeInteger(now)||now<=0)throw Error('Invalid reward timestamp.');
+    const claim=db.prepare('SELECT account_id AS accountId,created_at AS createdAt,status FROM reward_intents WHERE nonce=?').get(nonce);
+    if(!claim||claim.accountId!==account.id)throw Error('Reward request not found.');
+    const status=claim.status==='settled'?'settled':
+      now<claim.createdAt||now-claim.createdAt>15*60*1000?'expired':'pending';
+    return {status,credits:status==='settled'?30:0};
+  }
   function settleVerifiedRewardIntent(nonce,eventId,now=Date.now()) {
     if(typeof nonce!=='string'||!/^[a-f0-9]{48}$/.test(nonce)||!opOK(eventId))
       throw Error('Invalid verified ad event.');
@@ -520,7 +533,7 @@ function createSqliteWallet(filename) {
     createAccount,authenticate,rotateRecoveryToken,credentialFingerprintCurrent,balance,price,
     enter:(id,mode,entryId)=>tx(()=>enterInternal(id,mode,entryId)),
     refund:(id,mode,entryId)=>tx(()=>refundInternal(id,mode,entryId)),
-    awardVerifiedReward,createRewardIntent,settleVerifiedRewardIntent,
+    awardVerifiedReward,createRewardIntent,rewardIntentStatus,settleVerifiedRewardIntent,
     awardDailyLogin:(id,day)=>{
       if(typeof day!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(day))throw Error('Invalid login day.');
       return tx(()=>change(id,'daily:'+day,20,'daily-login'));
