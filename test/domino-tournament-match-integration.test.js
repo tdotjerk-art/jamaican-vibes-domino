@@ -90,7 +90,7 @@ test('assigned tournament accounts join dedicated online rooms while outsiders a
  b.token=rotated.body.token;
  const revoked=event(third,'action-error');
  third.emit('play-domino',{tileId:-1,side:'left'});
- assert.match(await revoked,/Recovery code changed/);
+ assert.match(await revoked,/recovery code changed/i);
  third.disconnect();
  const fourth=await connect();
  const stale=event(fourth,'room-error');
