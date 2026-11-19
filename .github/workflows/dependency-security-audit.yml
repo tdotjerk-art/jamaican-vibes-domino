@@ -1,0 +1,29 @@
+name: Dependency security audit
+
+on:
+  push:
+    branches: [fix/dependency-security-audit]
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Report vulnerable packages and fixes
+        run: |
+          npm audit --json > audit.json || true
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const a=JSON.parse(fs.readFileSync('audit.json','utf8'));
+          console.log('VULNERABILITY_COUNTS '+JSON.stringify(a.metadata?.vulnerabilities));
+          for(const [name,v] of Object.entries(a.vulnerabilities||{})){
+            console.log('VULNERABLE_PACKAGE '+JSON.stringify({name,severity:v.severity,range:v.range,isDirect:v.isDirect,fixAvailable:v.fixAvailable,via:v.via.map(x=>typeof x==='string'?x:{name:x.name,title:x.title,url:x.url,range:x.range})}));
+          }
+          NODE
