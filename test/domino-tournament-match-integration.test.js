@@ -84,14 +84,23 @@ test('assigned tournament accounts join dedicated online rooms while outsiders a
  assert.equal(restored.handNo,snapshot.handNo);
  // Replacing the recovery code must revoke live match actions and old
  // reconnect tokens, but a valid new code must recover the same paid seat.
+ const revocation=event(third,'wallet-session-revoked');
  const rotated=await api('rotate-recovery',{id:b.account.id,token:b.token});
  assert.equal(rotated.status,200);
+ const notice=await revocation;
+ assert.match(notice.message,/recovery code changed/i);
+ assert.equal(notice.roomCode,seat.code);
+ assert.equal(notice.seat,otherSeat.seat);
  const oldCode=b.token;
  b.token=rotated.body.token;
- const revoked=event(third,'action-error');
- third.emit('play-domino',{tileId:-1,side:'left'});
- assert.match(await revoked,/recovery code changed/i);
- third.disconnect();
+ // The revoked socket must be removed from its broadcast room immediately,
+ // even though its underlying network connection is still open.
+ const leaked=[];
+ third.on('private-state',()=>leaked.push('private'));
+ third.on('room-state',()=>leaked.push('room'));
+ first.emit('leave-room'); // authoritative room broadcast after revocation
+ await new Promise(resolve=>setTimeout(resolve,100));
+ assert.deepEqual(leaked,[],'Revoked session must not receive future game state');
  const fourth=await connect();
  const stale=event(fourth,'room-error');
  fourth.emit('reconnect-player',{roomCode:seat.code,token:otherSeat.token,
