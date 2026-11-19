@@ -4,6 +4,149 @@ const {Server}=require("socket.io");
 const crypto=require("crypto");
 
 const app=express(),server=http.createServer(app),io=new Server(server,{cors:{origin:"*"}});
+// The pilot is OFF by default. Enable only with persistent storage and end-to-end tests.
+const creditsEnabled=process.env.DOMINO_CREDITS_ENABLED==="true";
+const sqliteCredits=creditsEnabled&&process.env.DOMINO_CREDIT_STORAGE==="sqlite";
+// Render credits require explicit durable-disk confirmation. The JSON adapter is
+// development-only even if a writable local directory exists.
+if(creditsEnabled&&process.env.RENDER==="true"&&
+   (!sqliteCredits||process.env.DOMINO_CREDIT_DURABLE_CONFIRMED!=="true"))
+ throw Error("Domino credits cannot run on Render without a confirmed durable SQLite disk.");
+if(creditsEnabled&&process.env.RENDER==="true"){
+ const fs=require("node:fs"),path=require("node:path");
+ const mount="/var/data",target=process.env.DOMINO_CREDIT_DB_PATH||"";
+ // Do not trust a confirmation flag alone. SQLite must live on the verified
+ // Render disk mount, never in the ephemeral build/runtime filesystem.
+ if(!path.isAbsolute(target)||!path.resolve(target).startsWith(mount+path.sep))
+   throw Error("Domino credit database must reside under Render's /var/data persistent disk.");
+ const disk=fs.statSync(mount),root=fs.statSync("/");
+ if(!disk.isDirectory()||disk.dev===root.dev)
+   throw Error("Domino credit persistent disk mount is missing; refusing to charge players.");
+}
+const wallet=creditsEnabled?
+ (sqliteCredits?require("./domino-wallet-sqlite").createSqliteWallet(process.env.DOMINO_CREDIT_DB_PATH)
+               :require("./domino-wallet").createWalletStore(process.env.DOMINO_WALLET_DIR)):null;
+if(wallet?.close)server.on("close",()=>wallet.close());
+if(wallet?.refundInterruptedPublicMatches){
+ const refunds=wallet.refundInterruptedPublicMatches();
+ if(refunds)console.warn("Domino recovered",refunds,"interrupted public entries with refunds.");
+}
+if(creditsEnabled){
+ app.use("/api/domino/wallet",express.json({limit:"2kb"}));
+ const result=(res,fn)=>{try{return res.json(fn())}catch(e){return res.status(/Insufficient/.test(e.message)?402:400).json({error:e.message})}};
+ app.post("/api/domino/wallet/register",(req,res)=>{
+   // The JSON wallet is a local test-only adapter. Render already rejects it
+   // at process startup; only SQLite registration enforces the durable quota.
+   if(!sqliteCredits&&process.env.RENDER==="true")
+     return res.status(503).json({error:"Production wallet registration requires protected SQLite storage."});
+   res.set("Cache-Control","no-store");
+   try{
+     // Do not trust user-supplied forwarding headers as an identity.
+     const source=String(req.socket.remoteAddress||req.ip||"unknown");
+     const account=wallet.createAccount(req.body?.name,source);
+     return res.json({account:{id:account.id,name:account.name,balance:account.balance},token:account.token});
+   }catch(e){
+     const limited=/Too many wallet signups|temporarily at capacity/.test(e.message);
+     return res.status(limited?429:400).json({error:e.message});
+   }
+ });
+ app.post("/api/domino/wallet/me",(req,res)=>result(res,()=>wallet.authenticate(req.body?.id,req.body?.token)));
+
+ // Rate-limit failed recovery-code changes per network and account ID.
+ // The owner must present the current valid code; no identity-less reset exists.
+ const recoveryAttempts=new Map();
+ app.post("/api/domino/wallet/rotate-recovery",(req,res)=>{
+   if(!sqliteCredits||!wallet.rotateRecoveryToken)
+     return res.status(503).json({error:"Wallet recovery rotation is unavailable."});
+   res.set("Cache-Control","no-store");
+   const id=typeof req.body?.id==="string"?req.body.id:"";
+   const key=crypto.createHash("sha256").update(String(req.ip||req.socket.remoteAddress||"")+":"+id.slice(0,64)).digest("hex");
+   const now=Date.now(),windowMs=15*60*1000;
+   // Evict expired counters, bounding memory for long-running instances.
+   for(const [k,v] of recoveryAttempts)if(now-v.start>=windowMs)recoveryAttempts.delete(k);
+   const prior=recoveryAttempts.get(key);
+   const attempt=prior||{start:now,count:0};
+   if(attempt.count>=5)return res.status(429).json({error:"Too many recovery attempts. Try again later."});
+   try{
+     const response=wallet.rotateRecoveryToken(id,req.body?.token);
+     recoveryAttempts.delete(key);
+     // The database has already revoked the previous code. Remove every
+     // paid socket from its broadcast room before returning the new code.
+     revokePaidSessions(response.id);
+     return res.json({account:{id:response.id,name:response.name,balance:response.balance},token:response.token});
+   }catch(e){
+     attempt.count++;recoveryAttempts.set(key,attempt);
+     // A bad code must not reveal whether the wallet account exists.
+     return res.status(401).json({error:"Invalid recovery credentials."});
+   }
+ });
+
+ // The date is chosen by the server, never supplied by a browser.
+ app.post("/api/domino/wallet/daily",(req,res)=>result(res,()=>{
+   const account=wallet.authenticate(req.body?.id,req.body?.token);
+   const calendarDay=new Date().toISOString().slice(0,10);
+   const reward=wallet.awardDailyLogin(account.id,calendarDay);
+   return {balance:reward.balance,applied:reward.applied,credits:reward.applied?20:0,calendarDay};
+ }));
+ if(sqliteCredits){
+   // Reward requests are disabled until the publisher's rewarded-web provider
+   // and authenticated SSV callback have been verified. Issuing an intent
+   // never credits an account; no browser-accessible settlement endpoint exists.
+   app.post("/api/domino/wallet/rewards/intent",(req,res)=>{
+     res.set("Cache-Control","no-store");
+     // There is not yet a verified publisher SSV callback. This endpoint
+     // exists only for isolated local tests, never on a hosted service,
+     // regardless of reward flags set in the Render dashboard.
+     if(process.env.RENDER==="true"||
+        process.env.DOMINO_REWARDED_ADS_TEST_MODE!=="true"||
+        process.env.DOMINO_REWARDED_ADS_ENABLED!=="true")
+       return res.status(503).json({error:"Verified rewarded ads are not configured."});
+     try{return res.json(wallet.createRewardIntent(req.body?.id,req.body?.token))}
+     catch(e){return res.status(/Too many reward requests/.test(e.message)?429:400).json({error:e.message})}
+   });
+   app.post("/api/domino/wallet/rewards/status",(req,res)=>{
+     res.set("Cache-Control","no-store");
+     return result(res,()=>wallet.rewardIntentStatus(req.body?.id,req.body?.token,req.body?.nonce));
+   });
+   // Tournament APIs exist only for the SQLite pilot. The admin key must never
+   // be included in client code, URLs, logs, or browser storage.
+   const isAdmin=req=>{
+     const key=process.env.DOMINO_TOURNAMENT_ADMIN_TOKEN;
+     const supplied=req.get("authorization")?.replace(/^Bearer /i,"")||"";
+     return typeof key==="string"&&key.length>=32&&supplied.length===key.length&&
+       crypto.timingSafeEqual(Buffer.from(supplied),Buffer.from(key));
+   };
+   const administrative=(req,res,fn)=>{
+     if(!process.env.DOMINO_TOURNAMENT_ADMIN_TOKEN||process.env.DOMINO_TOURNAMENT_ADMIN_TOKEN.length<32)
+       return res.status(503).json({error:"Tournament administration is not configured."});
+     if(!isAdmin(req))return res.status(403).json({error:"Administrator authorization required."});
+     return result(res,fn);
+   };
+   app.get("/api/domino/wallet/tournaments",(req,res)=>result(res,()=>wallet.listTournaments()));
+   app.post("/api/domino/wallet/tournaments/mine",(req,res)=>result(res,()=>
+     wallet.myTournamentMatches(req.body?.id,req.body?.token)));
+   app.get("/api/domino/wallet/tournaments/:id",(req,res)=>
+     result(res,()=>wallet.tournamentStatus(req.params.id)));
+   app.post("/api/domino/wallet/tournaments/:id/join",(req,res)=>result(res,()=>
+     wallet.joinTournament(req.params.id,req.body?.id,req.body?.token)));
+   app.post("/api/domino/wallet/tournaments/:id/withdraw",(req,res)=>result(res,()=>
+     wallet.withdrawTournament(req.params.id,req.body?.id,req.body?.token)));
+   app.post("/api/domino/wallet/tournaments",(req,res)=>
+     administrative(req,res,()=>wallet.createTournament(req.body?.id,req.body?.capacity,req.body?.playerCount??2)));
+   app.post("/api/domino/wallet/tournaments/:id/start",(req,res)=>
+     administrative(req,res,()=>wallet.startTournament(req.params.id)));
+   app.post("/api/domino/wallet/tournaments/:id/cancel",(req,res)=>
+     administrative(req,res,()=>wallet.cancelTournament(req.params.id)));
+   // Admin-only result reporting until completed Domino games can be bound
+   // to bracket fixtures by a trusted server-side match/session identifier.
+   app.post("/api/domino/wallet/tournaments/:id/results",(req,res)=>
+     administrative(req,res,()=>wallet.recordTournamentWinner(
+       req.params.id,req.body?.round,req.body?.slot,req.body?.winnerId)));
+ }
+
+ // No endpoint accepts claimed completed ads or arbitrary credit awards.
+}
+
 const analytics=require("./analytics").installAnalytics(app);
 const draffRouter=require("./draff-online").createDraffRouter();
 app.use("/api/draff",draffRouter);
@@ -11,9 +154,10 @@ const ludiRouter=require("./ludi-online").createLUDIRouter();
 app.use("/api/ludi",ludiRouter);
 server.on("close",()=>ludiRouter.close());
 app.use(express.static("public"));
-app.get("/",(req,res)=>{const fs=require("node:fs");fs.readFile(__dirname+"/index.html","utf8",(error,html)=>{if(error)return res.sendStatus(500);res.type("html").send(html.replace("<head>",'<head><script src="/analytics-client.js"></script>'))})});
+app.get("/",(req,res)=>{const fs=require("node:fs");fs.readFile(__dirname+"/index.html","utf8",(error,html)=>{if(error)return res.sendStatus(500);res.type("html").send(html.replace("<head>",'<head><script src="/analytics-client.js"></script>'+(creditsEnabled?'<script defer src="/domino-wallet-client.js"></script>':"")))})});
 app.get("/health",(req,res)=>res.status(200).send("ok"));
 const rooms=new Map();
+const tournamentRooms=new Map();
 const GRACE_MS=90000;
 const NEXT_HAND_DELAY_MS=5000;
 
@@ -37,6 +181,23 @@ const connectedPlayers=r=>r.players.filter(p=>p&&p.connected).length;
 const addHistory=(r,s)=>{r.history.push(s);if(r.history.length>60)r.history.shift()};
 
 function clearTimer(r){if(r.timer){clearTimeout(r.timer);r.timer=null}}
+function settleTournamentFixture(r,winnerSeat){
+ if(!r.tournamentFixture||!wallet?.recordTournamentWinner)return;
+ const {id,round,slot}=r.tournamentFixture;
+ const winner=r.players[winnerSeat];
+ if(!winner?.accountId)throw Error("Tournament winner has no verified account.");
+ try{wallet.recordTournamentWinner(id,round,slot,winner.accountId)}
+ catch(e){console.error("Tournament match result requires reconciliation:",e.message)}
+}
+function finishPaidPublicMatch(r){
+ if(!creditsEnabled||!r.publicTable||!wallet.finishPublic)return;
+ for(const player of r.players){
+   if(player?.accountId&&player.entryId){
+     try{wallet.finishPublic(player.accountId,player.entryId)}
+     catch(e){console.error("Domino credit match settlement failed:",e.message)}
+   }
+ }
+}
 function publicPlayers(r){return r.players.map(p=>p?{name:p.name,seat:p.seat,connected:!!p.connected,ready:!!p.ready}:null)}
 function roomState(r){return {
  code:r.code,playerCount:r.players.length,players:publicPlayers(r),hostSeat:r.hostSeat,mode:r.mode,target:r.target,tieRule:tieRuleOf(r.tieRule),phase:r.phase,publicTable:!!r.publicTable,
@@ -200,7 +361,7 @@ function finishWin(r,seat){
  if(match>=0){
    r.phase="match-over";r.turn=null;r.rematchVotes.clear();
    r.message=r.mode==="partner"?`Team ${match===0?"A":"B"} wins the Bruck and Start game by going 6.`:`${r.players[match]?.name||"Player"} wins the match.`;
-   addHistory(r,r.message);r.lastEvent="match-win";emitAll(r);return
+   addHistory(r,r.message);r.lastEvent="match-win";if(r.tournamentFixture)settleTournamentFixture(r,match);finishPaidPublicMatch(r);emitAll(r);return
  }
  r.phase="hand-over";r.turn=null;r.message=`${n} wins the hand. Next hand starts in ${NEXT_HAND_DELAY_MS/1000} seconds.`;r.lastEvent="hand-win";emitAll(r);scheduleNextHand(r)
 }
@@ -230,14 +391,14 @@ function finishBlocked(r){
    if(bs.won){
      r.phase="match-over";r.turn=null;r.rematchVotes.clear();
      r.message=`Team ${bs.team===0?"A":"B"} wins the Bruck and Start game by going 6.`;
-     r.lastEvent="match-win";emitAll(r);return
+     r.lastEvent="match-win";if(r.tournamentFixture)settleTournamentFixture(r,winner);finishPaidPublicMatch(r);emitAll(r);return
    }
  }else{
    r.scores[winner]=Math.min(6,r.scores[winner]+r.handValue);r.lastIndividualWinner=winner;
    if(r.scores[winner]===6){
      r.phase="match-over";r.turn=null;r.rematchVotes.clear();
      r.message=`${n} wins the Cut Throat game by reaching 6.`;
-     addHistory(r,r.message);r.lastEvent="match-win";emitAll(r);return
+     addHistory(r,r.message);r.lastEvent="match-win";if(r.tournamentFixture)settleTournamentFixture(r,winner);finishPaidPublicMatch(r);emitAll(r);return
    }
    addHistory(r,`${n} wins the blocked hand with ${low}. Counts: ${counts.join(", ")}.`);
  }
@@ -326,9 +487,56 @@ function promoteHost(r){
  if(r.players[r.hostSeat])return;
  const idx=r.players.findIndex(Boolean);r.hostSeat=idx>=0?idx:0
 }
+function holdTournamentSeat(r,seat){
+ const p=r.players[seat];if(!p)return;
+ if(p.graceTimer){clearTimeout(p.graceTimer);p.graceTimer=null}
+ p.connected=false;p.id=null;p.ready=false;
+ // Never forfeit or discard tournament boards after a connection timeout.
+ if(r.phase!=="match-over")pauseForDisconnect(r);
+ emitAll(r);
+}
+// Remove a paid seat's existing socket from its room as soon as the wallet
+// credential changes. This prevents further private-hand/board broadcasts.
+// Keep the paid seat and its entry intact for authenticated reconnection.
+function revokePaidSessions(accountId){
+ if(!sqliteCredits)return;
+ for(const r of rooms.values()){
+  if(!r.publicTable&&!r.tournamentFixture)continue;
+  for(let seat=0;seat<r.players.length;seat++){
+   const p=r.players[seat];
+   if(!p||p.accountId!==accountId||!p.connected||!p.id)continue;
+   const socket=io.sockets.sockets.get(p.id);
+   if(socket){
+    socket.leave(r.code);
+    delete socket.data.roomCode;
+    delete socket.data.seat;
+    delete socket.data.spectator;
+    socket.emit('wallet-session-revoked',{
+      message:'Wallet recovery code changed. Reconnect with your new code to continue.',
+      roomCode:r.code,seat
+    });
+   }
+   // Apply existing interruption policies: tournament boards are held;
+   // paid public games pause and retain their normal 90-second grace.
+   if(r.tournamentFixture){holdTournamentSeat(r,seat);continue;}
+   if(r.phase==='waiting'&&r.handNo===0){abandonSeat(r,seat);continue;}
+   if(p.graceTimer)clearTimeout(p.graceTimer);
+   p.connected=false;p.id=null;p.ready=false;
+   pauseForDisconnect(r);
+   p.graceTimer=setTimeout(()=>abandonSeat(r,seat),GRACE_MS);
+   p.graceTimer.unref?.();
+   emitAll(r);
+  }
+ }
+}
 function abandonSeat(r,seat){
  const p=r.players[seat];if(!p)return;
  if(p.graceTimer)clearTimeout(p.graceTimer);
+ // Refund an entry abandoned before any hand has started.
+ if(creditsEnabled&&r.publicTable&&r.handNo===0&&p.accountId&&p.entryId){
+   try{wallet.refundPublic?wallet.refundPublic(p.accountId,p.entryId):wallet.refund(p.accountId,"public",p.entryId)}
+   catch(e){console.error("Domino credit refund failed:",e.message)}
+ }
  r.players[seat]=null;r.ready=false;promoteHost(r);clearTimer(r);
  r.hands=r.players.map(()=>[]);r.board=[];r.turn=null;r.phase="waiting";r.revealHands=false;r.message="A seat opened. Waiting for all selected players to be ready.";
  if(r.publicTable&&!r.players.some(Boolean)&&!r.spectators.size){clearTimeout(r.restartTimer);rooms.delete(r.code);return;}
@@ -343,7 +551,10 @@ function leaveCurrentRoom(socket){
  const r=rooms.get(socket.data.roomCode);
  if(r){
   if(socket.data.spectator){r.spectators.delete(socket.id);emitAll(r);}
-  else if(r.players[socket.data.seat]?.id===socket.id)abandonSeat(r,socket.data.seat);
+  else if(r.players[socket.data.seat]?.id===socket.id){
+   if(r.tournamentFixture&&r.phase!=="match-over")holdTournamentSeat(r,socket.data.seat);
+   else abandonSeat(r,socket.data.seat);
+  }
   socket.leave(r.code);
  }
  delete socket.data.roomCode;delete socket.data.seat;delete socket.data.spectator;
@@ -371,14 +582,90 @@ require("./analytics").setSampler(sampleAnalytics);
 const analyticsTimer=setInterval(sampleAnalytics,15000);analyticsTimer.unref();server.on("close",()=>{clearInterval(analyticsTimer);require("./analytics").setSampler(null);analytics.persist()});
 
 io.on("connection",socket=>{
- const payloadEvents=new Set(['create-room','join-public-table','join-room','join-spectator','reconnect-player','set-room-options','play-domino','choose-poser']);
+ const payloadEvents=new Set(['join-tournament-match','create-room','join-public-table','join-room','join-spectator','reconnect-player','set-room-options','play-domino','choose-poser']);
  socket.use(([event,data],next)=>{
    if(!actionAllowed(socket)){socket.emit('action-error','Too many actions. Please slow down.');return;}
    if(payloadEvents.has(event)&&(!data||typeof data!=='object'||Array.isArray(data))){socket.emit('room-error','Invalid room request.');return;}
+   // A rotated recovery code revokes authorization for already-connected
+   // paid-game actions, not just later HTTP wallet requests.
+   if(sqliteCredits&&!['leave-room','reconnect-player','join-tournament-match','join-public-table'].includes(event)){
+     const room=seatedRoom(socket),player=room?.players[socket.data.seat];
+     if((room?.publicTable||room?.tournamentFixture)&&player?.credentialHash&&
+       !wallet.credentialFingerprintCurrent(player.accountId,player.credentialHash)){
+       socket.emit('action-error','Wallet recovery code changed. Reconnect using your current wallet to continue.');
+       return;
+     }
+   }
    next();
  });
 
- socket.on("join-public-table",({name,playerCount,mode})=>{
+ socket.on("join-tournament-match",({tournamentId,round,slot,accountId,accountToken})=>{
+   if(!sqliteCredits||!wallet?.recordTournamentWinner)
+     return socket.emit("room-error","Tournament matches are unavailable.");
+   let account,match;
+   try{
+     account=wallet.authenticate(accountId,accountToken);
+     const bracket=wallet.tournamentStatus(tournamentId);
+     if(bracket.status!=="started")throw Error("Tournament is not in progress.");
+     if(!Number.isInteger(round)||!Number.isInteger(slot))
+       throw Error("Invalid tournament fixture.");
+     match=bracket.matches.find(m=>m.round===round&&m.slot===slot);
+     if(!match||match.status!=="pending"||match.playerIds.length<2)
+       throw Error("Tournament match is not awaiting players.");
+     if(!match.playerIds.includes(account.id))
+       throw Error("Your account is not assigned to this tournament match.");
+   }catch(e){return socket.emit("room-error",e.message)}
+   const key=tournamentId+":"+round+":"+slot;
+   const current=seatedRoom(socket);
+   if(current?.tournamentFixture?.key===key&&current.players[socket.data.seat]?.accountId===account.id){
+     const p=current.players[socket.data.seat];
+     socket.emit("seat-assigned",{code:current.code,seat:p.seat,token:p.token});emitAll(current);return;
+   }
+   if(current?.tournamentFixture&&current.phase==="match-over")leaveCurrentRoom(socket);
+   else if(current)return socket.emit("room-error","Leave the current game before joining your tournament match.");
+   if([...rooms.values()].some(r=>r.tournamentFixture&&r.phase!=="match-over"&&r.players.some(p=>p?.accountId===account.id)))
+     return socket.emit("room-error","Reconnect to your existing tournament seat first.");
+   // Release a spectator role before assigning a player role to this socket.
+   if(socket.data.spectator)leaveCurrentRoom(socket);
+   let room=rooms.get(tournamentRooms.get(key));
+   if(room&&room.phase!=="waiting")
+     return socket.emit("room-error","Tournament match already in progress. Reconnect to your assigned seat.");
+   if(!room){
+     // A process restart loses the board but never the durable bracket or entry.
+     // Each new room is a fresh attempt, with no extra 25-credit charge.
+     let attempt;
+     try{attempt=wallet.openTournamentFixtureAttempt(tournamentId,round,slot)}
+     catch(e){return socket.emit("room-error",e.message)}
+     const created=newRoom(account.name,"individual",6,socket,"double-six-two",match.playerIds.length);
+     room=created.room;room.tournamentFixture={id:tournamentId,round,slot,key,attempt:attempt.attempt};
+     room.message=attempt.replay?
+       "Tournament match replay after interruption: previous unfinished board was reset. No extra credits charged.":
+       "Tournament match: waiting for both assigned players.";
+     tournamentRooms.set(key,room.code);
+     room.players[0].accountId=account.id;room.players[0].credentialHash=crypto.createHash('sha256').update(accountToken).digest('hex');room.players[0].ready=true;
+     socket.data.roomCode=room.code;socket.data.seat=0;socket.join(room.code);
+     socket.emit("seat-assigned",{code:room.code,seat:0,token:created.token});
+   }else{
+     const seat=room.players.findIndex(p=>!p);
+     if(seat<0)return socket.emit("room-error","Tournament seats are full.");
+     const token=randToken();
+     room.players[seat]={id:socket.id,name:account.name,seat,token,accountId:account.id,credentialHash:crypto.createHash('sha256').update(accountToken).digest('hex'),connected:true,ready:true,graceTimer:null};
+     socket.data.roomCode=room.code;socket.data.seat=seat;socket.join(room.code);
+     socket.emit("seat-assigned",{code:room.code,seat,token});
+   }
+   if(room.tournamentFixture?.attempt>1&&room.handNo===0)
+     room.message="Replay of interrupted tournament match. Fresh deal, no additional credits charged.";
+   else room.message="Tournament match: both assigned players must join to begin.";
+   startIfReady(room);
+ });
+ socket.on("join-public-table",({name,playerCount,mode,accountId,accountToken})=>{
+   // Reject unverified public entries only when the pilot is explicitly enabled.
+   // Names for a paid public game always come from the trusted account record.
+   let account=null;
+   if(creditsEnabled){
+     try{account=wallet.authenticate(accountId,accountToken);name=account.name}
+     catch(e){return socket.emit("room-error","Sign in to your Domino credit account before joining public play.")}
+   }
    const count=[2,3,4].includes(playerCount)?playerCount:4;
    const publicMode=count<4||mode==="individual"?"individual":"partner";
    name=typeof name==="string"?name.trim().slice(0,20):"";
@@ -387,11 +674,18 @@ io.on("connection",socket=>{
    if(current){
      if(!current.publicTable)return socket.emit("room-error","Leave your private room before joining a public table.");
      const player=current.players[socket.data.seat];
+     if(creditsEnabled&&player.accountId!==account.id)return socket.emit("room-error","This public seat belongs to a different account.");
      socket.emit("seat-assigned",{code:current.code,seat:player.seat,token:player.token});
      emitAll(current);
      return;
    }
 
+   // An account may hold one public seat at a time, even across socket connections.
+   // Reconnections to an existing seat must use the room's reconnect token.
+   if(creditsEnabled&&[...rooms.values()].some(r=>r.publicTable&&r.players.some(p=>p&&p.accountId===account.id)))
+     return socket.emit("room-error","This account already has a public seat. Reconnect to that seat or leave it before joining another table.");
+   if(creditsEnabled&&wallet.balance(account.id)<wallet.price("public"))
+     return socket.emit("room-error","Not enough credits for a public match. Computer and private friends games are free.");
    leaveCurrentRoom(socket);
    // Map iteration is insertion ordered, so the oldest available table fills first.
    let room;
@@ -413,6 +707,23 @@ io.on("connection",socket=>{
      seat=0;
      room.players[0].ready=true;
    }
+   if(creditsEnabled){
+     try{
+       // One operation per account per match room; reconnect does not use this path.
+       const entryId=room.code+":"+token.slice(0,16);
+       if(wallet.enterPublic)wallet.enterPublic(account.id,entryId);
+       else wallet.enter(account.id,"public",entryId);
+       room.players[seat].accountId=account.id;
+       if(sqliteCredits)room.players[seat].credentialHash=crypto.createHash('sha256').update(accountToken).digest('hex');
+       room.players[seat].entryId=entryId;
+       socket.emit("wallet-balance",{balance:wallet.balance(account.id)});
+     }catch(e){
+       // Undo only the newly reserved seat, without deleting the player's wallet.
+       room.players[seat]=null;
+       if(room.publicTable&&!room.players.some(Boolean)&&!room.spectators.size)rooms.delete(room.code);
+       return socket.emit("room-error",e.message);
+     }
+   }
    room.message=`Waiting for ${room.players.length} players. The public table starts automatically.`;
    socket.data.roomCode=room.code;
    socket.data.seat=seat;
@@ -428,7 +739,7 @@ io.on("connection",socket=>{
  });
  socket.on("join-room",({name,code})=>{
    name=String(name||"").trim().slice(0,20);code=String(code||"").trim().toUpperCase();const r=rooms.get(code);
-   if(!r)return socket.emit("room-error","Room not found.");if(r.publicTable)return socket.emit("room-error","Use Join Public Table to join public play.");if(!name)return socket.emit("room-error","A name is required.");
+   if(!r)return socket.emit("room-error","Room not found.");if(r.publicTable||r.tournamentFixture)return socket.emit("room-error","Use the tournament or public join flow.");if(!name)return socket.emit("room-error","A name is required.");
    if(r.phase!=="waiting"&&r.phase!=="paused")return socket.emit("room-error","That game has already started.");
    const seat=r.players.findIndex(p=>!p);if(seat<0)return socket.emit("room-error","That room is full.");
    leaveCurrentRoom(socket);
@@ -440,15 +751,30 @@ io.on("connection",socket=>{
    const n=String(name||"Spectator").trim().slice(0,20)||"Spectator";leaveCurrentRoom(socket);r.spectators.set(socket.id,{name:n});
    socket.data.roomCode=code;socket.data.spectator=true;socket.join(code);socket.emit("spectator-assigned",{code});emitAll(r)
  });
- socket.on("reconnect-player",({roomCode,token})=>{
+ socket.on("reconnect-player",({roomCode,token,accountId,accountToken})=>{
    const code=String(roomCode||"").trim().toUpperCase(),r=rooms.get(code);if(!r)return socket.emit("room-error","Room no longer exists.");
    const seat=r.players.findIndex(p=>p&&p.token===token);if(seat<0)return socket.emit("room-error","Reconnect seat not found.");
    const p=r.players[seat];
+   if(sqliteCredits&&(r.publicTable||r.tournamentFixture)&&p.credentialHash&&
+     !wallet.credentialFingerprintCurrent(p.accountId,p.credentialHash)){
+     // A room token alone is never sufficient after wallet recovery rotation.
+     // Authenticate the NEW recovery code against the SAME account before
+     // allowing the seat to resume. Do not charge a second entry.
+     try{
+       if(accountId!==p.accountId)throw Error('Wrong wallet account.');
+       wallet.authenticate(accountId,accountToken);
+       p.credentialHash=crypto.createHash('sha256').update(accountToken).digest('hex');
+     }catch{return socket.emit('room-error','Recovery code changed. Sign in with the current wallet before reconnecting.');}
+   }
    if(p.connected&&p.id!==socket.id)return socket.emit('room-error','This seat is already connected. Close the other tab first.');
    if(p.id!==socket.id)leaveCurrentRoom(socket);
    else delete socket.data.spectator;
    if(p.graceTimer){clearTimeout(p.graceTimer);p.graceTimer=null}p.id=socket.id;p.connected=true;
-   socket.data.roomCode=code;socket.data.seat=seat;socket.join(code);socket.emit("reconnect-ok",{code,seat,token});resumeIfPossible(r);emitAll(r)
+   socket.data.roomCode=code;socket.data.seat=seat;socket.join(code);socket.emit("reconnect-ok",{code,seat,token});
+   if(r.tournamentFixture&&r.phase==="waiting"&&r.handNo===0){
+     p.ready=true;startIfReady(r);
+   }else resumeIfPossible(r);
+   emitAll(r)
  });
  socket.on("set-room-options",({mode,target,tieRule})=>{
    const r=seatedRoom(socket),seat=socket.data.seat;if(!r||r.publicTable||seat!==r.hostSeat||r.phase!=="waiting")return;
@@ -469,9 +795,28 @@ io.on("connection",socket=>{
    choosePoser(r,Number(chosen))
  });
  socket.on("rematch-vote",()=>{
-   const r=seatedRoom(socket),seat=socket.data.seat;if(!r||r.phase!=="match-over"||!Number.isInteger(seat))return;
+   const r=seatedRoom(socket),seat=socket.data.seat;if(!r||r.tournamentFixture||r.phase!=="match-over"||!Number.isInteger(seat))return;
    r.rematchVotes.add(seat);r.message=`Rematch votes: ${r.rematchVotes.size}/${r.players.length}`;emitAll(r);
    if(r.rematchVotes.size===r.players.length){
+     if(creditsEnabled&&r.publicTable){
+       try{
+         if(!wallet.reservePublicRematch)throw Error("Public rematches require transactional wallet storage.");
+         if(!r.players.every(p=>p?.connected))throw Error("All players must reconnect before a public rematch.");
+         const entries=r.players.map(p=>({accountId:p.accountId,
+           entryId:r.code+":"+crypto.randomBytes(8).toString("hex")}));
+         const charges=wallet.reservePublicRematch(entries);
+         charges.forEach((charge,i)=>{
+           r.players[i].entryId=charge.entryId;
+           if(r.players[i].id)io.to(r.players[i].id).emit("wallet-balance",{balance:charge.balance});
+         });
+       }catch(e){
+         r.rematchVotes.clear();
+         r.message="Public rematch not started: "+e.message;
+         io.to(r.code).emit("room-error",r.message);
+         emitAll(r);
+         return;
+       }
+     }
      r.scores=[0,0,0,0];r.teamScores=[0,0];r.bruckStartTeam=null;r.bruckStartCount=0;r.oneOnePlayTwo=false;r.doubleSixPoseAfterBruck=false;r.nextPlayFor=1;r.handNo=0;r.tiedCarry=false;r.lastWinnerTeam=null;r.lastIndividualWinner=null;r.rematchVotes.clear();
      r.analyticsMatch=crypto.randomUUID();r.history=[];r.players.forEach(p=>{if(p)p.ready=false});r.phase="waiting";r.message="Rematch ready. Press READY.";emitAll(r)
    }
@@ -482,6 +827,7 @@ io.on("connection",socket=>{
    if(socket.data.spectator){r.spectators.delete(socket.id);emitAll(r);return}
    const seat=socket.data.seat,p=r.players[seat];if(!p||p.id!==socket.id)return;
    if(r.publicTable&&r.phase==="waiting"&&r.handNo===0){abandonSeat(r,seat);return;}
+   if(r.tournamentFixture){holdTournamentSeat(r,seat);return;}
    p.connected=false;p.id=null;p.ready=false;pauseForDisconnect(r);
    p.graceTimer=setTimeout(()=>abandonSeat(r,seat),GRACE_MS);
    // The reconnect grace period should not keep a shutting-down process alive.

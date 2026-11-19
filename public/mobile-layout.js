@@ -62,7 +62,11 @@
     const tableWidth=width*.96;
     const baselineHeight=width>height?Math.min(width*.539328,height-56):Math.max(560,height-105);
     const long=1.15*1.584*Math.min(96,(tableWidth*.053-4)/.54,baselineHeight*.11);
-    const handHeight=Math.max(20,long);
+    // Seven side-hand dominoes plus gaps must fit even on a short 390px
+    // landscape viewport. Do not allow the original width-based sizing to
+    // extend Player 2/4's vertical hand beyond the playing table.
+    const handHeight=Math.max(20,width>height&&height<=520?
+      Math.min(long,(height-60)/8):long);
     // On short landscape screens the top hand shares the controls strip.
     // Feedback floats beside the bottom hand, so neither needs an extra row.
     const sharedTop=width>height&&height<=520;
@@ -229,8 +233,11 @@ function partnerWin(r,winnerSeat){
     let fitQueued=false;
     function fitFrame(){
       fitQueued=false;
-      const width=root.visualViewport?.width||root.innerWidth;
-      const height=root.visualViewport?.height||root.innerHeight;
+      // WebKit can report a stale visualViewport height for one or more frames
+      // immediately after rotation. The layout viewport is already updated,
+      // so never size the game taller than its actual visible innerHeight.
+      const width=root.innerWidth||root.visualViewport?.width;
+      const height=Math.min(root.innerHeight||Infinity,root.visualViewport?.height||Infinity);
       const appStyle=getComputedStyle(app);
       const safeTop=parseFloat(appStyle.getPropertyValue('--screen-safe-top'))||0;
       const safeBottom=parseFloat(appStyle.paddingBottom)||0;
@@ -251,9 +258,35 @@ function partnerWin(r,winnerSeat){
     }
     function requestFit(){if(!fitQueued){fitQueued=true;requestAnimationFrame(fitFrame)}}
     root.addEventListener('resize',requestFit);
-    root.addEventListener('orientationchange',requestFit);
+    // WebKit may suppress the deferred RAF immediately after orientationchange.
+    // Update CSS geometry synchronously when the orientation changes.
+    root.addEventListener('orientationchange',fitFrame);
     root.visualViewport?.addEventListener('resize',requestFit);
+    // Mobile WebKit can change the layout viewport width during rotation
+    // without delivering a usable window/visualViewport resize event. The app
+    // always spans the viewport width, so observe that independent signal.
+    // Only width changes trigger the fit; height-only changes from fitFrame
+    // must not cause a ResizeObserver feedback loop.
+    if(typeof ResizeObserver==='function'){
+      let lastWidth=0;
+      const appResize=new ResizeObserver(entries=>{
+        const width=entries[0]?.contentRect.width||app.getBoundingClientRect().width;
+        if(Math.abs(width-lastWidth)>1){lastWidth=width;requestFit();}
+      });
+      appResize.observe(app);
+    }
     fitFrame();
+    // Some WebKit mobile emulations and iOS browser transitions update
+    // innerWidth/innerHeight without dispatching resize or orientationchange.
+    // Cheap dimension-only fallback; it does not repaint when nothing changes.
+    let lastViewportWidth=root.innerWidth,lastViewportHeight=root.innerHeight;
+    const viewportPoll=root.setInterval(()=>{
+      const width=root.innerWidth,height=root.innerHeight;
+      if(width!==lastViewportWidth||height!==lastViewportHeight){
+        lastViewportWidth=width;lastViewportHeight=height;fitFrame();
+      }
+    },150);
+    root.addEventListener('pagehide',()=>root.clearInterval(viewportPoll),{once:true});
   }
   root.JVMobileLayout={layout,render,mount,frame,partnerWin};
   if(typeof module!=='undefined')module.exports={layout,frame,partnerWin};

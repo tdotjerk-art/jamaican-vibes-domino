@@ -1,0 +1,40 @@
+name: Credit release-readiness audit
+
+on:
+  push:
+    branches: [feature/domino-credit-wallet-pilot]
+    paths:
+      - package-lock.json
+      - package.json
+      - server.js
+      - docs/domino-credit-release-checklist.md
+      - scripts/check-credit-release-gate.cjs
+      - .github/workflows/domino-credit-release-audit.yml
+  workflow_dispatch:
+
+jobs:
+  safety:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Zero moderate-or-higher npm advisories
+        run: npm audit --audit-level=moderate
+      - name: Credit launch safety tests
+        run: node --test test/domino-credit-launch-safety.test.js test/domino-wallet-sqlite.test.js
+
+  credit-launch-gate:
+    runs-on: ubuntu-24.04
+    needs: safety
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Fail closed while release requirements are unchecked
+        run: node scripts/check-credit-release-gate.cjs

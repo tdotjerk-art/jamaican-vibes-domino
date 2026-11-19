@@ -1,0 +1,32 @@
+name: Production Domino complete matches
+run-name: Private full-match verification (${{ github.sha }})
+
+on:
+  push:
+    branches:
+      - feature/domino-credit-wallet-pilot
+    paths:
+      - scripts/live-domino-complete-match.cjs
+      - .github/workflows/live-domino-complete-match.yml
+  workflow_dispatch:
+
+jobs:
+  full-match:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario: ['2-individual', '3-individual', '4-individual', '4-partner']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Play isolated private full matches and replay on production
+        env:
+          DOMINO_SMOKE_URL: https://jamaican-vibes-domino.onrender.com
+          DOMINO_MATCH_SCENARIO: ${{ matrix.scenario }}
+        run: node scripts/live-domino-complete-match.cjs

@@ -1,0 +1,31 @@
+name: Domino wallet recovery security
+
+on:
+  push:
+    branches: [feature/domino-credit-wallet-pilot]
+    paths:
+      - server.js
+      - public/domino-wallet-client.js
+      - test/domino-credit-sqlite-integration.test.js
+      - test/domino-tournament-match-integration.test.js
+      - test/domino-reward-intent-api.test.js
+      - domino-wallet-sqlite.js
+      - test/domino-wallet-sqlite.test.js
+      - .github/workflows/domino-wallet-security.yml
+  workflow_dispatch:
+
+jobs:
+  recovery:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Verify token revocation and persisted wallet behavior
+        run: node --test test/domino-wallet-sqlite.test.js test/domino-credit-sqlite-integration.test.js test/domino-tournament-match-integration.test.js test/domino-reward-intent-api.test.js
+      - name: Full development regression suite
+        run: npm test
