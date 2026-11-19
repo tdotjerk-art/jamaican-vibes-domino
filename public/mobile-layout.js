@@ -229,8 +229,11 @@ function partnerWin(r,winnerSeat){
     let fitQueued=false;
     function fitFrame(){
       fitQueued=false;
-      const width=root.visualViewport?.width||root.innerWidth;
-      const height=root.visualViewport?.height||root.innerHeight;
+      // WebKit can report a stale visualViewport height for one or more frames
+      // immediately after rotation. The layout viewport is already updated,
+      // so never size the game taller than its actual visible innerHeight.
+      const width=root.innerWidth||root.visualViewport?.width;
+      const height=Math.min(root.innerHeight||Infinity,root.visualViewport?.height||Infinity);
       const appStyle=getComputedStyle(app);
       const safeTop=parseFloat(appStyle.getPropertyValue('--screen-safe-top'))||0;
       const safeBottom=parseFloat(appStyle.paddingBottom)||0;
