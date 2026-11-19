@@ -142,7 +142,9 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
      const rotated=mode.name==='portrait'
        ?{width:844,height:390}:{width:390,height:844};
      await page.setViewportSize(rotated);
-     await page.waitForTimeout(180);
+     // Allow up to two low-cost dimension checks for WebKit, which may not
+     // emit a normal resize event from an emulated mobile viewport change.
+     await page.waitForTimeout(500);
      const after=await page.evaluate(()=>({
       viewportWidth:innerWidth,viewportHeight:innerHeight,
       docWidth:document.documentElement.scrollWidth,
