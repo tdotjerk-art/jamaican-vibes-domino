@@ -312,3 +312,20 @@ test('reward requests expire and daily verified rewards are capped transactional
   wallet.createRewardIntent(a.id,a.token,now+7000);
   assert.throws(()=>wallet.createRewardIntent(a.id,a.token,now+8000),/Too many reward requests/);
 });
+
+test('global signup capacity blocks IP rotation, rolls back duplicates and survives restart',t=>{
+  const {wallet,filename}=setup(t);
+  for(let i=0;i<100;i++){
+    // A changing connection address must not create unlimited starter credits.
+    const a=wallet.createAccount('Global'+i,'198.51.'+(Math.floor(i/200)+1)+'.'+(i+1));
+    assert.equal(a.balance,100);
+  }
+  assert.throws(()=>wallet.createAccount('Global100','203.0.113.201'),/temporarily at capacity/);
+  assert.throws(()=>wallet.createAccount('global0','203.0.113.201'),/already registered/i);
+  const reopened=createSqliteWallet(filename);
+  assert.throws(()=>reopened.createAccount('GlobalAgain','203.0.113.202'),/temporarily at capacity/);
+  // Direct account creation remains available for isolated internal fixtures.
+  const fixture=reopened.createAccount('LocalFixture');
+  assert.equal(fixture.balance,100);
+  reopened.close();
+});
