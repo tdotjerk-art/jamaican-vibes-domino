@@ -60,7 +60,13 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
      const box=await button.boundingBox();
      assert.ok(box&&box.width>=40&&box.height>=36,mode.name+': Play Round button too small');
      await button.click();
-     try { await page.locator('#jvLobby').waitFor({state:'visible',timeout:12000}); }
+     // A full two-player fixture may start immediately as seat two joins.
+     // In that case the lobby is correctly hidden in favor of the playing table.
+     try { await page.waitForFunction(() =>
+       document.querySelector('#jvLobby')?.getBoundingClientRect().width > 0 &&
+       (getComputedStyle(document.querySelector('#jvLobby')).display !== 'none' ||
+       /Tournament seat assigned/.test(document.querySelector('#jvWalletStatus')?.textContent || '')),
+       null,{timeout:12000}); }
      catch(error){
       const diagnostic=await page.evaluate(()=>({status:document.querySelector('#jvWalletStatus')?.textContent,
        setup:document.querySelector('#jvSetupStatus')?.textContent,
@@ -79,8 +85,10 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
      console.log(mode.name+' player '+(i+1)+': lobby connected; '+JSON.stringify(info));
     }
     await pages[0].waitForFunction(()=>{
-     return document.querySelector('#jvLobby')?.style.display==='flex';
-    },{timeout:10000});
+     const status=document.querySelector('#jvWalletStatus')?.textContent||'';
+     return /Tournament seat assigned/.test(status) ||
+       document.querySelector('#jvLobby')?.style.display==='flex';
+    },null,{timeout:10000});
     await pages[0].screenshot({path:'tournament-'+mode.name+'.png',fullPage:true});
    }finally{for(const context of contexts)await context.close()}
   }
