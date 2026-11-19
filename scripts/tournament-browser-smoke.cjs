@@ -56,6 +56,30 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
      await page.goto(url,{waitUntil:'domcontentloaded'});
      await page.locator('#jvOnline').click();
      await page.locator('#jvWalletPanel').waitFor();
+     if(i===0){
+      // Exercise actual player-facing recovery rotation, then enter the
+      // tournament using the newly saved credentials (not the revoked token).
+      const previous=accounts[i].token;
+      page.once('dialog',dialog=>dialog.accept());
+      await page.locator('#jvWalletRotate').click();
+      await page.waitForFunction(old=>{
+       const value=document.querySelector('#jvWalletRecovery')?.value||'';
+       return value.includes(':')&&!value.endsWith(':'+old);
+      },previous,{timeout:10000});
+      const newCode=await page.locator('#jvWalletRecovery').inputValue();
+      const [id,token]=newCode.split(':');
+      assert.equal(id,accounts[i].account.id);
+      assert.match(token,/^[a-f0-9]{64}$/);
+      accounts[i].token=token;
+      const prior=await fetch(url+'/api/domino/wallet/me',{
+       method:'POST',headers:{'content-type':'application/json'},
+       body:JSON.stringify({id,token:previous})
+      });
+      assert.equal(prior.status,400,mode.name+': revoked code still authenticates');
+      const session=await page.evaluate(()=>JSON.parse(sessionStorage.getItem('jvDominoWalletAccount')));
+      assert.equal(session.token,token,mode.name+': browser session did not switch to replacement code');
+      console.log('PASS: '+mode.name+' UI recovery rotation revoked old code and retained tournament account');
+     }
      await page.locator('#jvTournamentDetails').evaluate(el=>el.open=true);
      await page.locator('#jvTournamentMineRefresh').click();
      const button=page.getByRole('button',{name:/Play round 1, match 1/i});
