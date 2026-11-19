@@ -133,6 +133,13 @@ function createSqliteWallet(filename) {
       throw Error('Invalid wallet credentials.');
     return {id:a.id,name:a.name,balance:a.balance};
   }
+  // Compare a session's hashed credential with the current durable wallet credential.
+  // The caller must have authenticated before establishing the session.
+  function credentialFingerprintCurrent(id,fingerprint) {
+    if(!idOK(id)||typeof fingerprint!=='string'||!/^[a-f0-9]{64}$/.test(fingerprint))return false;
+    const account=accountById.get(id);
+    return !!account&&crypto.timingSafeEqual(Buffer.from(account.tokenHash,'hex'),Buffer.from(fingerprint,'hex'));
+  }
   // Recovery-code rotation is an authenticated, durable revocation operation.
   // Do not log or store the new cleartext code. Existing account balances and
   // tournament entries retain their account ID after a rotation.
@@ -510,7 +517,7 @@ function createSqliteWallet(filename) {
     });
   }
   return {
-    createAccount,authenticate,rotateRecoveryToken,balance,price,
+    createAccount,authenticate,rotateRecoveryToken,credentialFingerprintCurrent,balance,price,
     enter:(id,mode,entryId)=>tx(()=>enterInternal(id,mode,entryId)),
     refund:(id,mode,entryId)=>tx(()=>refundInternal(id,mode,entryId)),
     awardVerifiedReward,createRewardIntent,settleVerifiedRewardIntent,
