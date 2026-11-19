@@ -1,0 +1,27 @@
+name: Tournament progression and crash recovery
+
+on:
+  push:
+    branches: [feature/domino-credit-wallet-pilot]
+    paths:
+      - server.js
+      - domino-wallet-sqlite.js
+      - test/domino-tournament-restart-replay.test.js
+      - test/domino-tournament-completion-e2e.test.js
+      - test/domino-wallet-sqlite.test.js
+      - .github/workflows/domino-tournament-progression.yml
+  workflow_dispatch:
+
+jobs:
+  tournament:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Confirm authentic tournament win and crash recovery
+        run: node --test test/domino-tournament-restart-replay.test.js test/domino-tournament-completion-e2e.test.js test/domino-wallet-sqlite.test.js
