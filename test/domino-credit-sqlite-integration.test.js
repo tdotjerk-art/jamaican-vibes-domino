@@ -32,6 +32,29 @@ test('SQLite tournament pilot API requires admin key and persists transactional 
   const a=(await request('POST','register',{name:'BracketA'})).body;
   const b=(await request('POST','register',{name:'BracketB'})).body;
   const c=(await request('POST','register',{name:'BracketC'})).body;
+
+  // Recovery-code replacement is only authorized by the previous valid code.
+  const failedRotate=await request('POST','rotate-recovery',{id:a.account.id,token:'0'.repeat(64)});
+  assert.equal(failedRotate.status,401);
+  assert.match(failedRotate.body.error,/Invalid recovery credentials/);
+  const crossAccount=await request('POST','rotate-recovery',{id:b.account.id,token:a.token});
+  assert.equal(crossAccount.status,401);
+  const changed=await request('POST','rotate-recovery',{id:a.account.id,token:a.token});
+  assert.equal(changed.status,200);
+  assert.equal(changed.body.account.id,a.account.id);
+  assert.equal(changed.body.account.balance,100);
+  assert.match(changed.body.token,/^[0-9a-f]{64}$/);
+  assert.notEqual(changed.body.token,a.token);
+  assert.equal((await request('POST','me',{id:a.account.id,token:a.token})).status,400);
+  assert.equal((await request('POST','me',{id:a.account.id,token:changed.body.token})).status,200);
+  a.token=changed.body.token;
+  // Repeated incorrect attempts must be throttled without locking out the valid owner forever.
+  for(let i=0;i<5;i++){
+    const attempt=await request('POST','rotate-recovery',{id:c.account.id,token:'0'.repeat(64)});
+    assert.equal(attempt.status,401);
+  }
+  assert.equal((await request('POST','rotate-recovery',{id:c.account.id,token:c.token})).status,429);
+
   assert.equal((await request('POST','tournaments',{id:'cup1',capacity:2})).status,403);
   assert.equal((await request('POST','tournaments',{id:'cup1',capacity:2},true)).status,200);
   assert.equal((await request('GET','tournaments')).body[0].id,'cup1');
