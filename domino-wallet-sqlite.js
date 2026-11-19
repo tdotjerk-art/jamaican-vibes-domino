@@ -103,6 +103,17 @@ function createSqliteWallet(filename) {
       throw Error('Invalid wallet credentials.');
     return {id:a.id,name:a.name,balance:a.balance};
   }
+  // Recovery-code rotation is an authenticated, durable revocation operation.
+  // Do not log or store the new cleartext code. Existing account balances and
+  // tournament entries retain their account ID after a rotation.
+  function rotateRecoveryToken(id,token) {
+    return tx(()=>{
+      const account=authenticate(id,token);
+      const next=crypto.randomBytes(32).toString('hex');
+      db.prepare('UPDATE accounts SET token_hash=? WHERE id=?').run(hash(next),id);
+      return {id:account.id,name:account.name,balance:account.balance,token:next};
+    });
+  }
   function createAccount(name) {
     if(typeof name!=='string')throw Error('Invalid player name.');
     name=name.trim();
@@ -405,7 +416,7 @@ function createSqliteWallet(filename) {
     });
   }
   return {
-    createAccount,authenticate,balance,price,
+    createAccount,authenticate,rotateRecoveryToken,balance,price,
     enter:(id,mode,entryId)=>tx(()=>enterInternal(id,mode,entryId)),
     refund:(id,mode,entryId)=>tx(()=>refundInternal(id,mode,entryId)),
     awardVerifiedReward,
