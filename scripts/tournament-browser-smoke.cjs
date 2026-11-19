@@ -38,11 +38,13 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   browser=await chromium.launch({headless:true,args:['--no-sandbox']});
   const modes=[{name:'portrait',width:390,height:844},{name:'landscape',width:844,height:390}];
   for(const mode of modes){
-   const context=await browser.newContext({viewport:{width:mode.width,height:mode.height},
-    isMobile:true,hasTouch:true,deviceScaleFactor:3});
+   const contexts=[];
    const pages=[];
    try{
     for(let i=0;i<2;i++){
+     // Real players use independent browser profiles and local storage.
+     const context=await browser.newContext({viewport:{width:mode.width,height:mode.height},
+      isMobile:true,hasTouch:true,deviceScaleFactor:3});contexts.push(context);
      const page=await context.newPage();pages.push(page);
      await page.addInitScript(({name,credentials})=>{
       localStorage.setItem('jvSignupName',name);
@@ -58,7 +60,15 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
      const box=await button.boundingBox();
      assert.ok(box&&box.width>=40&&box.height>=36,mode.name+': Play Round button too small');
      await button.click();
-     await page.locator('#jvLobby').waitFor({state:'visible',timeout:12000});
+     try { await page.locator('#jvLobby').waitFor({state:'visible',timeout:12000}); }
+     catch(error){
+      const diagnostic=await page.evaluate(()=>({status:document.querySelector('#jvWalletStatus')?.textContent,
+       setup:document.querySelector('#jvSetupStatus')?.textContent,
+       connection:document.querySelector('#jvConnectionText')?.textContent,
+       lobbyStyle:document.querySelector('#jvLobby')?.style.display,
+       socket:window.getOnlineSocket?.()?.connected}));
+      throw Error(mode.name+' player '+(i+1)+' join failed: '+JSON.stringify(diagnostic)+' / '+error.message);
+     }
      const info=await page.evaluate(()=>{
       const el=document.querySelector('#jvLobby');
       const rect=el.getBoundingClientRect();
@@ -72,7 +82,7 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
      return document.querySelector('#jvLobby')?.style.display==='flex';
     },{timeout:10000});
     await pages[0].screenshot({path:'tournament-'+mode.name+'.png',fullPage:true});
-   }finally{await context.close()}
+   }finally{for(const context of contexts)await context.close()}
   }
   console.log('PASS: tournament Play Round browser seats and portrait/landscape viewport checks');
  }finally{if(browser)await browser.close();child.kill();await delay(300);fs.rmSync(dir,{recursive:true,force:true})}
