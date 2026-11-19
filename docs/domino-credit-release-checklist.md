@@ -36,6 +36,15 @@
 - [ ] Verify ad-provider contract, account, policy restrictions, reward amount, age/consent eligibility and production callback delivery. Never accept the browser's `rewardedSlotGranted` event as authorization to credit a wallet.
 - [ ] Expose a player-facing opt-in reward control only after callback verification and anti-fraud tests pass. All rewards remain **disabled in production**.
 
+## Tournament priority #4 verification (2026-11-18)
+
+- [x] Verified a complete two-player Cut Throat tournament game to exactly six with automatic, server-authoritative fixture settlement and no extra tournament debit.
+- [x] Strengthened actual-process SIGKILL recovery: play a legal domino **before** crashing the Node server, reject stale room/reconnect tokens, confirm the fixture remains pending, launch a fresh-deal second attempt, preserve the bracket and keep both 25-credit entries at one charge.
+- [x] Verify persisted two-, three- and four-player Cut Throat brackets, winners, round creation and byes using isolated SQLite tests.
+- [x] Dedicated [tournament progression and crash CI run 44448056310](https://github.com/tdotjerk-art/jamaican-vibes-domino/actions/runs/44448056310) passed **18 of 18** targeted tests, including one real full-match completion and crash/restart replay.
+- [ ] This is still **local isolated CI**, not physical iPhone Safari or an actual Render disk/redeployment test. A full multi-round tournament played by real clients (not just bracket unit progression) remains a launch check. Review player notices and forfeit/adjudication policy before activation.
+- [ ] Four-player **Partners** tournament bracket advancement must use winning teams and is not implemented. Cut Throat tournament code must not be represented as supporting Partners.
+
 ## Must be completed before activation
 
 - [x] Owner confirmed Render workspace `My Workspace` (`tea-dab89eou01pc73ef8nh0`); existing service already has a 1 GB `/var/data` disk. No new paid resource was purchased.
