@@ -256,6 +256,19 @@ function partnerWin(r,winnerSeat){
     root.addEventListener('resize',requestFit);
     root.addEventListener('orientationchange',requestFit);
     root.visualViewport?.addEventListener('resize',requestFit);
+    // Mobile WebKit can change the layout viewport width during rotation
+    // without delivering a usable window/visualViewport resize event. The app
+    // always spans the viewport width, so observe that independent signal.
+    // Only width changes trigger the fit; height-only changes from fitFrame
+    // must not cause a ResizeObserver feedback loop.
+    if(typeof ResizeObserver==='function'){
+      let lastWidth=0;
+      const appResize=new ResizeObserver(entries=>{
+        const width=entries[0]?.contentRect.width||app.getBoundingClientRect().width;
+        if(Math.abs(width-lastWidth)>1){lastWidth=width;requestFit();}
+      });
+      appResize.observe(app);
+    }
     fitFrame();
   }
   root.JVMobileLayout={layout,render,mount,frame,partnerWin};
