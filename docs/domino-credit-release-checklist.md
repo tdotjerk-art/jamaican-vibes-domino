@@ -57,12 +57,13 @@
 
 - [x] Production branch reconciled with draft PR #116 without changing production or enabling credits.
 - [x] The isolated release-security audit found **0 npm vulnerabilities** and **18 of 18** targeted wallet safety tests passing in [run 44455571521](https://github.com/tdotjerk-art/jamaican-vibes-domino/actions/runs/44455571521); its release-activation job is **expected to fail closed** on incomplete launch gates.
-- [ ] After the merge commit, re-verify complete game tests plus both Chromium and WebKit tournament portrait/landscape results and update this checklist with the run IDs.
+- [x] Post-merge GitHub runs: complete main game regressions [44459764511](https://github.com/tdotjerk-art/jamaican-vibes-domino/actions/runs/44459764511) **PASSED** and independent Chromium + WebKit two-player tournament browser checks [44459758471](https://github.com/tdotjerk-art/jamaican-vibes-domino/actions/runs/44459758471) **BOTH PASSED** after merge commit `69bd5b8`.
 - [ ] Review the remaining launch blockers in this file before enabling paid public matches or tournaments; no implicit approval from passing CI.
 
 ## Must be completed before activation
 
 - [x] Owner confirmed Render workspace `My Workspace` (`tea-dab89eou01pc73ef8nh0`); existing service already has a 1 GB `/var/data` disk. No new paid resource was purchased.
+- [x] Read-only Render configuration check: service `srv-dabmu467bikc73dkp380` deploys from `main` on a single Node instance and has an existing 1 GB disk configured with mount path `/var/data`. This does **not** verify the runtime mount contents or database durability.
 - [ ] Verify the existing 1 GB `/var/data` Render disk is mounted in the actual Node process; test database file, backup/restore, WAL file handling, disk fullness, available space, permissions and crash recovery. Code now rejects paths outside `/var/data` and a missing separate filesystem mount.
 - [x] Existing Render `jamaican-vibes-domino` web service currently reports exactly one instance (recheck before activation); a future horizontal scale requires a transactional shared SQL database.
 - [ ] Confirm Render runtime Node.js version supports node:sqlite and that runtime flags are appropriate.
