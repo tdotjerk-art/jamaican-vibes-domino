@@ -35,7 +35,10 @@ if(creditsEnabled){
  app.use("/api/domino/wallet",express.json({limit:"2kb"}));
  const result=(res,fn)=>{try{return res.json(fn())}catch(e){return res.status(/Insufficient/.test(e.message)?402:400).json({error:e.message})}};
  app.post("/api/domino/wallet/register",(req,res)=>{
-   if(!sqliteCredits)return res.status(503).json({error:"Wallet registration requires protected SQLite storage."});
+   // The JSON wallet is a local test-only adapter. Render already rejects it
+   // at process startup; only SQLite registration enforces the durable quota.
+   if(!sqliteCredits&&process.env.RENDER==="true")
+     return res.status(503).json({error:"Production wallet registration requires protected SQLite storage."});
    res.set("Cache-Control","no-store");
    try{
      // Do not trust user-supplied forwarding headers as an identity.
