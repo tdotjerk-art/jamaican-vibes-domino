@@ -1,0 +1,37 @@
+name: Domino tournament browser verification
+
+on:
+  push:
+    branches: [feature/domino-credit-wallet-pilot]
+    paths:
+      - index.html
+      - public/domino-wallet-client.js
+      - public/mobile-layout.css
+      - scripts/tournament-browser-smoke.cjs
+      - .github/workflows/domino-tournament-browser.yml
+  workflow_dispatch:
+
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Install isolated Chromium test dependencies
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Verify tournament Play Round on phone portrait and landscape
+        run: node scripts/tournament-browser-smoke.cjs
+      - name: Preserve browser screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: domino-browser-evidence
+          path: tournament-*.png
+          if-no-files-found: ignore
