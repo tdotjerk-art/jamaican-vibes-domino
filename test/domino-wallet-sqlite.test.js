@@ -319,9 +319,9 @@ test('global signup capacity blocks IP rotation, rolls back duplicates and survi
     // A changing connection address must not create unlimited starter credits.
     const a=wallet.createAccount('Global'+i,'198.51.'+(Math.floor(i/200)+1)+'.'+(i+1));
     assert.equal(a.balance,100);
+    if(i===50)assert.throws(()=>wallet.createAccount('global0','203.0.113.201'),/already registered/i);
   }
   assert.throws(()=>wallet.createAccount('Global100','203.0.113.201'),/temporarily at capacity/);
-  assert.throws(()=>wallet.createAccount('global0','203.0.113.201'),/already registered/i);
   const reopened=createSqliteWallet(filename);
   assert.throws(()=>reopened.createAccount('GlobalAgain','203.0.113.202'),/temporarily at capacity/);
   // Direct account creation remains available for isolated internal fixtures.
