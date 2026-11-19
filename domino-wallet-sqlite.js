@@ -80,6 +80,21 @@ function createSqliteWallet(filename) {
         REFERENCES tournament_matches(tournament_id,round,slot)
     );
   `);
+  // Persist a database-specific HMAC secret. Never store visitors' raw IPs.
+  // Both the secret and daily counters survive a process restart.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS signup_guard_config (
+      key TEXT PRIMARY KEY, value TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS signup_guard_counts (
+      source_hash TEXT NOT NULL, utc_day TEXT NOT NULL,
+      count INTEGER NOT NULL CHECK(count BETWEEN 0 AND 8),
+      PRIMARY KEY(source_hash,utc_day)
+    );
+  `);
+  db.prepare("INSERT OR IGNORE INTO signup_guard_config(key,value) VALUES('salt',?)")
+    .run(crypto.randomBytes(32).toString('hex'));
+  const signupSalt=db.prepare("SELECT value FROM signup_guard_config WHERE key='salt'").get().value;
   if(!db.prepare('PRAGMA table_info(tournaments)').all().some(c=>c.name==='player_count'))
     db.exec('ALTER TABLE tournaments ADD COLUMN player_count INTEGER NOT NULL DEFAULT 2 CHECK(player_count IN (2,3,4))');
   const accountById=db.prepare('SELECT id,name,token_hash AS tokenHash,balance FROM accounts WHERE id=?');
@@ -114,14 +129,33 @@ function createSqliteWallet(filename) {
       return {id:account.id,name:account.name,balance:account.balance,token:next};
     });
   }
-  function createAccount(name) {
+  function createAccount(name,source) {
     if(typeof name!=='string')throw Error('Invalid player name.');
     name=name.trim();
     if(!name||name.length>20||/tdot/i.test(name))throw Error('Invalid or reserved player name.');
+    // The API always supplies a server-derived peer address. Optional source
+    // keeps direct, offline wallet fixture creation backward compatible.
+    if(source!==undefined&&(typeof source!=='string'||!source||source.length>128))
+      throw Error('Invalid registration source.');
     const id=crypto.randomBytes(16).toString('hex'),token=crypto.randomBytes(32).toString('hex');
     try {
-      tx(()=>db.prepare('INSERT INTO accounts(id,name,token_hash,balance) VALUES(?,?,?,?)')
-        .run(id,name,hash(token),STARTING_CREDITS));
+      tx(()=>{
+        if(source!==undefined){
+          const sourceHash=crypto.createHmac('sha256',Buffer.from(signupSalt,'hex')).update(source).digest('hex');
+          const utcDay=new Date().toISOString().slice(0,10);
+          const prior=db.prepare('SELECT count FROM signup_guard_counts WHERE source_hash=? AND utc_day=?')
+            .get(sourceHash,utcDay);
+          if((prior?.count||0)>=8)throw Error('Too many wallet signups from this connection today. Try again later.');
+          db.prepare(`INSERT INTO signup_guard_counts(source_hash,utc_day,count) VALUES(?,?,1)
+            ON CONFLICT(source_hash,utc_day) DO UPDATE SET count=count+1`)
+            .run(sourceHash,utcDay);
+          // Remove expired counters without retaining long-term network history.
+          db.prepare('DELETE FROM signup_guard_counts WHERE utc_day < ?')
+            .run(new Date(Date.now()-2*86400000).toISOString().slice(0,10));
+        }
+        db.prepare('INSERT INTO accounts(id,name,token_hash,balance) VALUES(?,?,?,?)')
+          .run(id,name,hash(token),STARTING_CREDITS);
+      });
     }catch(e) {
       if(/UNIQUE constraint/.test(e.message))throw Error('Signup name is already registered. Recover your original wallet.');
       throw e;
