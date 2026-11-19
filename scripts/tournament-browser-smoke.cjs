@@ -114,6 +114,12 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
       docWidth:document.documentElement.scrollWidth,
       docHeight:document.documentElement.scrollHeight,
       bodyHeight:document.body.scrollHeight,
+      ui:{home:getComputedStyle(document.querySelector('#jvHome')).display,
+       app:getComputedStyle(document.querySelector('.app')).display,
+       appVisibility:getComputedStyle(document.querySelector('.app')).visibility,
+       onlineSetup:document.querySelector('#jvOnlineSetup')?getComputedStyle(document.querySelector('#jvOnlineSetup')).display:null,
+       overlay:document.elementFromPoint(innerWidth/2,innerHeight/2)?.id||document.elementFromPoint(innerWidth/2,innerHeight/2)?.className||null,
+       onlineMode:window.gameConnectionMode},
       screenParts:['#board','.app > .table','#hand1','#hand2','#hand3','#hand4']
        .map(selector=>{
         const el=document.querySelector(selector);
@@ -134,7 +140,9 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
      assert.equal(after.lobbyVisible,false,mode.name+' player '+(i+1)+': rotation reopened lobby during match');
      assert.ok(after.docWidth<=after.viewportWidth+2,
       mode.name+' player '+(i+1)+': rotation caused horizontal scrolling '+JSON.stringify(after));
-     assert.ok(after.docHeight<=after.viewportHeight+3,
+     assert.notEqual(after.ui.home,'flex',
+      mode.name+' player '+(i+1)+': home screen still shown after tournament match started '+JSON.stringify(after));
+          assert.ok(after.docHeight<=after.viewportHeight+3,
       mode.name+' player '+(i+1)+': rotation requires vertical page scrolling '+JSON.stringify(after));
      await page.screenshot({path:'tournament-'+mode.name+'-rotated-player'+(i+1)+'.png',fullPage:true});
      for(const part of after.screenParts){
