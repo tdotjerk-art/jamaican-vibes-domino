@@ -28,6 +28,14 @@
 - [ ] Verify behavior of logged-in/reconnected sockets following token rotation and restart; existing sockets must not retain indefinite authorization after revocation.
 - [ ] Reconcile this draft branch with production dependency-security patches before any eventual release. **No credit-wallet code or account rotation API has been deployed.**
 
+## Rewarded-ad security foundation (2026-11-18)
+
+- [x] Added SQLite-persisted, authenticated reward intents using unpredictable 192-bit nonces, 15-minute expiry, a limit of six requests per hour, global provider-event replay blocking, transactionally single-use reward settlement, and a maximum of three verified rewards per rolling 24-hour account period. Requesting an ad **never** grants credits.
+- [x] Added tests for expired claims, repeated events, other-account event replay, daily caps, invalid credentials, and process database reopening.
+- [ ] Connect an approved rewarded-web provider and implement its **documented, authenticated server-side verification protocol**. Google Ad Manager now supports web SSV callbacks, but receiving a callback alone is not proof of authenticity: verify the exact provider signature/credential and account-bound nonce before invoking reward settlement.
+- [ ] Verify ad-provider contract, account, policy restrictions, reward amount, age/consent eligibility and production callback delivery. Never accept the browser's `rewardedSlotGranted` event as authorization to credit a wallet.
+- [ ] Expose a player-facing opt-in reward control only after callback verification and anti-fraud tests pass. All rewards remain **disabled in production**.
+
 ## Must be completed before activation
 
 - [x] Owner confirmed Render workspace `My Workspace` (`tea-dab89eou01pc73ef8nh0`); existing service already has a 1 GB `/var/data` disk. No new paid resource was purchased.
