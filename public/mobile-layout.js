@@ -254,7 +254,9 @@ function partnerWin(r,winnerSeat){
     }
     function requestFit(){if(!fitQueued){fitQueued=true;requestAnimationFrame(fitFrame)}}
     root.addEventListener('resize',requestFit);
-    root.addEventListener('orientationchange',requestFit);
+    // WebKit may suppress the deferred RAF immediately after orientationchange.
+    // Update CSS geometry synchronously when the orientation changes.
+    root.addEventListener('orientationchange',fitFrame);
     root.visualViewport?.addEventListener('resize',requestFit);
     // Mobile WebKit can change the layout viewport width during rotation
     // without delivering a usable window/visualViewport resize event. The app
@@ -277,7 +279,7 @@ function partnerWin(r,winnerSeat){
     const viewportPoll=root.setInterval(()=>{
       const width=root.innerWidth,height=root.innerHeight;
       if(width!==lastViewportWidth||height!==lastViewportHeight){
-        lastViewportWidth=width;lastViewportHeight=height;requestFit();
+        lastViewportWidth=width;lastViewportHeight=height;fitFrame();
       }
     },150);
     root.addEventListener('pagehide',()=>root.clearInterval(viewportPoll),{once:true});
