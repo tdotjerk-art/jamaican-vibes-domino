@@ -62,7 +62,11 @@
     const tableWidth=width*.96;
     const baselineHeight=width>height?Math.min(width*.539328,height-56):Math.max(560,height-105);
     const long=1.15*1.584*Math.min(96,(tableWidth*.053-4)/.54,baselineHeight*.11);
-    const handHeight=Math.max(20,long);
+    // Seven side-hand dominoes plus gaps must fit even on a short 390px
+    // landscape viewport. Do not allow the original width-based sizing to
+    // extend Player 2/4's vertical hand beyond the playing table.
+    const handHeight=Math.max(20,width>height&&height<=520?
+      Math.min(long,(height-60)/8):long);
     // On short landscape screens the top hand shares the controls strip.
     // Feedback floats beside the bottom hand, so neither needs an extra row.
     const sharedTop=width>height&&height<=520;
