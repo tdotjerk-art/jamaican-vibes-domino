@@ -112,6 +112,17 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
      const after=await page.evaluate(()=>({
       viewportWidth:innerWidth,viewportHeight:innerHeight,
       docWidth:document.documentElement.scrollWidth,
+      docHeight:document.documentElement.scrollHeight,
+      bodyHeight:document.body.scrollHeight,
+      screenParts:['#board','.app > .table','#hand1','#hand2','#hand3','#hand4']
+       .map(selector=>{
+        const el=document.querySelector(selector);
+        if(!el)return {selector,found:false};
+        const r=el.getBoundingClientRect(),style=getComputedStyle(el);
+        return {selector,found:true,visible:style.display!=='none'&&style.visibility!=='hidden',
+         top:Math.round(r.top),bottom:Math.round(r.bottom),
+         left:Math.round(r.left),right:Math.round(r.right),width:Math.round(r.width),height:Math.round(r.height)};
+       }),
       socketId:window.getOnlineSocket?.()?.id,
       connected:window.getOnlineSocket?.()?.connected,
       lobbyVisible:getComputedStyle(document.querySelector('#jvLobby')).display!=='none',
@@ -123,6 +134,13 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
      assert.equal(after.lobbyVisible,false,mode.name+' player '+(i+1)+': rotation reopened lobby during match');
      assert.ok(after.docWidth<=after.viewportWidth+2,
       mode.name+' player '+(i+1)+': rotation caused horizontal scrolling '+JSON.stringify(after));
+     assert.ok(after.docHeight<=after.viewportHeight+3,
+      mode.name+' player '+(i+1)+': rotation requires vertical page scrolling '+JSON.stringify(after));
+     for(const part of after.screenParts){
+      if(!part.found||!part.visible||!part.width||!part.height)continue;
+      assert.ok(part.top>=-3&&part.bottom<=after.viewportHeight+3,
+       mode.name+' player '+(i+1)+': '+part.selector+' clipped vertically '+JSON.stringify(after));
+     }
      assert.equal(after.boardChildren,before.boardChildren,
       mode.name+' player '+(i+1)+': rotation changed number of played dominoes');
      assert.equal(after.board,before.board,mode.name+' player '+(i+1)+': rotation changed displayed board');
