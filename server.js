@@ -86,6 +86,20 @@ if(creditsEnabled){
    return {balance:reward.balance,applied:reward.applied,credits:reward.applied?20:0,calendarDay};
  }));
  if(sqliteCredits){
+   // Reward requests are disabled until the publisher's rewarded-web provider
+   // and authenticated SSV callback have been verified. Issuing an intent
+   // never credits an account; no browser-accessible settlement endpoint exists.
+   app.post("/api/domino/wallet/rewards/intent",(req,res)=>{
+     res.set("Cache-Control","no-store");
+     if(process.env.DOMINO_REWARDED_ADS_ENABLED!=="true")
+       return res.status(503).json({error:"Verified rewarded ads are not configured."});
+     try{return res.json(wallet.createRewardIntent(req.body?.id,req.body?.token))}
+     catch(e){return res.status(/Too many reward requests/.test(e.message)?429:400).json({error:e.message})}
+   });
+   app.post("/api/domino/wallet/rewards/status",(req,res)=>{
+     res.set("Cache-Control","no-store");
+     return result(res,()=>wallet.rewardIntentStatus(req.body?.id,req.body?.token,req.body?.nonce));
+   });
    // Tournament APIs exist only for the SQLite pilot. The admin key must never
    // be included in client code, URLs, logs, or browser storage.
    const isAdmin=req=>{
