@@ -29,15 +29,18 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
    const value=await response.json();
    assert.equal(response.status,200,route+': '+JSON.stringify(value));return value;
   };
-  const names=['PhoneOne','PhoneTwo'];
-  const accounts=[];
-  for(const name of names)accounts.push(await api('register',{name}));
-  await api('tournaments',{id:'browser_round',capacity:2,playerCount:2},true);
-  for(const acct of accounts)await api('tournaments/browser_round/join',{id:acct.account.id,token:acct.token});
-  await api('tournaments/browser_round/start',{},true);
   browser=await chromium.launch({headless:true,args:['--no-sandbox']});
   const modes=[{name:'portrait',width:390,height:844},{name:'landscape',width:844,height:390}];
   for(const mode of modes){
+   // Each rotation scenario is an independent tournament, since live
+   // tournament seats must remain reserved after a browser disconnect.
+   const names=['Phone'+mode.name+'One','Phone'+mode.name+'Two'];
+   const accounts=[];
+   const tournamentId='browser_'+mode.name;
+   for(const name of names)accounts.push(await api('register',{name}));
+   await api('tournaments',{id:tournamentId,capacity:2,playerCount:2},true);
+   for(const acct of accounts)await api('tournaments/'+tournamentId+'/join',{id:acct.account.id,token:acct.token});
+   await api('tournaments/'+tournamentId+'/start',{},true);
    const contexts=[];
    const pages=[];
    try{
