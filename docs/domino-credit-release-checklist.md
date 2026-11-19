@@ -26,7 +26,7 @@
 - [ ] Strengthen global/distributed rate limits, recovery-code privacy/masking and notices. Test already-connected gameplay sockets against recovery-code revocation before release.
 - [ ] Implement durable signup-abuse controls or verified identity, privacy terms and account recovery that does not permit unverified wallet recreation to farm starter credits.
 - [ ] Verify behavior of logged-in/reconnected sockets following token rotation and restart; existing sockets must not retain indefinite authorization after revocation.
-- [ ] Reconcile this draft branch with production dependency-security patches before any eventual release. **No credit-wallet code or account rotation API has been deployed.**
+- [x] Merged production `main` into the draft branch on 2026-11-18, retaining production's secure `body-parser` 2.4.0 / `qs` 6.17.1 lockfile and corrected live multiplayer smoke test, while preserving tournament socket support and current Cut Throat setup. Merge commit [`69bd5b8`](https://github.com/tdotjerk-art/jamaican-vibes-domino/commit/69bd5b8c69aae926b2dd7cba6df3b2bfaac1ba49). GitHub reports PR #116 mergeable and 0 commits behind main. **No wallet feature has been deployed to production.**
 
 ## Rewarded-ad security foundation (2026-11-18)
 
@@ -52,6 +52,13 @@
 - [x] Browser verification [run 44450358605](https://github.com/tdotjerk-art/jamaican-vibes-domino/actions/runs/44450358605): Chromium **PASS**, WebKit **PASS**, both rotation directions for each of two tournament players.
 - [ ] Physical iPhone Safari is **not verified**. An automated Linux WebKit mobile viewport is not identical to iOS Safari: test real iPhone portrait and landscape, rotation during an active hand, touch hit areas, browser bars/safe areas, timers, reload, network loss and reconnection, UI login and tournament lobby, and screenshots before launch.
 - [ ] Production layout changes from this branch must undergo a separate release review. Credit pilot still disabled and PR #116 remains draft.
+
+## Final reconciliation and security review (2026-11-18)
+
+- [x] Production branch reconciled with draft PR #116 without changing production or enabling credits.
+- [x] The isolated release-security audit found **0 npm vulnerabilities** and **18 of 18** targeted wallet safety tests passing in [run 44455571521](https://github.com/tdotjerk-art/jamaican-vibes-domino/actions/runs/44455571521); its release-activation job is **expected to fail closed** on incomplete launch gates.
+- [ ] After the merge commit, re-verify complete game tests plus both Chromium and WebKit tournament portrait/landscape results and update this checklist with the run IDs.
+- [ ] Review the remaining launch blockers in this file before enabling paid public matches or tournaments; no implicit approval from passing CI.
 
 ## Must be completed before activation
 
