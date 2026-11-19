@@ -137,6 +137,12 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
       const css=getComputedStyle(stage);
       return css.display==='none'||css.visibility==='hidden'||css.opacity==='0';
      },null,{timeout:12000});
+     await page.evaluate(()=>{
+      window.__jvResizeProbe={resize:0,orientation:0,vvResize:0};
+      window.addEventListener('resize',()=>window.__jvResizeProbe.resize++);
+      window.addEventListener('orientationchange',()=>window.__jvResizeProbe.orientation++);
+      window.visualViewport?.addEventListener('resize',()=>window.__jvResizeProbe.vvResize++);
+     });
      const before=await page.evaluate(()=>({
       socketId:window.getOnlineSocket?.()?.id,
       board:document.querySelector('#board')?.textContent,
@@ -151,6 +157,17 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
      await page.waitForTimeout(500);
      const after=await page.evaluate(()=>({
       viewportWidth:innerWidth,viewportHeight:innerHeight,
+      viewportProbe:(()=>{
+       const el=document.createElement('div');
+       el.style.cssText='position:fixed;height:100dvh;width:100vw;visibility:hidden;pointer-events:none';
+       document.body.appendChild(el);const vh=getComputedStyle(el).height;el.remove();
+       return {visualWidth:visualViewport?.width,visualHeight:visualViewport?.height,
+         visualScale:visualViewport?.scale,css100dvh:vh,
+         fitHeight:document.documentElement.style.getPropertyValue('--fit-viewport-height'),
+         jsResize:window.__jvResizeProbe,
+         landscapeMedia:matchMedia('(orientation:landscape)').matches,
+         documentVisible:document.visibilityState};
+      })(),
       docWidth:document.documentElement.scrollWidth,
       docHeight:document.documentElement.scrollHeight,
       bodyHeight:document.body.scrollHeight,
