@@ -530,6 +530,16 @@ io.on("connection",socket=>{
  socket.use(([event,data],next)=>{
    if(!actionAllowed(socket)){socket.emit('action-error','Too many actions. Please slow down.');return;}
    if(payloadEvents.has(event)&&(!data||typeof data!=='object'||Array.isArray(data))){socket.emit('room-error','Invalid room request.');return;}
+   // A rotated recovery code revokes authorization for already-connected
+   // paid-game actions, not just later HTTP wallet requests.
+   if(sqliteCredits&&!['leave-room','reconnect-player','join-tournament-match','join-public-table'].includes(event)){
+     const room=seatedRoom(socket),player=room?.players[socket.data.seat];
+     if((room?.publicTable||room?.tournamentFixture)&&player?.credentialHash&&
+       !wallet.credentialFingerprintCurrent(player.accountId,player.credentialHash)){
+       socket.emit('action-error','Wallet recovery code changed. Reconnect using your current wallet to continue.');
+       return;
+     }
+   }
    next();
  });
 
@@ -576,14 +586,14 @@ io.on("connection",socket=>{
        "Tournament match replay after interruption: previous unfinished board was reset. No extra credits charged.":
        "Tournament match: waiting for both assigned players.";
      tournamentRooms.set(key,room.code);
-     room.players[0].accountId=account.id;room.players[0].ready=true;
+     room.players[0].accountId=account.id;room.players[0].credentialHash=crypto.createHash('sha256').update(accountToken).digest('hex');room.players[0].ready=true;
      socket.data.roomCode=room.code;socket.data.seat=0;socket.join(room.code);
      socket.emit("seat-assigned",{code:room.code,seat:0,token:created.token});
    }else{
      const seat=room.players.findIndex(p=>!p);
      if(seat<0)return socket.emit("room-error","Tournament seats are full.");
      const token=randToken();
-     room.players[seat]={id:socket.id,name:account.name,seat,token,accountId:account.id,connected:true,ready:true,graceTimer:null};
+     room.players[seat]={id:socket.id,name:account.name,seat,token,accountId:account.id,credentialHash:crypto.createHash('sha256').update(accountToken).digest('hex'),connected:true,ready:true,graceTimer:null};
      socket.data.roomCode=room.code;socket.data.seat=seat;socket.join(room.code);
      socket.emit("seat-assigned",{code:room.code,seat,token});
    }
@@ -648,6 +658,7 @@ io.on("connection",socket=>{
        if(wallet.enterPublic)wallet.enterPublic(account.id,entryId);
        else wallet.enter(account.id,"public",entryId);
        room.players[seat].accountId=account.id;
+       if(sqliteCredits)room.players[seat].credentialHash=crypto.createHash('sha256').update(accountToken).digest('hex');
        room.players[seat].entryId=entryId;
        socket.emit("wallet-balance",{balance:wallet.balance(account.id)});
      }catch(e){
@@ -684,10 +695,21 @@ io.on("connection",socket=>{
    const n=String(name||"Spectator").trim().slice(0,20)||"Spectator";leaveCurrentRoom(socket);r.spectators.set(socket.id,{name:n});
    socket.data.roomCode=code;socket.data.spectator=true;socket.join(code);socket.emit("spectator-assigned",{code});emitAll(r)
  });
- socket.on("reconnect-player",({roomCode,token})=>{
+ socket.on("reconnect-player",({roomCode,token,accountId,accountToken})=>{
    const code=String(roomCode||"").trim().toUpperCase(),r=rooms.get(code);if(!r)return socket.emit("room-error","Room no longer exists.");
    const seat=r.players.findIndex(p=>p&&p.token===token);if(seat<0)return socket.emit("room-error","Reconnect seat not found.");
    const p=r.players[seat];
+   if(sqliteCredits&&(r.publicTable||r.tournamentFixture)&&p.credentialHash&&
+     !wallet.credentialFingerprintCurrent(p.accountId,p.credentialHash)){
+     // A room token alone is never sufficient after wallet recovery rotation.
+     // Authenticate the NEW recovery code against the SAME account before
+     // allowing the seat to resume. Do not charge a second entry.
+     try{
+       if(accountId!==p.accountId)throw Error('Wrong wallet account.');
+       wallet.authenticate(accountId,accountToken);
+       p.credentialHash=crypto.createHash('sha256').update(accountToken).digest('hex');
+     }catch{return socket.emit('room-error','Recovery code changed. Sign in with the current wallet before reconnecting.');}
+   }
    if(p.connected&&p.id!==socket.id)return socket.emit('room-error','This seat is already connected. Close the other tab first.');
    if(p.id!==socket.id)leaveCurrentRoom(socket);
    else delete socket.data.spectator;
