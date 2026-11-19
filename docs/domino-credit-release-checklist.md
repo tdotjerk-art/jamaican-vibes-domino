@@ -45,6 +45,14 @@
 - [ ] This is still **local isolated CI**, not physical iPhone Safari or an actual Render disk/redeployment test. A full multi-round tournament played by real clients (not just bracket unit progression) remains a launch check. Review player notices and forfeit/adjudication policy before activation.
 - [ ] Four-player **Partners** tournament bracket advancement must use winning teams and is not implemented. Cut Throat tournament code must not be represented as supporting Partners.
 
+## Mobile Safari-engine priority #5 verification (2026-11-18)
+
+- [x] Extended isolated tournament-browser CI to use **both Chromium and WebKit** with separate evidence screenshots and real two-client tournament join, login, recovery rotation, screen-fit, socket persistence, and portrait-to-landscape / landscape-to-portrait rotation checks.
+- [x] Fixed WebKit mobile orientation geometry: synchronous screen re-fit on orientation changes, viewport-dimension fallback when resize events are omitted, and fit for full vertical side hands on short landscape screens. The test rejects clipped dominoes, vertically/horizontally scrollable pages, socket changes, or changes to played dominoes.
+- [x] Browser verification [run 44450358605](https://github.com/tdotjerk-art/jamaican-vibes-domino/actions/runs/44450358605): Chromium **PASS**, WebKit **PASS**, both rotation directions for each of two tournament players.
+- [ ] Physical iPhone Safari is **not verified**. An automated Linux WebKit mobile viewport is not identical to iOS Safari: test real iPhone portrait and landscape, rotation during an active hand, touch hit areas, browser bars/safe areas, timers, reload, network loss and reconnection, UI login and tournament lobby, and screenshots before launch.
+- [ ] Production layout changes from this branch must undergo a separate release review. Credit pilot still disabled and PR #116 remains draft.
+
 ## Must be completed before activation
 
 - [x] Owner confirmed Render workspace `My Workspace` (`tea-dab89eou01pc73ef8nh0`); existing service already has a 1 GB `/var/data` disk. No new paid resource was purchased.
