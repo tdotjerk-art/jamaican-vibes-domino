@@ -6,12 +6,12 @@ function descendants(el){return el.children.flatMap(child=>[child,...descendants
 function text(el){return [el,...descendants(el)].map(el=>el.textContent).filter(Boolean).join(' ');}
 function settle(g){for(let i=0;i<g.players.length;i++)g.declare(i,!!Engine.evaluateCall(g.players[i].hand));return g;}
 
-function boot(api=Engine){
+function boot(api=Engine,storage=new Map()){
  const elements=new Map(),timers=new Map(),handlers={},sent=[];let timerId=0;
  const get=id=>{if(!elements.has(id))elements.set(id,element());return elements.get(id);};
  get('name').value='Junior';get('count').value='4';
  const socket={connected:true,on:(event,fn)=>handlers[event]=fn,emit:(event,data)=>sent.push({event,data}),disconnect(){this.connected=false;}};
- const context={JVThreeCards:api,document:{getElementById:get,createElement:element,activeElement:null},localStorage:{getItem:()=>null,setItem(){},removeItem(){}},setTimeout:fn=>{timers.set(++timerId,fn);return timerId;},clearTimeout:id=>timers.delete(id),confirm:()=>true,io:()=>socket};
+ const context={JVThreeCards:api,document:{getElementById:get,createElement:element,activeElement:null},localStorage:{getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value),removeItem:key=>storage.delete(key)},setTimeout:fn=>{timers.set(++timerId,fn);return timerId;},clearTimeout:id=>timers.delete(id),confirm:()=>true,io:()=>socket};
  vm.createContext(context);vm.runInContext(fs.readFileSync('public/three-cards-ui.js','utf8'),context);
  const tick=()=>{const next=timers.entries().next().value;if(next){timers.delete(next[0]);next[1]();}return !!next;};
  return {get,tick,handlers,sent,socket};
@@ -64,4 +64,18 @@ test('a lost online table returns to setup instead of trapping the player in a p
  ui.handlers['card-error']('This table is no longer available. Create a new one.');
  assert.equal(ui.get('setup').hidden,false);assert.equal(ui.get('game').hidden,true);
  assert.match(ui.get('error').textContent,/no longer available/);
+});
+
+test('a saved player name carries from setup to practice and the online lobby',()=>{
+ const storage=new Map([['jvSignupName','Asha']]);
+ const ui=boot(Engine,storage);
+ assert.equal(ui.get('name').value,'Asha');
+ ui.get('name').value='Asha B';
+ ui.get('solo').onclick();
+ assert.match(text(ui.get('players').children[0]),/Asha B/);
+
+ const reopened=boot(Engine,storage);
+ assert.equal(reopened.get('name').value,'Asha B');
+ reopened.get('create').onclick();
+ assert.equal(reopened.sent.at(-1).data.name,'Asha B');
 });

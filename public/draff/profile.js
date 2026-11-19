@@ -2,7 +2,7 @@
 var DraffProfile=(()=>{
  const key='jv-draff-player-name-v1';
  const clean=value=>typeof value==='string'?value.replace(/[\u0000-\u001f\u007f-\u009f]/g,'').replace(/\s+/g,' ').trim().slice(0,24):'';
- let name='';try{name=clean(localStorage.getItem(key))}catch{}
+ let name='';try{name=clean(localStorage.getItem(key))||clean(localStorage.getItem('jvSignupName'))}catch{}
  const profile={name:()=>name,ready:()=>!!name,onLogin:null};
  const $=id=>document.getElementById(id);
  function show(){

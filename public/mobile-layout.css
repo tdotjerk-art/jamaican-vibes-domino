@@ -593,14 +593,16 @@ body #modal #card.individual-setup button[onclick="startMatch()"] {
  body #modal #card.individual-setup {width:min(520px,calc(100vw - 24px))!important;}
 }
 
-/* Game Extras owns input while open; restore the setup unchanged on close. */
-body:has(#jvExtrasPanel[style*="flex"]) #modal {
+/* Replay takes precedence over Game Extras and setup. */
+body:has(:is(#jvExtrasPanel, #jvReplayPanel)[style*="flex"]) #modal,
+body:has(#jvReplayPanel[style*="flex"]) #jvExtrasPanel {
  display:none!important;
 }
-body #jvExtrasPanel {
+body :is(#jvExtrasPanel, #jvReplayPanel) {
  z-index:2147483647!important;
 }
-body #jvExtrasCard {
+body :is(#jvExtrasCard, #jvReplayCard) {
+ box-sizing:border-box;
  max-height:calc(100dvh - 24px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));
  overscroll-behavior:contain;
  -webkit-overflow-scrolling:touch;
