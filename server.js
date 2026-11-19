@@ -11,7 +11,7 @@ const ludiRouter=require("./ludi-online").createLUDIRouter();
 app.use("/api/ludi",ludiRouter);
 server.on("close",()=>ludiRouter.close());
 app.use(express.static("public"));
-app.get("/",(req,res)=>{const fs=require("node:fs");fs.readFile(__dirname+"/index.html","utf8",(error,html)=>{if(error)return res.sendStatus(500);res.type("html").send(html.replace("<head>",'<head><script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7136618234862981" crossorigin="anonymous"></script><script src="/analytics-client.js"></script>'))})});
+app.get("/",(req,res)=>{const fs=require("node:fs");fs.readFile(__dirname+"/index.html","utf8",(error,html)=>{if(error)return res.sendStatus(500);res.type("html").send(html.replace("Single Player works locally. Private online play supports 2–4 players, private hands, reconnecting, ready-up, rematches and spectators.</p>","Single Player works locally. Private online play supports 2–4 players, private hands, reconnecting, ready-up, rematches and spectators.</p><p class=\"jv-small\" style=\"text-align:center;margin:4px 0 0\"><a href=\"/privacy.html\" style=\"color:#ffd447\">Privacy policy</a></p>").replace("<head>",'<head><script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7136618234862981" crossorigin="anonymous"></script><script src="/analytics-client.js"></script>'))})});
 app.get("/health",(req,res)=>res.status(200).send("ok"));
 const rooms=new Map();
 const GRACE_MS=90000;
