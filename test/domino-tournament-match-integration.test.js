@@ -82,6 +82,26 @@ test('assigned tournament accounts join dedicated online rooms while outsiders a
  assert.equal(restored.phase,'playing');
  assert.deepEqual(restored.board,snapshot.board);
  assert.equal(restored.handNo,snapshot.handNo);
+ // Replacing the recovery code must revoke live match actions and old
+ // reconnect tokens, but a valid new code must recover the same paid seat.
+ const rotated=await api('rotate-recovery',{id:b.account.id,token:b.token});
+ assert.equal(rotated.status,200);
+ const oldCode=b.token;
+ b.token=rotated.body.token;
+ const revoked=event(third,'action-error');
+ third.emit('play-domino',{tileId:-1,side:'left'});
+ assert.match(await revoked,/Recovery code changed/);
+ third.disconnect();
+ const fourth=await connect();
+ const stale=event(fourth,'room-error');
+ fourth.emit('reconnect-player',{roomCode:seat.code,token:otherSeat.token,
+   accountId:b.account.id,accountToken:oldCode});
+ assert.match(await stale,/current wallet/);
+ const reconnected=event(fourth,'reconnect-ok');
+ fourth.emit('reconnect-player',{roomCode:seat.code,token:otherSeat.token,
+   accountId:b.account.id,accountToken:b.token});
+ assert.equal((await reconnected).seat,otherSeat.seat);
+ assert.equal((await api('me',{id:b.account.id,token:oldCode})).status,400);
  failure=event(rejected,'room-error');
  rejected.emit('join-room',{name:'Other',code:seat.code});
  assert.match(await failure,/tournament or public join/);
