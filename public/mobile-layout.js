@@ -270,6 +270,17 @@ function partnerWin(r,winnerSeat){
       appResize.observe(app);
     }
     fitFrame();
+    // Some WebKit mobile emulations and iOS browser transitions update
+    // innerWidth/innerHeight without dispatching resize or orientationchange.
+    // Cheap dimension-only fallback; it does not repaint when nothing changes.
+    let lastViewportWidth=root.innerWidth,lastViewportHeight=root.innerHeight;
+    const viewportPoll=root.setInterval(()=>{
+      const width=root.innerWidth,height=root.innerHeight;
+      if(width!==lastViewportWidth||height!==lastViewportHeight){
+        lastViewportWidth=width;lastViewportHeight=height;requestFit();
+      }
+    },150);
+    root.addEventListener('pagehide',()=>root.clearInterval(viewportPoll),{once:true});
   }
   root.JVMobileLayout={layout,render,mount,frame,partnerWin};
   if(typeof module!=='undefined')module.exports={layout,frame,partnerWin};
