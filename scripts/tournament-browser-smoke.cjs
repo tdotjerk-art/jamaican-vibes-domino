@@ -121,6 +121,10 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
     // This exercises layout reflow without reloading, reconnecting or discarding a board.
     for(let i=0;i<pages.length;i++){
      const page=pages[i];
+     // A physical iPhone's active Safari tab is foregrounded during rotation.
+     // WebKit suspends requestAnimationFrame in background tabs, so foreground
+     // each isolated profile before checking its responsive layout.
+     await page.bringToFront();
      await page.waitForFunction(()=>
       window.getOnlineSocket?.()?.connected &&
       document.querySelector('#jvLobby')?.style.display==='none',
