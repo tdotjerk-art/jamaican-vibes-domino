@@ -254,3 +254,18 @@ test('recovery code rotation revokes old credentials and survives database resta
   assert.equal(reopened.authenticate(owner.id,twice.token).balance,balance);
   reopened.close();
 });
+
+test('signup quotas survive restart and failed duplicate names do not consume capacity',t=>{
+  const {wallet,filename}=setup(t);
+  const source='203.0.113.24';
+  for(let i=0;i<4;i++)wallet.createAccount('Bounded'+i,source);
+  assert.throws(()=>wallet.createAccount('bounded0',source),/already registered/i);
+  for(let i=4;i<8;i++)wallet.createAccount('Bounded'+i,source);
+  assert.throws(()=>wallet.createAccount('Ninth',source),/Too many wallet signups/);
+  // A second source is independent and the quota is stored on disk.
+  assert.equal(wallet.createAccount('OtherSource','198.51.100.7').balance,100);
+  const reopened=createSqliteWallet(filename);
+  assert.throws(()=>reopened.createAccount('RestartNinth',source),/Too many wallet signups/);
+  assert.equal(reopened.createAccount('OtherNew','198.51.100.7').balance,100);
+  reopened.close();
+});
