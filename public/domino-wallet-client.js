@@ -91,15 +91,20 @@
             btn.type = 'button';
             btn.textContent = 'Play round ' + match.round + ', match ' + match.slot;
             btn.onclick = async () => {
-              if (!isValid(credentials) || !gameSocket?.connected) {
-                message('Connect to the online Domino lobby and sign in before joining your match.');
+              if (!isValid(credentials)) {
+                message('Create or recover your wallet before joining a tournament match.');
                 return;
               }
               try {
                 const me = await post('me', credentials);
                 if (me.name !== walletName()) throw Error('Wallet name does not match signup name.');
+                // Open the existing Domino UI socket, not an independent socket
+                // without the seat, board, and lobby event handlers.
+                window.gameConnectionMode = 'online';
+                const socket = window.ensureDominoSocket?.();
+                if (!socket) throw Error('Online Domino connection is unavailable. Refresh the game and try again.');
                 message('Connecting to tournament round ' + match.round + '…');
-                gameSocket.emit('join-tournament-match', {
+                socket.emit('join-tournament-match', {
                   tournamentId: event.id, round: match.round, slot: match.slot,
                   accountId: credentials.id, accountToken: credentials.token
                 });
