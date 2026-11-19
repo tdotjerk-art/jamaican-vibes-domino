@@ -91,7 +91,12 @@ if(creditsEnabled){
    // never credits an account; no browser-accessible settlement endpoint exists.
    app.post("/api/domino/wallet/rewards/intent",(req,res)=>{
      res.set("Cache-Control","no-store");
-     if(process.env.DOMINO_REWARDED_ADS_ENABLED!=="true")
+     // There is not yet a verified publisher SSV callback. This endpoint
+     // exists only for isolated local tests, never on a hosted service,
+     // regardless of reward flags set in the Render dashboard.
+     if(process.env.RENDER==="true"||
+        process.env.DOMINO_REWARDED_ADS_TEST_MODE!=="true"||
+        process.env.DOMINO_REWARDED_ADS_ENABLED!=="true")
        return res.status(503).json({error:"Verified rewarded ads are not configured."});
      try{return res.json(wallet.createRewardIntent(req.body?.id,req.body?.token))}
      catch(e){return res.status(/Too many reward requests/.test(e.message)?429:400).json({error:e.message})}
