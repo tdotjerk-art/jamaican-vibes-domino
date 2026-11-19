@@ -621,3 +621,35 @@ body #jvExtrasCard {
  #jvTournamentDetails {max-height:min(39dvh,210px)}
  #jvWalletPanel > button {min-height:36px;margin:3px 0}
 }
+
+/* Short landscape: voice controls must not consume a separate flex row.
+   The table's height is computed against the reserved top strip; an 83px
+   voice row otherwise pushes the bottom hand out of the viewport. */
+@media (orientation:landscape) and (max-height:520px) {
+ body .app > #jvVoiceGame {
+  position:absolute!important;
+  inset:calc(env(safe-area-inset-top,0px) + 32px) 6px auto auto!important;
+  z-index:10001!important;
+  display:flex!important;
+  flex-direction:row!important;
+  flex-wrap:nowrap!important;
+  align-items:center!important;
+  gap:3px!important;
+  width:max-content!important;
+  max-width:42vw!important;
+  min-height:0!important;
+  height:auto!important;
+  margin:0!important;
+  padding:2px 4px!important;
+  font-size:10px!important;
+  line-height:1!important;
+  box-sizing:border-box!important;
+ }
+ body .app > #jvVoiceGame button {
+  min-height:24px!important;
+  padding:2px 4px!important;
+  font-size:10px!important;
+  white-space:nowrap!important;
+ }
+ body .app > #jvVoiceGame small:empty{display:none!important}
+}
