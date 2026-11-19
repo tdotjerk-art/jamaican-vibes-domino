@@ -32,6 +32,16 @@ test('SQLite tournament pilot API requires admin key and persists transactional 
   const a=(await request('POST','register',{name:'BracketA'})).body;
   const b=(await request('POST','register',{name:'BracketB'})).body;
   const c=(await request('POST','register',{name:'BracketC'})).body;
+  // Rewards remain fail-closed without a configured verified provider.
+  const unavailable=await request('POST','rewards/intent',{id:a.account.id,token:a.token});
+  assert.equal(unavailable.status,503);
+  assert.match(unavailable.body.error,/not configured/i);
+  assert.equal((await request('POST','rewards/status',{id:a.account.id,token:a.token,nonce:'0'.repeat(48)})).status,400);
+  assert.equal((await request('POST','me',{id:a.account.id,token:a.token})).body.balance,100);
+  const forged=await request('POST','rewards/settle',{id:a.account.id,token:a.token,
+    nonce:'0'.repeat(48),eventId:'client-forgery'});
+  assert.equal(forged.status,404,'There must be no browser reward settlement API');
+
 
   // Recovery-code replacement is only authorized by the previous valid code.
   const failedRotate=await request('POST','rotate-recovery',{id:a.account.id,token:'0'.repeat(64)});
