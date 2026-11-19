@@ -268,6 +268,9 @@
       };
       socket.on('room-error', error => { message('Unable to join match: ' + String(error)); });
       socket.on('seat-assigned', () => { message('Tournament seat assigned. Follow the game screen to play.'); });
+      socket.on('wallet-session-revoked', data => {
+        message(String(data?.message || 'Wallet recovery changed. Reconnect with the new code before playing.'));
+      });
       socket.on('disconnect', () => { message('Disconnected from online Domino. Reconnect before using Play Round.'); });
       socket.on('wallet-balance', data => {
         if (Number.isSafeInteger(data?.balance)) update(data.balance);
