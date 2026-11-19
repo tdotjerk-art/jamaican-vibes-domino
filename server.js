@@ -70,6 +70,9 @@ if(creditsEnabled){
    try{
      const response=wallet.rotateRecoveryToken(id,req.body?.token);
      recoveryAttempts.delete(key);
+     // The database has already revoked the previous code. Remove every
+     // paid socket from its broadcast room before returning the new code.
+     revokePaidSessions(response.id);
      return res.json({account:{id:response.id,name:response.name,balance:response.balance},token:response.token});
    }catch(e){
      attempt.count++;recoveryAttempts.set(key,attempt);
@@ -491,6 +494,40 @@ function holdTournamentSeat(r,seat){
  // Never forfeit or discard tournament boards after a connection timeout.
  if(r.phase!=="match-over")pauseForDisconnect(r);
  emitAll(r);
+}
+// Remove a paid seat's existing socket from its room as soon as the wallet
+// credential changes. This prevents further private-hand/board broadcasts.
+// Keep the paid seat and its entry intact for authenticated reconnection.
+function revokePaidSessions(accountId){
+ if(!sqliteCredits)return;
+ for(const r of rooms.values()){
+  if(!r.publicTable&&!r.tournamentFixture)continue;
+  for(let seat=0;seat<r.players.length;seat++){
+   const p=r.players[seat];
+   if(!p||p.accountId!==accountId||!p.connected||!p.id)continue;
+   const socket=io.sockets.sockets.get(p.id);
+   if(socket){
+    socket.leave(r.code);
+    delete socket.data.roomCode;
+    delete socket.data.seat;
+    delete socket.data.spectator;
+    socket.emit('wallet-session-revoked',{
+      message:'Wallet recovery code changed. Reconnect with your new code to continue.',
+      roomCode:r.code,seat
+    });
+   }
+   // Apply existing interruption policies: tournament boards are held;
+   // paid public games pause and retain their normal 90-second grace.
+   if(r.tournamentFixture){holdTournamentSeat(r,seat);continue;}
+   if(r.phase==='waiting'&&r.handNo===0){abandonSeat(r,seat);continue;}
+   if(p.graceTimer)clearTimeout(p.graceTimer);
+   p.connected=false;p.id=null;p.ready=false;
+   pauseForDisconnect(r);
+   p.graceTimer=setTimeout(()=>abandonSeat(r,seat),GRACE_MS);
+   p.graceTimer.unref?.();
+   emitAll(r);
+  }
+ }
 }
 function abandonSeat(r,seat){
  const p=r.players[seat];if(!p)return;
