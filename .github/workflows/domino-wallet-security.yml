@@ -7,6 +7,7 @@ on:
       - server.js
       - public/domino-wallet-client.js
       - test/domino-credit-sqlite-integration.test.js
+      - test/domino-tournament-match-integration.test.js
       - domino-wallet-sqlite.js
       - test/domino-wallet-sqlite.test.js
       - .github/workflows/domino-wallet-security.yml
@@ -24,6 +25,6 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Verify token revocation and persisted wallet behavior
-        run: node --test test/domino-wallet-sqlite.test.js test/domino-credit-sqlite-integration.test.js
+        run: node --test test/domino-wallet-sqlite.test.js test/domino-credit-sqlite-integration.test.js test/domino-tournament-match-integration.test.js
       - name: Full development regression suite
         run: npm test
