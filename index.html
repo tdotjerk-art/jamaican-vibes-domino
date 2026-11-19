@@ -5732,6 +5732,8 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
     });
     return sock;
   }
+  // The credit-pilot tournament launcher must use the same socket as the game UI.
+  window.ensureDominoSocket=ensureSocket;
 
   function playSound(kind){
     if(!soundOn||!window.JVSound.enabled(kind))return;
