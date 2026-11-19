@@ -63,7 +63,6 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
      // A full two-player fixture may start immediately as seat two joins.
      // In that case the lobby is correctly hidden in favor of the playing table.
      try { await page.waitForFunction(() =>
-       document.querySelector('#jvLobby')?.getBoundingClientRect().width > 0 &&
        (getComputedStyle(document.querySelector('#jvLobby')).display !== 'none' ||
        /Tournament seat assigned/.test(document.querySelector('#jvWalletStatus')?.textContent || '')),
        null,{timeout:12000}); }
