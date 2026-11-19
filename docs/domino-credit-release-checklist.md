@@ -38,6 +38,14 @@
 - [ ] Verify ad-provider contract, account, policy restrictions, reward amount, age/consent eligibility and production callback delivery. Never accept the browser's `rewardedSlotGranted` event as authorization to credit a wallet.
 - [ ] Expose a player-facing opt-in reward control only after callback verification and anti-fraud tests pass. All rewards remain **disabled in production**.
 
+## Rewarded web SSV priority (2026-11-19)
+
+- [x] Confirmed Google Ad Manager currently supports **web rewarded ad server-side callbacks** when a network configures an SSV URL on its rewarded ad units. The Google Ad Manager **web** help page documents GET callbacks but does not document the mobile SDK's ECDSA `signature` / `key_id` verification contract for web. **Do not reuse mobile SSV key verification assumptions for web.** Official source: https://support.google.com/admanager/answer/9116812
+- [x] Added an authenticated, per-account `rewards/status` read-only endpoint that reports **pending, expired, or settled** without granting credits. Added a rate-limited `rewards/intent` endpoint which responds **503 by default** until `DOMINO_REWARDED_ADS_ENABLED=true` is explicitly set. Creating or polling an intent does not credit anyone. The deliberate absence of a browser `rewards/settle` endpoint is tested.
+- [ ] **Critical launch blocker:** Verify the actual publisher's **web-specific SSV callback authentication**, signed fields or equivalent verifiable provider-issued proof, event/nonce linkage, delivery and retries. Do not rely on the source IP, HTTP request arrival, guessed URL secret, or unsigned browser GPT `rewardedSlotGranted` event as sufficient credit authorization. A mobile SDK signed-callback guide is **not** proof of equivalent web support.
+- [ ] Obtain an approved Google Ad Manager account and rewarded-web ad unit, consent/policy review and real provider test callbacks before configuring any ad provider or enabling rewards. Until then `settleVerifiedRewardIntent` remains internal only, with no public callback route and no production ads.
+- [ ] Add provider-specific signature/authentication integration tests, real callback fixture replay and live test evidence before marking rewarded ads ready.
+
 ## Tournament priority #4 verification (2026-11-18)
 
 - [x] Verified a complete two-player Cut Throat tournament game to exactly six with automatic, server-authoritative fixture settlement and no extra tournament debit.
