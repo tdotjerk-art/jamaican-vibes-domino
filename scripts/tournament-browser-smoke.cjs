@@ -91,6 +91,45 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
      return /Tournament seat assigned/.test(status) ||
        document.querySelector('#jvLobby')?.style.display==='flex';
     },null,{timeout:10000});
+    // Rotate the SAME connected phone while its real tournament match is active.
+    // This exercises layout reflow without reloading, reconnecting or discarding a board.
+    for(let i=0;i<pages.length;i++){
+     const page=pages[i];
+     await page.waitForFunction(()=>
+      window.getOnlineSocket?.()?.connected &&
+      document.querySelector('#jvLobby')?.style.display==='none',
+      null,{timeout:12000});
+     const before=await page.evaluate(()=>({
+      socketId:window.getOnlineSocket?.()?.id,
+      board:document.querySelector('#board')?.textContent,
+      boardChildren:document.querySelector('#board')?.children.length,
+      phaseText:document.querySelector('#jvConnectionText')?.textContent
+     }));
+     const rotated=mode.name==='portrait'
+       ?{width:844,height:390}:{width:390,height:844};
+     await page.setViewportSize(rotated);
+     await page.waitForTimeout(180);
+     const after=await page.evaluate(()=>({
+      viewportWidth:innerWidth,viewportHeight:innerHeight,
+      docWidth:document.documentElement.scrollWidth,
+      socketId:window.getOnlineSocket?.()?.id,
+      connected:window.getOnlineSocket?.()?.connected,
+      lobbyVisible:getComputedStyle(document.querySelector('#jvLobby')).display!=='none',
+      board:document.querySelector('#board')?.textContent,
+      boardChildren:document.querySelector('#board')?.children.length
+     }));
+     assert.equal(after.connected,true,mode.name+' player '+(i+1)+': rotation disconnected online game');
+     assert.equal(after.socketId,before.socketId,mode.name+' player '+(i+1)+': rotation unexpectedly changed socket');
+     assert.equal(after.lobbyVisible,false,mode.name+' player '+(i+1)+': rotation reopened lobby during match');
+     assert.ok(after.docWidth<=after.viewportWidth+2,
+      mode.name+' player '+(i+1)+': rotation caused horizontal scrolling '+JSON.stringify(after));
+     assert.equal(after.boardChildren,before.boardChildren,
+      mode.name+' player '+(i+1)+': rotation changed number of played dominoes');
+     assert.equal(after.board,before.board,mode.name+' player '+(i+1)+': rotation changed displayed board');
+     console.log('PASS: '+mode.name+' player '+(i+1)+' rotates in active match; '+JSON.stringify(after));
+     await page.screenshot({path:'tournament-'+mode.name+'-rotated-player'+(i+1)+'.png',fullPage:true});
+     await page.setViewportSize({width:mode.width,height:mode.height});
+    }
     await pages[0].screenshot({path:'tournament-'+mode.name+'.png',fullPage:true});
    }finally{for(const context of contexts)await context.close()}
   }
