@@ -31,6 +31,15 @@ function createSqliteWallet(filename) {
     CREATE TABLE IF NOT EXISTS verified_ad_events (
       event_id TEXT PRIMARY KEY, account_id TEXT NOT NULL REFERENCES accounts(id)
     );
+    CREATE TABLE IF NOT EXISTS reward_intents (
+      nonce TEXT PRIMARY KEY,
+      account_id TEXT NOT NULL REFERENCES accounts(id),
+      created_at INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','settled')),
+      event_id TEXT UNIQUE
+    );
+    CREATE INDEX IF NOT EXISTS reward_intents_account_created
+      ON reward_intents(account_id,created_at);
     CREATE TABLE IF NOT EXISTS public_match_entries (
       account_id TEXT NOT NULL REFERENCES accounts(id),
       entry_id TEXT NOT NULL,
@@ -438,6 +447,46 @@ function createSqliteWallet(filename) {
       return {...tournamentStatus(id),applied:true};
     });
   }
+  // A pending reward request is NOT proof that an ad was watched. Only a
+  // trusted, separately verified provider callback may invoke settlement.
+  // No public HTTP route exposes settlement without provider verification.
+  function createRewardIntent(id,token,now=Date.now()) {
+    if(!Number.isSafeInteger(now)||now<=0)throw Error('Invalid reward timestamp.');
+    return tx(()=>{
+      const account=authenticate(id,token);
+      const since=now-60*60*1000;
+      const count=db.prepare("SELECT COUNT(*) AS n FROM reward_intents WHERE account_id=? AND created_at>?").get(id,since).n;
+      if(count>=6)throw Error('Too many reward requests. Try again later.');
+      const nonce=crypto.randomBytes(24).toString('hex');
+      db.prepare('INSERT INTO reward_intents(nonce,account_id,created_at) VALUES(?,?,?)').run(nonce,id,now);
+      return {nonce,accountId:account.id,expiresAt:now+15*60*1000};
+    });
+  }
+  function settleVerifiedRewardIntent(nonce,eventId,now=Date.now()) {
+    if(typeof nonce!=='string'||!/^[a-f0-9]{48}$/.test(nonce)||!opOK(eventId))
+      throw Error('Invalid verified ad event.');
+    if(!Number.isSafeInteger(now)||now<=0)throw Error('Invalid reward timestamp.');
+    return tx(()=>{
+      const intent=db.prepare('SELECT nonce,account_id AS accountId,created_at AS createdAt,status,event_id AS eventId FROM reward_intents WHERE nonce=?').get(nonce);
+      if(!intent)throw Error('Unknown reward request.');
+      if(intent.status==='settled'){
+        if(intent.eventId!==eventId)throw Error('Reward request already settled by a different event.');
+        return {accountId:intent.accountId,balance:get(intent.accountId).balance,applied:false};
+      }
+      if(now<intent.createdAt||now-intent.createdAt>15*60*1000)
+        throw Error('Reward request expired.');
+      const duplicate=db.prepare('SELECT account_id FROM verified_ad_events WHERE event_id=?').get(eventId);
+      if(duplicate)throw Error('Provider reward event already used.');
+      // A maximum of three verified rewarded ads per account per rolling 24h.
+      const rewarded=db.prepare(`SELECT COUNT(*) AS n FROM reward_intents
+        WHERE account_id=? AND status='settled' AND created_at>?`).get(intent.accountId,now-24*60*60*1000).n;
+      if(rewarded>=3)throw Error('Daily rewarded-ad limit reached.');
+      db.prepare('INSERT INTO verified_ad_events(event_id,account_id) VALUES(?,?)').run(eventId,intent.accountId);
+      const changeResult=change(intent.accountId,'reward:'+eventId,30,'verified-reward');
+      db.prepare("UPDATE reward_intents SET status='settled',event_id=? WHERE nonce=?").run(eventId,nonce);
+      return {accountId:intent.accountId,balance:changeResult.balance,applied:true,credits:30};
+    });
+  }
   function awardVerifiedReward(id,eventId) {
     if(!opOK(eventId))throw Error('Invalid reward event ID.');
     return tx(()=>{
@@ -453,7 +502,7 @@ function createSqliteWallet(filename) {
     createAccount,authenticate,rotateRecoveryToken,balance,price,
     enter:(id,mode,entryId)=>tx(()=>enterInternal(id,mode,entryId)),
     refund:(id,mode,entryId)=>tx(()=>refundInternal(id,mode,entryId)),
-    awardVerifiedReward,
+    awardVerifiedReward,createRewardIntent,settleVerifiedRewardIntent,
     awardDailyLogin:(id,day)=>{
       if(typeof day!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(day))throw Error('Invalid login day.');
       return tx(()=>change(id,'daily:'+day,20,'daily-login'));
