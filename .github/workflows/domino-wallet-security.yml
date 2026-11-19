@@ -1,0 +1,24 @@
+name: Domino wallet recovery security
+
+on:
+  push:
+    branches: [feature/domino-credit-wallet-pilot]
+    paths:
+      - domino-wallet-sqlite.js
+      - test/domino-wallet-sqlite.test.js
+      - .github/workflows/domino-wallet-security.yml
+  workflow_dispatch:
+
+jobs:
+  recovery:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Verify rotation, revocation, tournament accounts and all game regressions
+        run: npm test
