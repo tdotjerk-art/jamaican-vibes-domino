@@ -66,6 +66,20 @@
     await refreshMyTournaments();
   }
 
+  async function rotateRecoveryCode() {
+    if (!isValid(credentials)) throw Error('Recover your wallet before changing its recovery code.');
+    if (!window.confirm('Replace your current recovery code? The old code will stop working immediately. Save the new code somewhere secure.')) return;
+    const rotated = await post('rotate-recovery', credentials);
+    const next = {id:rotated.account.id, token:rotated.token};
+    if (!isValid(next)) throw Error('Server returned an invalid recovery code.');
+    credentials = next;
+    sessionStorage.setItem(KEY, JSON.stringify(next));
+    update(rotated.account.balance);
+    const code = $('jvWalletRecovery');
+    if (code) { code.value = next.id + ':' + next.token; code.hidden = false; }
+    message('Recovery code changed. Your OLD code no longer works. Save this NEW code securely now; losing it may permanently prevent account recovery.');
+  }
+
   async function refreshMyTournaments() {
     const list = $('jvMyTournamentMatches');
     if (!list) return;
@@ -183,6 +197,7 @@
       '<p style="margin:5px 0"><label>Recovery code <input id="jvWalletRecovery" readonly hidden aria-label="Your recovery code" style="width:100%;font-size:12px"></label></p>'+
       '<label>Existing recovery code <input id="jvWalletRecoveryInput" autocomplete="off" aria-label="Existing recovery code" style="width:100%"></label>'+
       '<button type="button" id="jvWalletRestore">Recover Wallet</button>'+
+      ' <button type="button" id="jvWalletRotate">Change Recovery Code</button>'+
       '<details id="jvTournamentDetails" hidden style="margin-top:8px"><summary>Tournament registration (pilot)</summary>'+
       '<p style="margin:4px 0">Entry: 25 credits. 2, 3 and 4-player Cut Throat tournaments. Join your assigned round below once the bracket starts.</p>'+
       '<button type="button" id="jvTournamentRefresh">Refresh tournaments</button>'+
@@ -206,6 +221,9 @@
     };
     $('jvWalletRestore').onclick = async () => {
       try { await restore(); } catch (e) { message(e.message); }
+    };
+    $('jvWalletRotate').onclick = async () => {
+      try { await rotateRecoveryCode(); } catch (e) { message(e.message); }
     };
     // Capture only public joins; original private and computer handlers stay intact.
     join.addEventListener('click', async e => {
