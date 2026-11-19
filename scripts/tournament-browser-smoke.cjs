@@ -35,7 +35,8 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
   for(const mode of modes){
    // Each rotation scenario is an independent tournament, since live
    // tournament seats must remain reserved after a browser disconnect.
-   const names=['Phone'+browserEngine+mode.name+'One','Phone'+browserEngine+mode.name+'Two'];
+   const shortTag=(browserEngine==='webkit'?'WK':'CR')+(mode.name==='portrait'?'P':'L');
+   const names=['Phone'+shortTag+'One','Phone'+shortTag+'Two'];
    const accounts=[];
    const tournamentId='browser_'+browserEngine+'_'+mode.name;
    for(const name of names)accounts.push(await api('register',{name}));
