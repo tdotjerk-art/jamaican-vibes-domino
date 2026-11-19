@@ -1,9 +1,10 @@
 'use strict';
-// Isolated Chromium viewport smoke for the credit pilot. Never touches production.
+// Isolated Chromium/WebKit viewport smoke for the credit pilot. Never touches production.
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
 const {fork}=require('node:child_process');
-const {chromium}=require('playwright');
+const {chromium,webkit}=require('playwright');
+const browserEngine=process.env.DOMINO_TEST_BROWSER==='webkit'?'webkit':'chromium';
 const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 (async()=>{
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'domino-browser-'));
@@ -29,14 +30,14 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
    const value=await response.json();
    assert.equal(response.status,200,route+': '+JSON.stringify(value));return value;
   };
-  browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+  browser=await (browserEngine==='webkit'?webkit:chromium).launch(browserEngine==='webkit'?{headless:true}:{headless:true,args:['--no-sandbox']});
   const modes=[{name:'portrait',width:390,height:844},{name:'landscape',width:844,height:390}];
   for(const mode of modes){
    // Each rotation scenario is an independent tournament, since live
    // tournament seats must remain reserved after a browser disconnect.
-   const names=['Phone'+mode.name+'One','Phone'+mode.name+'Two'];
+   const names=['Phone'+browserEngine+mode.name+'One','Phone'+browserEngine+mode.name+'Two'];
    const accounts=[];
-   const tournamentId='browser_'+mode.name;
+   const tournamentId='browser_'+browserEngine+'_'+mode.name;
    for(const name of names)accounts.push(await api('register',{name}));
    await api('tournaments',{id:tournamentId,capacity:2,playerCount:2},true);
    for(const acct of accounts)await api('tournaments/'+tournamentId+'/join',{id:acct.account.id,token:acct.token});
@@ -177,7 +178,7 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
       mode.name+' player '+(i+1)+': home screen still shown after tournament match started '+JSON.stringify(after));
           assert.ok(after.docHeight<=after.viewportHeight+3,
       mode.name+' player '+(i+1)+': rotation requires vertical page scrolling '+JSON.stringify(after));
-     await page.screenshot({path:'tournament-'+mode.name+'-rotated-player'+(i+1)+'.png',fullPage:true});
+     await page.screenshot({path:'tournament-'+browserEngine+'-'+mode.name+'-rotated-player'+(i+1)+'.png',fullPage:true});
      for(const part of after.screenParts){
       if(!part.found||!part.visible||!part.width||!part.height)continue;
       assert.ok(part.top>=-3&&part.bottom<=after.viewportHeight+3,
@@ -189,9 +190,9 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
      console.log('PASS: '+mode.name+' player '+(i+1)+' rotates in active match; '+JSON.stringify(after));
      await page.setViewportSize({width:mode.width,height:mode.height});
     }
-    await pages[0].screenshot({path:'tournament-'+mode.name+'.png',fullPage:true});
+    await pages[0].screenshot({path:'tournament-'+browserEngine+'-'+mode.name+'.png',fullPage:true});
    }finally{for(const context of contexts)await context.close()}
   }
-  console.log('PASS: tournament Play Round browser seats and portrait/landscape viewport checks');
+  console.log('PASS: '+browserEngine+' tournament Play Round browser seats and portrait/landscape viewport checks');
  }finally{if(browser)await browser.close();child.kill();await delay(300);fs.rmSync(dir,{recursive:true,force:true})}
 })().catch(error=>{console.error(error);process.exitCode=1});
