@@ -3491,7 +3491,7 @@ function openSetup(){
     <button id="partnerBtn" onclick="setMode('partner')">👥 Partner</button>
     <button id="individualBtn" onclick="setMode('individual')">🧍 Cut Throat</button>
   </div>
-  ${playerCountSelect("localPlayerCount")}<p class="small">2 or 3 players use Cut Throat. Partner requires 4.</p><p><b>Target</b></p>
+  ${playerCountSelect("localPlayerCount")}<p class="small">Cut Throat supports 2, 3 or 4 players. Partner requires 4.</p><p><b>Target</b></p>
   <select id="targetSel"><option value="6">6 points</option></select>
   <p class="small">P1 + P3 are partners. P2 + P4 are partners.</p>
   <button id="startMatchBtn" onclick="startMatch()">Start Match</button>`);
@@ -5578,12 +5578,12 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
   <h2 class="jv-title" style="font-size:30px">ONLINE PLAY</h2>
   <input class="jv-input" id="jvName" maxlength="20" placeholder="Your name">
   <div class="jv-grid">
-    <select class="jv-select" id="jvMode"><option value="partner">Partner — Bruck & Start (6 straight)</option><option value="individual">Cut Throat — First to 6</option></select>
+    <select class="jv-select" id="jvMode"><option value="individual" selected>Cut Throat — First to 6</option><option value="partner">Partner — Bruck & Start (4 players)</option></select>
     <label>Players<select class="jv-select" id="jvPlayerCount"><option value="2">2 players</option><option value="3">3 players</option><option value="4" selected>4 players</option></select></label><select class="jv-select" id="jvTarget"><option value="6">First to 6</option></select>
   </div>
   <select class="jv-select" id="jvTieRule"><option value="double-six-two">Blocked tie: play for 2, double-six poses</option><option value="last-winner-one">Blocked tie: play for 1, previous winner poses</option></select>
   <button class="jv-btn" id="jvPublicJoin">JOIN PUBLIC TABLE</button>
-  <p class="jv-small">Public tables seat players in arrival order and start at your selected player count. 2 or 3 players use Cut Throat.</p>
+  <p class="jv-small">Public tables seat players in arrival order. Cut Throat supports 2, 3 or 4 players. Partners requires 4 players; choose it separately above.</p>
   <button class="jv-btn" id="jvCreate">CREATE PRIVATE ROOM</button>
   <hr style="border-color:#496">
   <input class="jv-input" id="jvCode" maxlength="8" placeholder="Room code">

@@ -2,8 +2,7 @@ name: Production Domino safe smoke test
 
 on:
   push:
-    branches:
-      - feature/domino-credit-wallet-pilot
+    branches: [main]
     paths:
       - scripts/live-domino-smoke.cjs
       - .github/workflows/live-domino-smoke.yml
@@ -20,7 +19,7 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - name: Probe production without touching public matchmaking
+      - name: Verify live home, private tables and reconnection
         env:
           DOMINO_SMOKE_URL: https://jamaican-vibes-domino.onrender.com
         run: node scripts/live-domino-smoke.cjs
