@@ -106,4 +106,18 @@ test('SQLite tournament pilot API requires admin key and persists transactional 
   assert.deepEqual(three.body.matches[0].playerIds,[a.account.id,b.account.id,c.account.id]);
   assert.equal((await request('POST','tournaments/cup3/results',{round:1,slot:1,winnerId:c.account.id},true)).body.status,'completed');
   assert.equal((await request('GET','tournaments/cup4')).body.playerCount,4);
+
+  // A browser can spoof X-Forwarded-For, but it must not evade the peer quota.
+  for(let i=0;i<5;i++){
+    const created=await request('POST','register',{name:'Quota'+i});
+    assert.equal(created.status,200);
+  }
+  const blocked=await fetch(base+'register',{
+    method:'POST',
+    headers:{'content-type':'application/json','x-forwarded-for':'198.51.100.99'},
+    body:JSON.stringify({name:'QuotaNinth'})
+  });
+  assert.equal(blocked.status,429);
+  assert.match((await blocked.json()).error,/Too many wallet signups/);
+
 });
