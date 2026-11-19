@@ -39,6 +39,33 @@ if(creditsEnabled){
    return {account:{id:account.id,name:account.name,balance:account.balance},token:account.token};
  }));
  app.post("/api/domino/wallet/me",(req,res)=>result(res,()=>wallet.authenticate(req.body?.id,req.body?.token)));
+
+ // Rate-limit failed recovery-code changes per network and account ID.
+ // The owner must present the current valid code; no identity-less reset exists.
+ const recoveryAttempts=new Map();
+ app.post("/api/domino/wallet/rotate-recovery",(req,res)=>{
+   if(!sqliteCredits||!wallet.rotateRecoveryToken)
+     return res.status(503).json({error:"Wallet recovery rotation is unavailable."});
+   res.set("Cache-Control","no-store");
+   const id=typeof req.body?.id==="string"?req.body.id:"";
+   const key=crypto.createHash("sha256").update(String(req.ip||req.socket.remoteAddress||"")+":"+id.slice(0,64)).digest("hex");
+   const now=Date.now(),windowMs=15*60*1000;
+   // Evict expired counters, bounding memory for long-running instances.
+   for(const [k,v] of recoveryAttempts)if(now-v.start>=windowMs)recoveryAttempts.delete(k);
+   const prior=recoveryAttempts.get(key);
+   const attempt=prior||{start:now,count:0};
+   if(attempt.count>=5)return res.status(429).json({error:"Too many recovery attempts. Try again later."});
+   try{
+     const response=wallet.rotateRecoveryToken(id,req.body?.token);
+     recoveryAttempts.delete(key);
+     return res.json({account:{id:response.id,name:response.name,balance:response.balance},token:response.token});
+   }catch(e){
+     attempt.count++;recoveryAttempts.set(key,attempt);
+     // A bad code must not reveal whether the wallet account exists.
+     return res.status(401).json({error:"Invalid recovery credentials."});
+   }
+ });
+
  // The date is chosen by the server, never supplied by a browser.
  app.post("/api/domino/wallet/daily",(req,res)=>result(res,()=>{
    const account=wallet.authenticate(req.body?.id,req.body?.token);
