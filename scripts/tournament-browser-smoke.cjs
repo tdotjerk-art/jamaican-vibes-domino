@@ -99,6 +99,14 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
       window.getOnlineSocket?.()?.connected &&
       document.querySelector('#jvLobby')?.style.display==='none',
       null,{timeout:12000});
+     // The deal animation intentionally covers the table and may temporarily
+     // translate it offscreen. Test the settled playable viewport, not the stage.
+     await page.waitForFunction(()=>{
+      const stage=document.querySelector('#jvDealStage');
+      if(!stage)return true;
+      const css=getComputedStyle(stage);
+      return css.display==='none'||css.visibility==='hidden'||css.opacity==='0';
+     },null,{timeout:12000});
      const before=await page.evaluate(()=>({
       socketId:window.getOnlineSocket?.()?.id,
       board:document.querySelector('#board')?.textContent,
