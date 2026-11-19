@@ -34,10 +34,19 @@ if(wallet?.refundInterruptedPublicMatches){
 if(creditsEnabled){
  app.use("/api/domino/wallet",express.json({limit:"2kb"}));
  const result=(res,fn)=>{try{return res.json(fn())}catch(e){return res.status(/Insufficient/.test(e.message)?402:400).json({error:e.message})}};
- app.post("/api/domino/wallet/register",(req,res)=>result(res,()=>{
-   const account=wallet.createAccount(req.body?.name);
-   return {account:{id:account.id,name:account.name,balance:account.balance},token:account.token};
- }));
+ app.post("/api/domino/wallet/register",(req,res)=>{
+   if(!sqliteCredits)return res.status(503).json({error:"Wallet registration requires protected SQLite storage."});
+   res.set("Cache-Control","no-store");
+   try{
+     // Do not trust user-supplied forwarding headers as an identity.
+     const source=String(req.socket.remoteAddress||req.ip||"unknown");
+     const account=wallet.createAccount(req.body?.name,source);
+     return res.json({account:{id:account.id,name:account.name,balance:account.balance},token:account.token});
+   }catch(e){
+     const limited=/Too many wallet signups/.test(e.message);
+     return res.status(limited?429:400).json({error:e.message});
+   }
+ });
  app.post("/api/domino/wallet/me",(req,res)=>result(res,()=>wallet.authenticate(req.body?.id,req.body?.token)));
 
  // Rate-limit failed recovery-code changes per network and account ID.
