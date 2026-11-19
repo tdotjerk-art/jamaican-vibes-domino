@@ -38,8 +38,10 @@ test('SQLite tournament pilot API requires admin key and persists transactional 
   assert.match(unavailable.body.error,/not configured/i);
   assert.equal((await request('POST','rewards/status',{id:a.account.id,token:a.token,nonce:'0'.repeat(48)})).status,400);
   assert.equal((await request('POST','me',{id:a.account.id,token:a.token})).body.balance,100);
-  const forged=await request('POST','rewards/settle',{id:a.account.id,token:a.token,
-    nonce:'0'.repeat(48),eventId:'client-forgery'});
+  const forged=await fetch(base+'rewards/settle',{method:'POST',
+    headers:{'content-type':'application/json'},
+    body:JSON.stringify({id:a.account.id,token:a.token,
+      nonce:'0'.repeat(48),eventId:'client-forgery'})});
   assert.equal(forged.status,404,'There must be no browser reward settlement API');
 
 
