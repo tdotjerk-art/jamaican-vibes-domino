@@ -329,3 +329,26 @@ test('global signup capacity blocks IP rotation, rolls back duplicates and survi
   assert.equal(fixture.balance,100);
   reopened.close();
 });
+
+test('reward status is private, reflects expiry and cannot itself mint credits',t=>{
+  const {wallet,filename}=setup(t);
+  const owner=wallet.createAccount('StatusOwner'),other=wallet.createAccount('StatusOther');
+  const now=Date.now();
+  const intent=wallet.createRewardIntent(owner.id,owner.token,now);
+  assert.deepEqual(wallet.rewardIntentStatus(owner.id,owner.token,intent.nonce,now+1000),
+    {status:'pending',credits:0});
+  assert.throws(()=>wallet.rewardIntentStatus(other.id,other.token,intent.nonce,now),/not found/);
+  assert.throws(()=>wallet.rewardIntentStatus(owner.id,'0'.repeat(64),intent.nonce,now),/credentials/);
+  assert.equal(wallet.balance(owner.id),100);
+  const reopened=createSqliteWallet(filename);
+  assert.deepEqual(reopened.rewardIntentStatus(owner.id,owner.token,intent.nonce,now+15*60*1000+1),
+    {status:'expired',credits:0});
+  assert.equal(reopened.balance(owner.id),100);
+  assert.throws(()=>reopened.settleVerifiedRewardIntent(intent.nonce,'late',now+15*60*1000+1),/expired/);
+  const valid=reopened.createRewardIntent(owner.id,owner.token,now+2000);
+  reopened.settleVerifiedRewardIntent(valid.nonce,'verified-event',now+2500);
+  assert.deepEqual(reopened.rewardIntentStatus(owner.id,owner.token,valid.nonce,now+3000),
+    {status:'settled',credits:30});
+  assert.equal(reopened.balance(owner.id),130);
+  reopened.close();
+});
