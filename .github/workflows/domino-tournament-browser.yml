@@ -7,6 +7,7 @@ on:
       - index.html
       - public/domino-wallet-client.js
       - public/mobile-layout.css
+      - public/mobile-layout.js
       - scripts/tournament-browser-smoke.cjs
       - .github/workflows/domino-tournament-browser.yml
   workflow_dispatch:
