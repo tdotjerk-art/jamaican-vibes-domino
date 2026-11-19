@@ -259,6 +259,11 @@
           if (!isValid(credentials)) { message('Create or recover your wallet first.'); return this; }
           return originalEmit.call(this, event, {...data, accountId: credentials.id, accountToken: credentials.token}, ...rest);
         }
+        if (event === 'reconnect-player' && isValid(credentials)) {
+          // Private rooms ignore these extra fields; paid games use them only
+          // if the previous recovery code has been revoked.
+          return originalEmit.call(this, event, {...data, accountId: credentials.id, accountToken: credentials.token}, ...rest);
+        }
         return originalEmit.call(this, event, data, ...rest);
       };
       socket.on('room-error', error => { message('Unable to join match: ' + String(error)); });
