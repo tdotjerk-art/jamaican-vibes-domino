@@ -46,7 +46,7 @@ if(creditsEnabled){
      const account=wallet.createAccount(req.body?.name,source);
      return res.json({account:{id:account.id,name:account.name,balance:account.balance},token:account.token});
    }catch(e){
-     const limited=/Too many wallet signups/.test(e.message);
+     const limited=/Too many wallet signups|temporarily at capacity/.test(e.message);
      return res.status(limited?429:400).json({error:e.message});
    }
  });
