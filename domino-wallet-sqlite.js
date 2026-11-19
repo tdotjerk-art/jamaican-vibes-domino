@@ -100,6 +100,12 @@ function createSqliteWallet(filename) {
       count INTEGER NOT NULL CHECK(count BETWEEN 0 AND 8),
       PRIMARY KEY(source_hash,utc_day)
     );
+    -- A separate system-wide cap slows IP/VPN rotation account farming.
+    -- The global count includes only successful new wallet registrations.
+    CREATE TABLE IF NOT EXISTS signup_global_counts (
+      utc_day TEXT PRIMARY KEY,
+      count INTEGER NOT NULL CHECK(count BETWEEN 0 AND 100)
+    );
   `);
   db.prepare("INSERT OR IGNORE INTO signup_guard_config(key,value) VALUES('salt',?)")
     .run(crypto.randomBytes(32).toString('hex'));
@@ -155,12 +161,17 @@ function createSqliteWallet(filename) {
           const prior=db.prepare('SELECT count FROM signup_guard_counts WHERE source_hash=? AND utc_day=?')
             .get(sourceHash,utcDay);
           if((prior?.count||0)>=8)throw Error('Too many wallet signups from this connection today. Try again later.');
+          const global=db.prepare('SELECT count FROM signup_global_counts WHERE utc_day=?').get(utcDay);
+          if((global?.count||0)>=100)throw Error('New wallet registration is temporarily at capacity. Try again tomorrow.');
           db.prepare(`INSERT INTO signup_guard_counts(source_hash,utc_day,count) VALUES(?,?,1)
             ON CONFLICT(source_hash,utc_day) DO UPDATE SET count=count+1`)
             .run(sourceHash,utcDay);
+          db.prepare(`INSERT INTO signup_global_counts(utc_day,count) VALUES(?,1)
+            ON CONFLICT(utc_day) DO UPDATE SET count=count+1`).run(utcDay);
           // Remove expired counters without retaining long-term network history.
-          db.prepare('DELETE FROM signup_guard_counts WHERE utc_day < ?')
-            .run(new Date(Date.now()-2*86400000).toISOString().slice(0,10));
+          const expiry=new Date(Date.now()-2*86400000).toISOString().slice(0,10);
+          db.prepare('DELETE FROM signup_guard_counts WHERE utc_day < ?').run(expiry);
+          db.prepare('DELETE FROM signup_global_counts WHERE utc_day < ?').run(expiry);
         }
         db.prepare('INSERT INTO accounts(id,name,token_hash,balance) VALUES(?,?,?,?)')
           .run(id,name,hash(token),STARTING_CREDITS);
