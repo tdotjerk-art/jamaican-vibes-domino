@@ -11,7 +11,7 @@ test('reward intent is authenticated, read-only until verified SSV and isolated 
   const child=fork(path.join(__dirname,'../test-support/credit-server.js'),[],{
     env:{...process.env,RENDER:'false',DOMINO_CREDITS_ENABLED:'true',
       DOMINO_CREDIT_STORAGE:'sqlite',DOMINO_CREDIT_DB_PATH:path.join(dir,'wallet.sqlite'),
-      DOMINO_REWARDED_ADS_ENABLED:'true'},
+      DOMINO_REWARDED_ADS_ENABLED:'true',DOMINO_REWARDED_ADS_TEST_MODE:'true'},
     stdio:['ignore','ignore','pipe','ipc']
   });
   t.after(()=>{child.kill();fs.rmSync(dir,{recursive:true,force:true});});
