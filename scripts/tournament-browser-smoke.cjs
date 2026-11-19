@@ -127,7 +127,8 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
        appVisibility:getComputedStyle(document.querySelector('.app')).visibility,
        onlineSetup:document.querySelector('#jvOnlineSetup')?getComputedStyle(document.querySelector('#jvOnlineSetup')).display:null,
        overlay:document.elementFromPoint(innerWidth/2,innerHeight/2)?.id||document.elementFromPoint(innerWidth/2,innerHeight/2)?.className||null,
-       onlineMode:window.gameConnectionMode},
+       onlineMode:window.gameConnectionMode,
+       appStyle:(()=>{const e=document.querySelector('.app'),c=getComputedStyle(e),r=e.getBoundingClientRect();return {top:r.top,bottom:r.bottom,justify:c.justifyContent,align:c.alignItems,paddingTop:c.paddingTop,height:c.height,flexDirection:c.flexDirection,overflow:c.overflow,children:[...e.children].map(el=>{const x=el.getBoundingClientRect(),s=getComputedStyle(el);return {id:el.id,cls:String(el.className).slice(0,40),display:s.display,position:s.position,order:s.order,flex:s.flex,top:Math.round(x.top),bottom:Math.round(x.bottom),height:Math.round(x.height)}})}})()},
       screenParts:['#board','.app > .table','#hand1','#hand2','#hand3','#hand4']
        .map(selector=>{
         const el=document.querySelector(selector);
