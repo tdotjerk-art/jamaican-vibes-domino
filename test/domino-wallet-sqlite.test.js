@@ -227,3 +227,30 @@ test('four-player Cut Throat has four-player fixtures and a two-player final',t=
   assert.equal(wallet.recordTournamentWinner('four_seats',2,1,players[4].id).status,'completed');
   assert.throws(()=>wallet.createTournament('invalid_format',4,5),/table size/);
 });
+
+test('recovery code rotation revokes old credentials and survives database restart',t=>{
+  const {wallet,filename}=setup(t);
+  const owner=wallet.createAccount('RecoveryOwner');
+  const other=wallet.createAccount('RecoveryOther');
+  wallet.enter(owner.id,'public','before-rotation');
+  const balance=wallet.balance(owner.id);
+  assert.throws(()=>wallet.rotateRecoveryToken(owner.id,'0'.repeat(64)),/credentials/i);
+  assert.throws(()=>wallet.rotateRecoveryToken(other.id,owner.token),/credentials/i);
+  const rotated=wallet.rotateRecoveryToken(owner.id,owner.token);
+  assert.equal(rotated.id,owner.id);
+  assert.equal(rotated.name,owner.name);
+  assert.equal(rotated.balance,balance);
+  assert.match(rotated.token,/^[a-f0-9]{64}$/);
+  assert.notEqual(rotated.token,owner.token);
+  assert.throws(()=>wallet.authenticate(owner.id,owner.token),/credentials/i);
+  assert.throws(()=>wallet.rotateRecoveryToken(owner.id,owner.token),/credentials/i);
+  assert.equal(wallet.authenticate(owner.id,rotated.token).balance,balance);
+  assert.equal(wallet.authenticate(other.id,other.token).balance,100);
+  const reopened=createSqliteWallet(filename);
+  assert.throws(()=>reopened.authenticate(owner.id,owner.token),/credentials/i);
+  assert.equal(reopened.authenticate(owner.id,rotated.token).balance,balance);
+  const twice=reopened.rotateRecoveryToken(owner.id,rotated.token);
+  assert.throws(()=>wallet.authenticate(owner.id,rotated.token),/credentials/i);
+  assert.equal(reopened.authenticate(owner.id,twice.token).balance,balance);
+  reopened.close();
+});
