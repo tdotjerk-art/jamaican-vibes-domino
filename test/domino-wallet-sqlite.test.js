@@ -269,3 +269,46 @@ test('signup quotas survive restart and failed duplicate names do not consume ca
   assert.equal(reopened.createAccount('OtherNew','198.51.100.7').balance,100);
   reopened.close();
 });
+
+test('trusted rewarded-ad intent settles only once and stays durable across restart',t=>{
+  const {wallet,filename}=setup(t);
+  const a=wallet.createAccount('RewardA'), b=wallet.createAccount('RewardB');
+  const now=Date.now();
+  assert.throws(()=>wallet.createRewardIntent(a.id,b.token,now),/credentials/i);
+  const intent=wallet.createRewardIntent(a.id,a.token,now);
+  assert.match(intent.nonce,/^[a-f0-9]{48}$/);
+  assert.equal(wallet.balance(a.id),100,'requesting an ad must award zero credits');
+  assert.throws(()=>wallet.settleVerifiedRewardIntent('f'.repeat(48),'provider-1',now),/Unknown/);
+  const paid=wallet.settleVerifiedRewardIntent(intent.nonce,'provider-1',now+1000);
+  assert.equal(paid.balance,130);
+  assert.equal(paid.credits,30);
+  assert.equal(wallet.settleVerifiedRewardIntent(intent.nonce,'provider-1',now+1500).applied,false);
+  assert.throws(()=>wallet.settleVerifiedRewardIntent(intent.nonce,'provider-2',now+2000),/different event/);
+  const other=wallet.createRewardIntent(b.id,b.token,now);
+  assert.throws(()=>wallet.settleVerifiedRewardIntent(other.nonce,'provider-1',now+1000),/already used/);
+  assert.equal(wallet.balance(b.id),100);
+  const reopened=createSqliteWallet(filename);
+  assert.equal(reopened.settleVerifiedRewardIntent(intent.nonce,'provider-1',now+3000).applied,false);
+  assert.equal(reopened.balance(a.id),130);
+  reopened.close();
+});
+test('reward requests expire and daily verified rewards are capped transactionally',t=>{
+  const {wallet}=setup(t);
+  const a=wallet.createAccount('RewardLimit');
+  const now=Date.now();
+  const expired=wallet.createRewardIntent(a.id,a.token,now);
+  assert.throws(()=>wallet.settleVerifiedRewardIntent(expired.nonce,'expired-event',now+15*60*1000+1),/expired/);
+  assert.equal(wallet.balance(a.id),100);
+  for(let i=0;i<3;i++){
+    const intent=wallet.createRewardIntent(a.id,a.token,now+1000+i*1000);
+    assert.equal(wallet.settleVerifiedRewardIntent(intent.nonce,'reward-'+i,now+1000+i*1000).applied,true);
+  }
+  assert.equal(wallet.balance(a.id),190);
+  const extra=wallet.createRewardIntent(a.id,a.token,now+6000);
+  assert.throws(()=>wallet.settleVerifiedRewardIntent(extra.nonce,'reward-four',now+6000),/limit reached/);
+  assert.equal(wallet.balance(a.id),190);
+  assert.throws(()=>wallet.settleVerifiedRewardIntent(extra.nonce,'reward-four',now-1),/expired/);
+  assert.throws(()=>wallet.createRewardIntent(a.id,'0'.repeat(64)),/credentials/);
+  wallet.createRewardIntent(a.id,a.token,now+7000);
+  assert.throws(()=>wallet.createRewardIntent(a.id,a.token,now+8000),/Too many reward requests/);
+});
