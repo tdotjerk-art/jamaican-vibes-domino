@@ -25,3 +25,5 @@ jobs:
       - run: npm ci
       - name: Verify token revocation and persisted wallet behavior
         run: node --test test/domino-wallet-sqlite.test.js test/domino-credit-sqlite-integration.test.js
+      - name: Full development regression suite
+        run: npm test
