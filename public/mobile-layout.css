@@ -653,3 +653,35 @@ body #jvExtrasCard {
  }
  body .app > #jvVoiceGame small:empty{display:none!important}
 }
+
+/* Tournament layout: the optional voice toolbar does not consume a flex row
+   in portrait either. Preserve all game area and keep controls accessible. */
+@media (max-width:650px) {
+ body .app > #jvVoiceGame {
+  position:absolute!important;
+  inset:calc(env(safe-area-inset-top,0px) + 32px) 4px auto auto!important;
+  display:flex!important;
+  flex-direction:row!important;
+  align-items:center!important;
+  flex-wrap:nowrap!important;
+  justify-content:flex-end!important;
+  gap:2px!important;
+  z-index:10001!important;
+  width:max-content!important;
+  max-width:58vw!important;
+  min-width:0!important;
+  height:auto!important;
+  min-height:0!important;
+  margin:0!important;
+  padding:2px 3px!important;
+  box-sizing:border-box!important;
+  font-size:10px!important;
+  line-height:1!important;
+ }
+ body .app > #jvVoiceGame button {
+  min-height:24px!important;
+  font-size:10px!important;
+  padding:2px 4px!important;
+ }
+ body .app > #jvVoiceGame small:empty{display:none!important}
+}
