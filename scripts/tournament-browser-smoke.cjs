@@ -119,7 +119,7 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
         const el=document.querySelector(selector);
         if(!el)return {selector,found:false};
         const r=el.getBoundingClientRect(),style=getComputedStyle(el);
-        return {selector,found:true,visible:style.display!=='none'&&style.visibility!=='hidden',
+        return {selector,found:true,visible:style.display!=='none'&&style.visibility!=='hidden'&&!!el.getClientRects().length&&!!el.offsetParent,
          top:Math.round(r.top),bottom:Math.round(r.bottom),
          left:Math.round(r.left),right:Math.round(r.right),width:Math.round(r.width),height:Math.round(r.height)};
        }),
@@ -136,6 +136,7 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
       mode.name+' player '+(i+1)+': rotation caused horizontal scrolling '+JSON.stringify(after));
      assert.ok(after.docHeight<=after.viewportHeight+3,
       mode.name+' player '+(i+1)+': rotation requires vertical page scrolling '+JSON.stringify(after));
+     await page.screenshot({path:'tournament-'+mode.name+'-rotated-player'+(i+1)+'.png',fullPage:true});
      for(const part of after.screenParts){
       if(!part.found||!part.visible||!part.width||!part.height)continue;
       assert.ok(part.top>=-3&&part.bottom<=after.viewportHeight+3,
@@ -145,7 +146,6 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
       mode.name+' player '+(i+1)+': rotation changed number of played dominoes');
      assert.equal(after.board,before.board,mode.name+' player '+(i+1)+': rotation changed displayed board');
      console.log('PASS: '+mode.name+' player '+(i+1)+' rotates in active match; '+JSON.stringify(after));
-     await page.screenshot({path:'tournament-'+mode.name+'-rotated-player'+(i+1)+'.png',fullPage:true});
      await page.setViewportSize({width:mode.width,height:mode.height});
     }
     await pages[0].screenshot({path:'tournament-'+mode.name+'.png',fullPage:true});
