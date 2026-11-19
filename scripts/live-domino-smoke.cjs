@@ -49,13 +49,15 @@ async function main(){
     socket.emit('join-room',{code:room.code,name:prefix+n});
     await seated;seats.push(socket);
   }
+  // Subscribe BEFORE the ready events: the first playing snapshots contain
+  // each player's private hand and may not be sent again until their turn.
+  const states=seats.map(()=>null);
+  seats.forEach((socket,i)=>socket.on('private-state',x=>{states[i]=x}));
   const playing=wait(first,'private-state',x=>x.phase==='playing');
   seats.forEach(p=>p.emit('toggle-ready'));
   const game=await playing;
   assert.equal(game.mode,'partner');
   assert.equal(game.playerCount,4);
-  const states=seats.map(()=>null);
-  seats.forEach((socket,i)=>socket.on('private-state',x=>{states[i]=x}));
   // During the deal animation moves must be rejected. Wait until playable.
   const intro=Math.max(0,game.dealUntil-Date.now())+125;
   await new Promise(resolve=>setTimeout(resolve,intro));
