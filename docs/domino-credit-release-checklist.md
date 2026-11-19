@@ -16,6 +16,15 @@
 - [x] Automated module/API/process-restart tests.
 - [x] Production guard refuses Render credit activation without selected SQLite backend and confirmed durable disk.
 
+## Account recovery security progress (2026-11-18)
+
+- [x] SQLite development wallet supports authenticated recovery-token rotation. Rotation issues a new random 256-bit token, stores only its hash, revokes the previous token immediately and retains the account ID, balance and tournaments.
+- [x] Verify invalid or cross-account tokens cannot rotate another player's credentials, and rotation persists across database restart. Focused CI run [44443231095](https://github.com/tdotjerk-art/jamaican-vibes-domino/actions/runs/44443231095) passed all 13 tests; full development suite [44443035776](https://github.com/tdotjerk-art/jamaican-vibes-domino/actions/runs/44443035776) passed all 221 tests.
+- [ ] Expose secure recovery-code rotation through an authenticated, rate-limited API and player UI, including confirmation, masking, recovery-code storage instructions and clear notice that lost codes cannot currently be reset without an independently verified identity.
+- [ ] Implement durable signup-abuse controls or verified identity, privacy terms and account recovery that does not permit unverified wallet recreation to farm starter credits.
+- [ ] Verify behavior of logged-in/reconnected sockets following token rotation and restart; existing sockets must not retain indefinite authorization after revocation.
+- [ ] Reconcile this draft branch with production dependency-security patches before any eventual release. **No credit-wallet code or account rotation API has been deployed.**
+
 ## Must be completed before activation
 
 - [x] Owner confirmed Render workspace `My Workspace` (`tea-dab89eou01pc73ef8nh0`); existing service already has a 1 GB `/var/data` disk. No new paid resource was purchased.
