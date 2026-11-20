@@ -57,7 +57,8 @@ if(creditsEnabled){
        return Promise.resolve(require("./domino-wallet-email").sendWalletEmail(
          account.email,"Verify your Jamaican Vibes wallet",account.emailCode,"verification"))
          .then(()=>res.json({account:{id:account.id,name:account.name},verificationRequired:true}))
-         .catch(()=>res.status(503).json({error:"Verification email could not be sent. Contact support; no wallet access was granted."}));
+         .catch(()=>res.status(202).json({account:{id:account.id,name:account.name},
+           verificationRequired:true,deliveryPending:true}));
      }
      return res.json({account:{id:account.id,name:account.name,balance:account.balance},token:account.token});
    }catch(e){
