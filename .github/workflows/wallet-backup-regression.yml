@@ -1,0 +1,36 @@
+name: Wallet backup and restore regression
+
+on:
+  push:
+    branches:
+      - feature/domino-credit-wallet-pilot
+    paths:
+      - 'domino-wallet*.js'
+      - 'test/domino-wallet-backup.test.js'
+      - '.github/workflows/wallet-backup-regression.yml'
+  pull_request:
+    paths:
+      - 'domino-wallet*.js'
+      - 'test/domino-wallet-backup.test.js'
+      - '.github/workflows/wallet-backup-regression.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  wallet-backup-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Test WAL-consistent backup and restore
+        run: node --test test/domino-wallet-backup.test.js
+      - name: Run all game regressions
+        run: npm test
