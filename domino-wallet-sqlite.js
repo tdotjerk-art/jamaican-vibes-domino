@@ -127,6 +127,13 @@ function createSqliteWallet(filename, options={}) {
       email_sent_at INTEGER,
       recovery_sent_at INTEGER
     );
+    CREATE TABLE IF NOT EXISTS wallet_email_send_quota (
+      account_id TEXT NOT NULL REFERENCES accounts(id),
+      purpose TEXT NOT NULL CHECK(purpose IN ('verification','recovery')),
+      utc_day TEXT NOT NULL,
+      count INTEGER NOT NULL CHECK(count BETWEEN 0 AND 5),
+      PRIMARY KEY(account_id,purpose,utc_day)
+    );
   `);
   const normalizeEmail=value=>{
     if(typeof value!=='string')throw Error('Valid email address required.');
@@ -223,6 +230,17 @@ function createSqliteWallet(filename, options={}) {
     }
     return {id,name,token,balance:STARTING_CREDITS,...(emailRequired?{email,emailCode}:{})};
   }
+  function countEmailSend(id,purpose,now){
+    const utcDay=new Date(now).toISOString().slice(0,10);
+    const prior=db.prepare('SELECT count FROM wallet_email_send_quota WHERE account_id=? AND purpose=? AND utc_day=?')
+      .get(id,purpose,utcDay);
+    if((prior?.count||0)>=5)throw Error('Daily email request limit reached.');
+    db.prepare(`INSERT INTO wallet_email_send_quota(account_id,purpose,utc_day,count)
+      VALUES(?,?,?,1) ON CONFLICT(account_id,purpose,utc_day)
+      DO UPDATE SET count=count+1`).run(id,purpose,utcDay);
+    const cutoff=new Date(now-2*86400000).toISOString().slice(0,10);
+    db.prepare('DELETE FROM wallet_email_send_quota WHERE utc_day < ?').run(cutoff);
+  }
   function resendRegistrationEmail(id,email,now=Date.now()){
     if(!idOK(id)||!Number.isSafeInteger(now))throw Error('Invalid verification request.');
     email=normalizeEmail(email);
@@ -232,6 +250,7 @@ function createSqliteWallet(filename, options={}) {
         throw Error('Unverified account not found.');
       if(identity.email_sent_at&&now-identity.email_sent_at<15*60000)
         throw Error('Please wait before requesting another verification email.');
+      countEmailSend(id,'verification',now);
       const next=makeEmailCode();
       db.prepare(`UPDATE wallet_email_identity
         SET verify_hash=?,verify_expires=?,email_sent_at=? WHERE account_id=?`)
@@ -261,6 +280,7 @@ function createSqliteWallet(filename, options={}) {
         FROM wallet_email_identity WHERE email=? AND verified_at IS NOT NULL`).get(email);
       if(!identity)return null; // Caller returns same generic response.
       if(identity.sent&&now-identity.sent<15*60000)return null;
+      countEmailSend(identity.accountId,'recovery',now);
       const code=makeEmailCode();
       db.prepare(`UPDATE wallet_email_identity
         SET recovery_hash=?,recovery_expires=?,recovery_sent_at=?
