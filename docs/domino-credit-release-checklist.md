@@ -16,6 +16,16 @@
 - [x] Automated module/API/process-restart tests.
 - [x] Production guard refuses Render credit activation without selected SQLite backend and confirmed durable disk.
 
+## Verified player email and lost-code recovery pilot (2026-11-20)
+
+- [x] Added SQLite email-bound identity, unique normalized addresses, verification challenges, single-use 15-minute codes, authenticated wallet activation only after mailbox proof, recovery by verified email, credential revocation, and per-account persistent mail request quotas. Development-only implementation in `domino-wallet-sqlite.js`, `server.js` and `domino-wallet-email.js`.
+- [x] Added player-facing signup, verification, resend, and lost-code recovery controls in `public/domino-wallet-client.js`. Verification and recovery codes remain masked by default.
+- [x] Added isolated direct-SQLite and HTTP/email-outbox tests in `test/domino-verified-email-recovery.test.js` and `test/domino-verified-email-api.test.js` and wired them into the wallet security workflow. **Tests committed, not yet independently confirmed passing.**
+- [x] Hosted credit activation now additionally fails closed without `DOMINO_VERIFIED_EMAIL_REQUIRED=true` and server-configured Resend email delivery; original Render persistent disk checks remain intact. No production configuration was changed.
+- [ ] Confirm passing GitHub security/full regression workflows; verify real verified-sender-domain email deliverability, account flows on iPhone Safari, expiry, code reuse, lockouts, signup and recovery abuse controls, and reconnection across active paid game sessions.
+- [ ] Review migration/ownership policy for any existing unverified wallets before turning strict verification on. Unique email verification proves mailbox ownership, **not** a one-person-one-account identity guarantee; aliasing, shared mailboxes and disposable addresses need an abuse-control policy.
+- [ ] Confirm provider secrets/sender, privacy notices, account support process, and user acceptance. Keep `DOMINO_CREDITS_ENABLED=false` in production until all release gates pass. See `docs/domino-verified-wallet-accounts.md`.
+
 ## Signup and recovery privacy hardening (2026-11-19)
 
 - [x] In draft PR #116, conceal both newly issued wallet recovery codes and entered codes with password fields. Add an explicit Show/Hide recovery code button, default to masked after registration/rotation, and erase the displayed code if the saved session is invalidated or its signup name changes. Source change: commit `70234d38e68628d8baf9012691d21468ccd9a1fc`.
