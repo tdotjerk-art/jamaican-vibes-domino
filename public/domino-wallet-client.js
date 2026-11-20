@@ -125,6 +125,12 @@
               } catch (error) { message(error.message); }
             };
             line.append(btn);
+            if (Number(match.attempts) > 1) {
+              const replay = document.createElement('p');
+              replay.style.margin = '4px 0';
+              replay.textContent = 'Server restart recovery: this round starts again with a fresh deal. Your tournament entry is already paid; no extra credits are charged.';
+              line.append(replay);
+            }
           }
         } else {
           const note = document.createElement('p');
@@ -199,7 +205,7 @@
       '<button type="button" id="jvWalletRestore">Recover Wallet</button>'+
       ' <button type="button" id="jvWalletRotate">Change Recovery Code</button>'+
       '<details id="jvTournamentDetails" hidden style="margin-top:8px"><summary>Tournament registration (pilot)</summary>'+
-      '<p style="margin:4px 0">Entry: 25 credits. 2, 3 and 4-player Cut Throat tournaments. Join your assigned round below once the bracket starts.</p>'+
+      '<p style="margin:4px 0">Entry: 25 credits. 2, 3 and 4-player Cut Throat tournaments. Join your assigned round below once the bracket starts. A disconnect pauses your match; it does not automatically count as a loss. After a server restart an unfinished round starts with a fresh deal at no additional entry charge.</p>'+
       '<button type="button" id="jvTournamentRefresh">Refresh tournaments</button>'+
       '<div id="jvTournamentList" aria-live="polite"></div>'+ 
       '<button type="button" id="jvTournamentMineRefresh">My Matches</button>'+ 
