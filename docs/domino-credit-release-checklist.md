@@ -102,6 +102,16 @@
 4. Test live URL and monitor credit entry, refund and provider verification logs.
 5. Keep an immediate rollback path that disables credits without breaking private and computer games.
 
+## Read-only production recheck (2026-11-19)
+
+- [x] Render reports service `srv-dabmu467bikc73dkp380` running on the existing single Node instance, deploying automatically from `main` with its existing 1 GB disk configured at `/var/data`. No new service or disk is needed for the pilot.
+- [x] Render deployment `dep-dbvk8ht9el5s73epa07g` reached **live** on 2026-11-19 at 18:48 UTC, commit `4342ba717a1d246d5e36b4b9bcf4fc079614e1c2` (privacy notice linked from five games, PR #120). The live deploy log reports a ready Node server and durable LUDI / Hold'em storage enabled; it does **not** demonstrate an initialized or durable Domino credit SQLite database.
+- [ ] Verify the real Node runtime version and `node:sqlite` compatibility inside the running service (the Render service metadata identifies the runtime as Node but does not report the version).
+- [ ] Prove wallet database persistence and filesystem space/permissions/backup-and-restore on the mounted production-equivalent disk in isolated staging before enabling credits. Do not change production activation flags to perform this check.
+- [ ] Review build reproducibility: the current production build uses `yarn` with `package-lock.json` and no committed Yarn lockfile, producing a mixed-lockfile warning. Standardize the package-manager/build-lockfile pair through an independently tested change before a credit release; do not change live Render build settings without regression evidence.
+- [x] Privacy notice is included in the current live commit (PR #120); recheck actual content, ad privacy/consent compliance and device usability independently. AdSense review and rewarded-ad SSV remain separate, unresolved gates.
+- [ ] No live Safari testing, authenticated reward settlement or credit activation was performed in this read-only check. Draft PR #116 stays unmerged and credit flags remain OFF.
+
 ## Verified Render configuration (2026-11-18)
 
 Confirmed workspace: `My Workspace` (`tea-dab89eou01pc73ef8nh0`). Production service `srv-dabmu467bikc73dkp380`, `jamaican-vibes-domino`, deploys automatically from `main`. Render reports a running single Node instance on a paid Starter-class service with an **existing 1 GB persistent disk** (`dsk-db86isu89jmc73cdrad0`) mounted at `/var/data`. Last observed live production commit is `45fee87215c35323687fa3967a92fc27c92c5b0a`; credit code is only on the draft PR branch, not deployed.
