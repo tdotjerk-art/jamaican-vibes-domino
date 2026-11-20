@@ -68,6 +68,20 @@ const delay=ms=>new Promise(resolve=>setTimeout(resolve,ms));
        const value=document.querySelector('#jvWalletRecovery')?.value||'';
        return value.includes(':')&&!value.endsWith(':'+old);
       },previous,{timeout:10000});
+      // Recovery tokens stay concealed unless the player explicitly reveals them.
+      assert.equal(await page.locator('#jvWalletRecovery').getAttribute('type'),'password',
+        mode.name+': new recovery token must be masked by default');
+      assert.equal(await page.locator('#jvWalletRecoveryInput').getAttribute('type'),'password',
+        mode.name+': entered recovery token must be masked by default');
+      const reveal=page.locator('#jvWalletReveal');
+      await reveal.click();
+      assert.equal(await page.locator('#jvWalletRecovery').getAttribute('type'),'text',
+        mode.name+': recovery token reveal action failed');
+      assert.equal(await reveal.getAttribute('aria-pressed'),'true');
+      await reveal.click();
+      assert.equal(await page.locator('#jvWalletRecovery').getAttribute('type'),'password',
+        mode.name+': recovery token was not concealed again');
+      assert.equal(await reveal.getAttribute('aria-pressed'),'false');
       const newCode=await page.locator('#jvWalletRecovery').inputValue();
       const [id,token]=newCode.split(':');
       assert.equal(id,accounts[i].account.id);
