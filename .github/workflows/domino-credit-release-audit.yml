@@ -10,6 +10,7 @@ on:
       - docs/domino-credit-release-checklist.md
       - scripts/check-credit-release-gate.cjs
       - .github/workflows/domino-credit-release-audit.yml
+      - test/domino-credit-gate-mode.test.js
   workflow_dispatch:
 
 jobs:
@@ -28,7 +29,7 @@ jobs:
       - name: Credit launch safety tests
         run: node --test test/domino-credit-launch-safety.test.js test/domino-wallet-sqlite.test.js
 
-  credit-launch-gate:
+  credit-readiness-report:
     runs-on: ubuntu-24.04
     needs: safety
     steps:
@@ -36,5 +37,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Fail closed while release requirements are unchecked
-        run: node scripts/check-credit-release-gate.cjs
+      - name: Report unmet release requirements (not approval)
+        run: node scripts/check-credit-release-gate.cjs --audit-only
+      - name: Verify the production launch gate still refuses incomplete releases
+        run: node --test test/domino-credit-gate-mode.test.js
