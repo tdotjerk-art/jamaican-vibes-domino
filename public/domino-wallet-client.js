@@ -20,6 +20,23 @@
   function walletName() { return (localStorage.getItem('jvSignupName') || $('jvName')?.value || '').trim(); }
   function message(value) { const target = $('jvWalletStatus'); if (target) target.textContent = value; }
   function update(balance) { const target = $('jvWalletBalance'); if (target) target.textContent = String(balance); }
+  function concealRecoveryCode() {
+    const code = $('jvWalletRecovery');
+    const button = $('jvWalletReveal');
+    if (code) code.type = 'password';
+    if (button) {
+      button.textContent = 'Show recovery code';
+      button.setAttribute('aria-pressed', 'false');
+    }
+  }
+  function showNewRecoveryCode(id, token) {
+    const code = $('jvWalletRecovery');
+    if (code) {
+      code.value = id + ':' + token;
+      code.hidden = false;
+    }
+    concealRecoveryCode();
+  }
 
   async function refresh() {
     if (!credentials) return;
@@ -28,6 +45,8 @@
       // Do not silently sign in as a different person after changing signup name.
       if (account.name !== walletName()) {
         credentials = null; sessionStorage.removeItem(KEY);
+        const recovery = $('jvWalletRecovery'); if (recovery) { recovery.value = ''; recovery.hidden = true; }
+        concealRecoveryCode();
         message('Signup name changed. Register a new wallet for public play.');
         return;
       }
@@ -35,6 +54,8 @@
       message('Signed in as ' + account.name);
     } catch {
       credentials = null; sessionStorage.removeItem(KEY);
+      const recovery = $('jvWalletRecovery'); if (recovery) { recovery.value = ''; recovery.hidden = true; }
+      concealRecoveryCode();
       message('Your wallet session expired. Sign in again using your recovery code.');
     }
   }
@@ -46,8 +67,7 @@
     sessionStorage.setItem(KEY, JSON.stringify(credentials));
     update(response.account.balance);
     message('Wallet created. Save your recovery code securely before changing devices.');
-    const code = $('jvWalletRecovery');
-    if (code) { code.value = response.account.id + ':' + response.token; code.hidden = false; }
+    showNewRecoveryCode(response.account.id, response.token);
     await refreshMyTournaments();
     return credentials;
   }
@@ -75,8 +95,7 @@
     credentials = next;
     sessionStorage.setItem(KEY, JSON.stringify(next));
     update(rotated.account.balance);
-    const code = $('jvWalletRecovery');
-    if (code) { code.value = next.id + ':' + next.token; code.hidden = false; }
+    showNewRecoveryCode(next.id, next.token);
     message('Recovery code changed. Your OLD code no longer works. Save this NEW code securely now; losing it may permanently prevent account recovery.');
   }
 
@@ -200,8 +219,9 @@
       '<button type="button" id="jvWalletRegister">Create Wallet</button> '+
       '<button type="button" id="jvWalletRefresh">Refresh Balance</button>'+
       ' <button type="button" id="jvWalletDaily">Claim Daily 20 Credits</button>'+
-      '<p style="margin:5px 0"><label>Recovery code <input id="jvWalletRecovery" readonly hidden aria-label="Your recovery code" style="width:100%;font-size:12px"></label></p>'+
-      '<label>Existing recovery code <input id="jvWalletRecoveryInput" autocomplete="off" aria-label="Existing recovery code" style="width:100%"></label>'+
+      '<p style="margin:5px 0"><label>Recovery code <input id="jvWalletRecovery" type="password" readonly hidden autocomplete="off" spellcheck="false" aria-label="Your recovery code" style="width:100%;font-size:12px"></label> '+
+      '<button type="button" id="jvWalletReveal" aria-pressed="false">Show recovery code</button></p>'+
+      '<label>Existing recovery code <input id="jvWalletRecoveryInput" type="password" autocomplete="off" spellcheck="false" aria-label="Existing recovery code" style="width:100%"></label>'+
       '<button type="button" id="jvWalletRestore">Recover Wallet</button>'+
       ' <button type="button" id="jvWalletRotate">Change Recovery Code</button>'+
       '<details id="jvTournamentDetails" hidden style="margin-top:8px"><summary>Tournament registration (pilot)</summary>'+
@@ -230,6 +250,18 @@
     };
     $('jvWalletRotate').onclick = async () => {
       try { await rotateRecoveryCode(); } catch (e) { message(e.message); }
+    };
+    $('jvWalletReveal').onclick = () => {
+      const code = $('jvWalletRecovery');
+      if (!code || code.hidden || !code.value) {
+        message('Create a wallet or rotate your recovery code to see a new code.');
+        return;
+      }
+      if (code.type === 'password') {
+        code.type = 'text';
+        $('jvWalletReveal').textContent = 'Hide recovery code';
+        $('jvWalletReveal').setAttribute('aria-pressed', 'true');
+      } else concealRecoveryCode();
     };
     // Capture only public joins; original private and computer handlers stay intact.
     join.addEventListener('click', async e => {
