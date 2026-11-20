@@ -16,6 +16,15 @@
 - [x] Automated module/API/process-restart tests.
 - [x] Production guard refuses Render credit activation without selected SQLite backend and confirmed durable disk.
 
+## Signup and recovery privacy hardening (2026-11-19)
+
+- [x] In draft PR #116, conceal both newly issued wallet recovery codes and entered codes with password fields. Add an explicit Show/Hide recovery code button, default to masked after registration/rotation, and erase the displayed code if the saved session is invalidated or its signup name changes. Source change: commit `70234d38e68628d8baf9012691d21468ccd9a1fc`.
+- [x] Add actual Chromium/WebKit mobile-browser assertions for masked default, explicit reveal, re-hide, and accessibility pressed state in `scripts/tournament-browser-smoke.cjs` (commit `ba9b6c3df67a530e62a7d9e59c40347a6f4633db`).
+- [ ] Verify GitHub browser and wallet security jobs succeed on the exact new draft branch head; code committed is not evidence of passing tests.
+- [ ] **Production blocking:** choose and implement a verifiable account-ownership method (such as email verification or passkeys with suitable recovery). A browser-held unverified wallet secret cannot safely be reset after permanent loss, and IP-based signup quotas do not establish one account per person or prevent starter-credit abuse.
+- [ ] Validate hosting proxy address handling, distributed rate limits, privacy terms, real iPhone recovery flows, and paid-session revocation across all public and tournament formats before enabling credits.
+- [ ] Do not use the owner-reserved `Tdot` name for general signup; existing reserved-name rejection remains enabled.
+
 ## Account recovery security progress (2026-11-18)
 
 - [x] SQLite development wallet supports authenticated recovery-token rotation. Rotation issues a new random 256-bit token, stores only its hash, revokes the previous token immediately and retains the account ID, balance and tournaments.
