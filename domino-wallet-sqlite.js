@@ -11,7 +11,8 @@ const tokenOK = x => typeof x === 'string' && /^[a-f0-9]{64}$/.test(x);
 const opOK = x => typeof x === 'string' && /^[A-Za-z0-9:_-]{1,120}$/.test(x);
 const tourOK = x => typeof x === 'string' && /^[A-Za-z0-9_-]{1,48}$/.test(x);
 
-function createSqliteWallet(filename) {
+function createSqliteWallet(filename, options={}) {
+  const emailRequired=options.verifiedEmailRequired===true;
   if (!filename || !path.isAbsolute(filename)) throw Error('Absolute SQLite wallet path required.');
   fs.mkdirSync(path.dirname(filename), {recursive:true,mode:0o700});
   const db = new DatabaseSync(filename);
@@ -112,6 +113,33 @@ function createSqliteWallet(filename) {
   const signupSalt=db.prepare("SELECT value FROM signup_guard_config WHERE key='salt'").get().value;
   if(!db.prepare('PRAGMA table_info(tournaments)').all().some(c=>c.name==='player_count'))
     db.exec('ALTER TABLE tournaments ADD COLUMN player_count INTEGER NOT NULL DEFAULT 2 CHECK(player_count IN (2,3,4))');
+  // Opt-in email ownership: legacy development fixtures remain unchanged until
+  // the verified-registration gate is explicitly enabled.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS wallet_email_identity (
+      account_id TEXT PRIMARY KEY REFERENCES accounts(id),
+      email TEXT NOT NULL COLLATE NOCASE UNIQUE,
+      verified_at INTEGER,
+      verify_hash TEXT,
+      verify_expires INTEGER,
+      recovery_hash TEXT,
+      recovery_expires INTEGER,
+      email_sent_at INTEGER,
+      recovery_sent_at INTEGER
+    );
+  `);
+  const normalizeEmail=value=>{
+    if(typeof value!=='string')throw Error('Valid email address required.');
+    const email=value.trim().toLowerCase();
+    if(email.length>254||!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email))
+      throw Error('Valid email address required.');
+    return email;
+  };
+  const makeEmailCode=()=>crypto.randomBytes(24).toString('hex');
+  const emailIdentity=id=>db.prepare('SELECT * FROM wallet_email_identity WHERE account_id=?').get(id);
+  const emailVerified=id=>!!emailIdentity(id)?.verified_at;
+  // No account-lookup, tournament join, daily credits, or paid socket access
+  // is granted while a required email is unverified.
   const accountById=db.prepare('SELECT id,name,token_hash AS tokenHash,balance FROM accounts WHERE id=?');
   const operationById=db.prepare('SELECT delta,reason FROM operations WHERE account_id=? AND operation_id=?');
   const tournamentById=db.prepare('SELECT id,capacity,status,player_count AS playerCount FROM tournaments WHERE id=?');
@@ -131,6 +159,7 @@ function createSqliteWallet(filename) {
     const a=get(id);
     if(!tokenOK(token)||!crypto.timingSafeEqual(Buffer.from(a.tokenHash,'hex'),Buffer.from(hash(token),'hex')))
       throw Error('Invalid wallet credentials.');
+    if(emailRequired&&!emailVerified(a.id))throw Error('Email verification required.');
     return {id:a.id,name:a.name,balance:a.balance};
   }
   // Compare a session's hashed credential with the current durable wallet credential.
@@ -138,7 +167,7 @@ function createSqliteWallet(filename) {
   function credentialFingerprintCurrent(id,fingerprint) {
     if(!idOK(id)||typeof fingerprint!=='string'||!/^[a-f0-9]{64}$/.test(fingerprint))return false;
     const account=accountById.get(id);
-    return !!account&&crypto.timingSafeEqual(Buffer.from(account.tokenHash,'hex'),Buffer.from(fingerprint,'hex'));
+    return !!account&&(!emailRequired||emailVerified(id))&&crypto.timingSafeEqual(Buffer.from(account.tokenHash,'hex'),Buffer.from(fingerprint,'hex'));
   }
   // Recovery-code rotation is an authenticated, durable revocation operation.
   // Do not log or store the new cleartext code. Existing account balances and
@@ -151,7 +180,7 @@ function createSqliteWallet(filename) {
       return {id:account.id,name:account.name,balance:account.balance,token:next};
     });
   }
-  function createAccount(name,source) {
+  function createAccount(name,source,email) {
     if(typeof name!=='string')throw Error('Invalid player name.');
     name=name.trim();
     if(!name||name.length>20||/tdot/i.test(name))throw Error('Invalid or reserved player name.');
@@ -159,7 +188,9 @@ function createSqliteWallet(filename) {
     // keeps direct, offline wallet fixture creation backward compatible.
     if(source!==undefined&&(typeof source!=='string'||!source||source.length>128))
       throw Error('Invalid registration source.');
+    if(emailRequired)email=normalizeEmail(email);
     const id=crypto.randomBytes(16).toString('hex'),token=crypto.randomBytes(32).toString('hex');
+    const emailCode=emailRequired?makeEmailCode():null;
     try {
       tx(()=>{
         if(source!==undefined){
@@ -182,13 +213,63 @@ function createSqliteWallet(filename) {
         }
         db.prepare('INSERT INTO accounts(id,name,token_hash,balance) VALUES(?,?,?,?)')
           .run(id,name,hash(token),STARTING_CREDITS);
+        if(emailRequired) db.prepare(`INSERT INTO wallet_email_identity
+          (account_id,email,verify_hash,verify_expires,email_sent_at)
+          VALUES(?,?,?,?,?)`).run(id,email,hash(emailCode),Date.now()+15*60000,Date.now());
       });
     }catch(e) {
       if(/UNIQUE constraint/.test(e.message))throw Error('Signup name is already registered. Recover your original wallet.');
       throw e;
     }
-    return {id,name,token,balance:STARTING_CREDITS};
+    return {id,name,token,balance:STARTING_CREDITS,...(emailRequired?{email,emailCode}:{})};
   }
+  function verifyRegistrationEmail(id,code,now=Date.now()){
+    if(!idOK(id)||!tokenOK(code)||!Number.isSafeInteger(now))throw Error('Invalid verification code.');
+    return tx(()=>{
+      const identity=emailIdentity(id);
+      if(!identity||identity.verified_at||!identity.verify_hash||now>identity.verify_expires||
+         !crypto.timingSafeEqual(Buffer.from(identity.verify_hash,'hex'),Buffer.from(hash(code),'hex')))
+        throw Error('Invalid or expired verification code.');
+      const a=get(id),newToken=crypto.randomBytes(32).toString('hex');
+      db.prepare('UPDATE accounts SET token_hash=? WHERE id=?').run(hash(newToken),id);
+      db.prepare(`UPDATE wallet_email_identity SET verified_at=?,verify_hash=NULL,verify_expires=NULL
+        WHERE account_id=?`).run(now,id);
+      return {id:a.id,name:a.name,balance:a.balance,token:newToken};
+    });
+  }
+  function requestEmailRecovery(email,now=Date.now()){
+    email=normalizeEmail(email);
+    if(!Number.isSafeInteger(now))throw Error('Invalid recovery timestamp.');
+    return tx(()=>{
+      const identity=db.prepare(`SELECT account_id AS accountId,recovery_sent_at AS sent
+        FROM wallet_email_identity WHERE email=? AND verified_at IS NOT NULL`).get(email);
+      if(!identity)return null; // Caller returns same generic response.
+      if(identity.sent&&now-identity.sent<15*60000)return null;
+      const code=makeEmailCode();
+      db.prepare(`UPDATE wallet_email_identity
+        SET recovery_hash=?,recovery_expires=?,recovery_sent_at=?
+        WHERE account_id=?`).run(hash(code),now+15*60000,now,identity.accountId);
+      return {email,code};
+    });
+  }
+  function completeEmailRecovery(email,code,now=Date.now()){
+    email=normalizeEmail(email);
+    if(!tokenOK(code)||!Number.isSafeInteger(now))throw Error('Invalid recovery code.');
+    return tx(()=>{
+      const identity=db.prepare(`SELECT account_id AS accountId,recovery_hash AS codeHash,
+        recovery_expires AS expires FROM wallet_email_identity
+        WHERE email=? AND verified_at IS NOT NULL`).get(email);
+      if(!identity||!identity.codeHash||now>identity.expires||
+         !crypto.timingSafeEqual(Buffer.from(identity.codeHash,'hex'),Buffer.from(hash(code),'hex')))
+        throw Error('Invalid or expired recovery code.');
+      const a=get(identity.accountId),newToken=crypto.randomBytes(32).toString('hex');
+      db.prepare('UPDATE accounts SET token_hash=? WHERE id=?').run(hash(newToken),a.id);
+      db.prepare(`UPDATE wallet_email_identity SET recovery_hash=NULL,recovery_expires=NULL
+        WHERE account_id=?`).run(a.id);
+      return {id:a.id,name:a.name,balance:a.balance,token:newToken};
+    });
+  }
+  function recoverableEmail(id){return emailIdentity(id)?.email||null;}
   function balance(id) {return get(id).balance;}
   function price(mode) {
     if(!Object.hasOwn(PRICES,mode))throw Error('Unknown game mode.');
@@ -530,7 +611,8 @@ function createSqliteWallet(filename) {
     });
   }
   return {
-    createAccount,authenticate,rotateRecoveryToken,credentialFingerprintCurrent,balance,price,
+    createAccount,authenticate,rotateRecoveryToken,credentialFingerprintCurrent,
+    verifyRegistrationEmail,requestEmailRecovery,completeEmailRecovery,recoverableEmail,balance,price,
     enter:(id,mode,entryId)=>tx(()=>enterInternal(id,mode,entryId)),
     refund:(id,mode,entryId)=>tx(()=>refundInternal(id,mode,entryId)),
     awardVerifiedReward,createRewardIntent,rewardIntentStatus,settleVerifiedRewardIntent,
