@@ -59,3 +59,24 @@ test('expired registration and recovery challenges reject without altering ident
  assert.throws(()=>wallet.completeEmailRecovery('expires@example.com',r.code,requestedAt+16*60000),/Invalid or expired/);
  assert.equal(wallet.authenticate(created.id,valid.token).balance,100);
 });
+
+test('verification resend is email-bound, limited daily and limit survives restart',t=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'jv-email-limit-'));
+ const filename=path.join(dir,'wallet.sqlite');
+ const wallet=createSqliteWallet(filename,{verifiedEmailRequired:true});
+ t.after(()=>{wallet.close();fs.rmSync(dir,{recursive:true,force:true})});
+ const created=wallet.createAccount('QuotaOwner','127.0.0.4','quota@example.com');
+ const futureMidnight=Date.UTC(new Date().getUTCFullYear(),new Date().getUTCMonth(),new Date().getUTCDate()+1);
+ const base=futureMidnight+2*60*60000;
+ assert.throws(()=>wallet.resendRegistrationEmail(created.id,'other@example.com',base),/not found/);
+ let latest=null;
+ for(let n=0;n<5;n++){
+   latest=wallet.resendRegistrationEmail(created.id,'quota@example.com',base+n*16*60000);
+   assert.match(latest.code,/^[a-f0-9]{48}$/);
+ }
+ assert.throws(()=>wallet.resendRegistrationEmail(created.id,'quota@example.com',base+5*16*60000),/Daily email request limit/);
+ assert.throws(()=>wallet.verifyRegistrationEmail(created.id,created.emailCode,base+6*16*60000),/Invalid or expired/);
+ const reopened=createSqliteWallet(filename,{verifiedEmailRequired:true});
+ assert.throws(()=>reopened.resendRegistrationEmail(created.id,'quota@example.com',base+5*16*60000),/Daily email request limit/);
+ reopened.close();
+});
