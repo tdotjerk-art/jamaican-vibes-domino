@@ -223,6 +223,22 @@ function createSqliteWallet(filename, options={}) {
     }
     return {id,name,token,balance:STARTING_CREDITS,...(emailRequired?{email,emailCode}:{})};
   }
+  function resendRegistrationEmail(id,email,now=Date.now()){
+    if(!idOK(id)||!Number.isSafeInteger(now))throw Error('Invalid verification request.');
+    email=normalizeEmail(email);
+    return tx(()=>{
+      const identity=emailIdentity(id);
+      if(!identity||identity.email!==email||identity.verified_at)
+        throw Error('Unverified account not found.');
+      if(identity.email_sent_at&&now-identity.email_sent_at<15*60000)
+        throw Error('Please wait before requesting another verification email.');
+      const next=makeEmailCode();
+      db.prepare(`UPDATE wallet_email_identity
+        SET verify_hash=?,verify_expires=?,email_sent_at=? WHERE account_id=?`)
+        .run(hash(next),now+15*60000,now,id);
+      return {email,code:next};
+    });
+  }
   function verifyRegistrationEmail(id,code,now=Date.now()){
     if(!idOK(id)||typeof code!=='string'||!/^[a-f0-9]{48}$/.test(code)||!Number.isSafeInteger(now))throw Error('Invalid verification code.');
     return tx(()=>{
@@ -612,7 +628,7 @@ function createSqliteWallet(filename, options={}) {
   }
   return {
     createAccount,authenticate,rotateRecoveryToken,credentialFingerprintCurrent,
-    verifyRegistrationEmail,requestEmailRecovery,completeEmailRecovery,recoverableEmail,balance,price,
+    verifyRegistrationEmail,resendRegistrationEmail,requestEmailRecovery,completeEmailRecovery,recoverableEmail,balance,price,
     enter:(id,mode,entryId)=>tx(()=>enterInternal(id,mode,entryId)),
     refund:(id,mode,entryId)=>tx(()=>refundInternal(id,mode,entryId)),
     awardVerifiedReward,createRewardIntent,rewardIntentStatus,settleVerifiedRewardIntent,
