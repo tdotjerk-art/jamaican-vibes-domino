@@ -102,6 +102,14 @@
 4. Test live URL and monitor credit entry, refund and provider verification logs.
 5. Keep an immediate rollback path that disables credits without breaking private and computer games.
 
+## Full tournament integration expansion (2026-11-20)
+
+- [x] Add an isolated 3-entrant, two-round Socket.IO full-game integration test: first match played to six, bye advances, actual final played to six, server-authored bracket winner and exactly one tournament debit per player. Test file: `test/domino-tournament-multi-round-e2e.test.js`, commit `c22d531c8fdb51853bb09d72ef12027560a23bad`.
+- [x] Include the new test in `.github/workflows/domino-tournament-progression.yml` and extend its job timeout to 12 minutes, commit `559276cd228fa8bf98092fd73c4841e1fa154648`.
+- [ ] Confirm GitHub Actions actually ran the new workflow and all steps passed; the commit status API returned no runs/checks at time of review. New test is **unverified**, not a passing release gate.
+- [ ] Test actual completed 3- and 4-player Cut Throat tournament fixtures through final settlement, in addition to existing seat-assignment tests.
+- [ ] Test full multi-round player-facing browser flows, forced network loss, process restart, and physical iPhone Safari. Keep credit pilot disabled until release gates pass.
+
 ## Wallet snapshot recovery regression (2026-11-19)
 
 - [x] Added `test/domino-wallet-backup.test.js` in draft PR #116 at commit `8ed54d85b9530708949298e155cca9fde5e1b2eb`. It exercises a separate SQLite `VACUUM INTO` snapshot of a WAL-mode wallet, restoration to a different path, retained balance/tournament signup, duplicate-debit prevention, and exactly-once refund after a simulated restart. This runs only against temporary fixture files; it does not touch the Render disk.
