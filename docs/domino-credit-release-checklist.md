@@ -102,6 +102,12 @@
 4. Test live URL and monitor credit entry, refund and provider verification logs.
 5. Keep an immediate rollback path that disables credits without breaking private and computer games.
 
+## Wallet snapshot recovery regression (2026-11-19)
+
+- [x] Added `test/domino-wallet-backup.test.js` in draft PR #116 at commit `8ed54d85b9530708949298e155cca9fde5e1b2eb`. It exercises a separate SQLite `VACUUM INTO` snapshot of a WAL-mode wallet, restoration to a different path, retained balance/tournament signup, duplicate-debit prevention, and exactly-once refund after a simulated restart. This runs only against temporary fixture files; it does not touch the Render disk.
+- [ ] Run this new integrated test in GitHub CI and review the outcome. A standalone SQLite WAL/VACUUM/restore smoke test passed under local Node 22.16, but that is **not** a pass for the application's new integrated test.
+- [ ] Independently verify actual Render mounted-disk storage and real-world backup/restore procedure in a safe staging environment before production credits.
+
 ## Read-only production recheck (2026-11-19)
 
 - [x] Render reports service `srv-dabmu467bikc73dkp380` running on the existing single Node instance, deploying automatically from `main` with its existing 1 GB disk configured at `/var/data`. No new service or disk is needed for the pilot.
