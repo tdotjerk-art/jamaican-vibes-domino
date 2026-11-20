@@ -8,6 +8,7 @@ on:
       - domino-wallet-sqlite.js
       - test/domino-tournament-restart-replay.test.js
       - test/domino-tournament-completion-e2e.test.js
+      - test/domino-tournament-multi-round-e2e.test.js
       - test/domino-wallet-sqlite.test.js
       - .github/workflows/domino-tournament-progression.yml
   workflow_dispatch:
@@ -15,7 +16,7 @@ on:
 jobs:
   tournament:
     runs-on: ubuntu-24.04
-    timeout-minutes: 8
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -24,4 +25,4 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Confirm authentic tournament win and crash recovery
-        run: node --test test/domino-tournament-restart-replay.test.js test/domino-tournament-completion-e2e.test.js test/domino-wallet-sqlite.test.js
+        run: node --test test/domino-tournament-restart-replay.test.js test/domino-tournament-completion-e2e.test.js test/domino-tournament-multi-round-e2e.test.js test/domino-wallet-sqlite.test.js
