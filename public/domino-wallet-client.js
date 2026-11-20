@@ -62,7 +62,13 @@
   async function register() {
     const name = walletName();
     if (!name || /tdot/i.test(name)) throw Error('Enter a signup name that does not contain Tdot.');
-    const response = await post('register', { name });
+    const email = ($('jvWalletEmail')?.value || '').trim();
+    const response = await post('register', { name, email });
+    if (response.verificationRequired) {
+      sessionStorage.setItem('jvPendingEmailAccount', response.account.id);
+      message('Verification email requested. Enter the code sent to your email before you can use wallet credits.');
+      return null;
+    }
     credentials = { id: response.account.id, token: response.token };
     sessionStorage.setItem(KEY, JSON.stringify(credentials));
     update(response.account.balance);
@@ -83,6 +89,40 @@
     sessionStorage.setItem(KEY, JSON.stringify(credentials));
     if (input) input.value = '';
     update(account.balance); message('Wallet recovered for ' + account.name);
+    await refreshMyTournaments();
+  }
+
+  async function verifyEmailSignup() {
+    const id = sessionStorage.getItem('jvPendingEmailAccount');
+    const code = ($('jvWalletEmailCode')?.value || '').trim();
+    if (!id) throw Error('Create a wallet first to request email verification.');
+    const account = await post('verify-email', {id,code});
+    credentials = {id:account.id,token:account.token};
+    sessionStorage.setItem(KEY,JSON.stringify(credentials));
+    sessionStorage.removeItem('jvPendingEmailAccount');
+    if($('jvWalletEmailCode')) $('jvWalletEmailCode').value='';
+    update(account.balance);
+    showNewRecoveryCode(account.id,account.token);
+    message('Email verified. Wallet activated. Save your recovery code securely.');
+    await refreshMyTournaments();
+  }
+  async function requestEmailRecovery() {
+    const email=($('jvWalletEmail')?.value||'').trim();
+    const result=await post('recovery-email',{email});
+    message(result.message||'If this address is verified, a recovery code will be sent.');
+  }
+  async function completeEmailRecovery() {
+    const email=($('jvWalletEmail')?.value||'').trim();
+    const code=($('jvWalletEmailCode')?.value||'').trim();
+    const restored=await post('recovery-complete',{email,code});
+    credentials={id:restored.account.id,token:restored.token};
+    sessionStorage.setItem(KEY,JSON.stringify(credentials));
+    localStorage.setItem('jvSignupName',restored.account.name);
+    if($('jvName')) $('jvName').value=restored.account.name;
+    if($('jvWalletEmailCode')) $('jvWalletEmailCode').value='';
+    update(restored.account.balance);
+    showNewRecoveryCode(restored.account.id,restored.token);
+    message('Account recovered. Previous recovery tokens and paid sessions have been revoked. Save your new code.');
     await refreshMyTournaments();
   }
 
@@ -216,7 +256,12 @@
     panel.style.cssText = 'margin:8px auto;padding:9px;max-width:450px;border:1px solid #ffd447;border-radius:10px;background:#082719;color:#fff;font-size:13px';
     panel.innerHTML = '<strong>Public Match Credits</strong> — <span id="jvWalletBalance">—</span> available. Public entry: 10 credits. Private friends and computer games: FREE.'+
       '<div id="jvWalletStatus" role="status" style="margin:6px 0">Create or recover a wallet before public play.</div>'+
+      '<p style="margin:5px 0"><label>Email for verified wallet ownership <input id="jvWalletEmail" type="email" autocomplete="email" spellcheck="false" style="width:100%"></label></p>'+
       '<button type="button" id="jvWalletRegister">Create Wallet</button> '+
+      '<p style="margin:5px 0"><label>Email verification or recovery code <input id="jvWalletEmailCode" type="password" autocomplete="one-time-code" spellcheck="false" style="width:100%"></label></p>'+
+      '<button type="button" id="jvWalletVerifyEmail">Verify email</button> '+
+      '<button type="button" id="jvWalletSendRecoveryEmail">Send recovery email</button> '+
+      '<button type="button" id="jvWalletRecoverEmail">Recover using email code</button> '+
       '<button type="button" id="jvWalletRefresh">Refresh Balance</button>'+
       ' <button type="button" id="jvWalletDaily">Claim Daily 20 Credits</button>'+
       '<p style="margin:5px 0"><label>Recovery code <input id="jvWalletRecovery" type="password" readonly hidden autocomplete="off" spellcheck="false" aria-label="Your recovery code" style="width:100%;font-size:12px"></label> '+
@@ -233,6 +278,15 @@
     join.parentNode.insertBefore(panel, join);
     $('jvWalletRegister').onclick = async () => {
       try { await register(); } catch (e) { message(e.message); }
+    };
+    $('jvWalletVerifyEmail').onclick = async () => {
+      try { await verifyEmailSignup(); } catch (e) { message(e.message); }
+    };
+    $('jvWalletSendRecoveryEmail').onclick = async () => {
+      try { await requestEmailRecovery(); } catch (e) { message(e.message); }
+    };
+    $('jvWalletRecoverEmail').onclick = async () => {
+      try { await completeEmailRecovery(); } catch (e) { message(e.message); }
     };
     $('jvWalletRefresh').onclick = refresh;
     $('jvTournamentRefresh').onclick = refreshTournaments;
