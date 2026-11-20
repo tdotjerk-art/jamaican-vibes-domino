@@ -106,6 +106,13 @@
     message('Email verified. Wallet activated. Save your recovery code securely.');
     await refreshMyTournaments();
   }
+  async function resendEmailVerification() {
+    const id=sessionStorage.getItem('jvPendingEmailAccount');
+    if(!id)throw Error('Register your wallet before requesting another verification email.');
+    const email=($('jvWalletEmail')?.value||'').trim();
+    const result=await post('resend-email',{id,email});
+    message(result.message||'Check your email for a new verification code.');
+  }
   async function requestEmailRecovery() {
     const email=($('jvWalletEmail')?.value||'').trim();
     const result=await post('recovery-email',{email});
@@ -260,6 +267,7 @@
       '<button type="button" id="jvWalletRegister">Create Wallet</button> '+
       '<p style="margin:5px 0"><label>Email verification or recovery code <input id="jvWalletEmailCode" type="password" autocomplete="one-time-code" spellcheck="false" style="width:100%"></label></p>'+
       '<button type="button" id="jvWalletVerifyEmail">Verify email</button> '+
+      '<button type="button" id="jvWalletResendEmail">Resend verification email</button> '+
       '<button type="button" id="jvWalletSendRecoveryEmail">Send recovery email</button> '+
       '<button type="button" id="jvWalletRecoverEmail">Recover using email code</button> '+
       '<button type="button" id="jvWalletRefresh">Refresh Balance</button>'+
@@ -281,6 +289,9 @@
     };
     $('jvWalletVerifyEmail').onclick = async () => {
       try { await verifyEmailSignup(); } catch (e) { message(e.message); }
+    };
+    $('jvWalletResendEmail').onclick = async () => {
+      try { await resendEmailVerification(); } catch (e) { message(e.message); }
     };
     $('jvWalletSendRecoveryEmail').onclick = async () => {
       try { await requestEmailRecovery(); } catch (e) { message(e.message); }
