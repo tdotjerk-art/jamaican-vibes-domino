@@ -86,6 +86,15 @@ test('three entrants play real first-round match, bye advances, and final produc
       const current=states[0];
       if(!current){await delay(40);continue}
       if(current.phase==='match-over'){completed=current;break}
+      if(current.phase==='choose-poser'){
+        const chosen=current.poseOptions?.[0];
+        if(Number.isInteger(chosen)&&last!=='pose:'+current.handNo){
+          clients[chosen].emit('choose-poser',{seat:chosen});
+          last='pose:'+current.handNo;
+        }
+        await delay(50);
+        continue;
+      }
       if(current.phase!=='playing'){await delay(75);continue}
       if(Date.now()<(current.dealUntil||0)+50){await delay(70);continue}
       const seat=current.turn,my=states[seat];
