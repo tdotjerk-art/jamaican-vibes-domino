@@ -224,7 +224,7 @@ function createSqliteWallet(filename, options={}) {
     return {id,name,token,balance:STARTING_CREDITS,...(emailRequired?{email,emailCode}:{})};
   }
   function verifyRegistrationEmail(id,code,now=Date.now()){
-    if(!idOK(id)||!tokenOK(code)||!Number.isSafeInteger(now))throw Error('Invalid verification code.');
+    if(!idOK(id)||typeof code!=='string'||!/^[a-f0-9]{48}$/.test(code)||!Number.isSafeInteger(now))throw Error('Invalid verification code.');
     return tx(()=>{
       const identity=emailIdentity(id);
       if(!identity||identity.verified_at||!identity.verify_hash||now>identity.verify_expires||
@@ -254,7 +254,7 @@ function createSqliteWallet(filename, options={}) {
   }
   function completeEmailRecovery(email,code,now=Date.now()){
     email=normalizeEmail(email);
-    if(!tokenOK(code)||!Number.isSafeInteger(now))throw Error('Invalid recovery code.');
+    if(typeof code!=='string'||!/^[a-f0-9]{48}$/.test(code)||!Number.isSafeInteger(now))throw Error('Invalid recovery code.');
     return tx(()=>{
       const identity=db.prepare(`SELECT account_id AS accountId,recovery_hash AS codeHash,
         recovery_expires AS expires FROM wallet_email_identity
