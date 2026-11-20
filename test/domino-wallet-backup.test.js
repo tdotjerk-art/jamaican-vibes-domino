@@ -9,12 +9,14 @@ const { createSqliteWallet } = require('../domino-wallet-sqlite');
 
 test('consistent WAL backup restores wallet balances, debits and tournament registration', t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'domino-wallet-backup-'));
-  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
   const originalPath = path.join(directory, 'live.sqlite');
   const backupPath = path.join(directory, 'snapshot.sqlite');
   const restoredPath = path.join(directory, 'restore', 'wallet.sqlite');
   const wallet = createSqliteWallet(originalPath);
-  t.after(() => wallet.close());
+  t.after(() => {
+    wallet.close();
+    fs.rmSync(directory, { recursive: true, force: true });
+  });
 
   const player = wallet.createAccount('BackupPlayer');
   wallet.createTournament('backup_cup', 2);
