@@ -10,6 +10,9 @@ const sqliteCredits=creditsEnabled&&process.env.DOMINO_CREDIT_STORAGE==="sqlite"
 const verifiedEmailRequired=sqliteCredits&&process.env.DOMINO_VERIFIED_EMAIL_REQUIRED==="true";
 if(creditsEnabled&&process.env.RENDER==="true"&&!verifiedEmailRequired)
   throw Error("Domino production credits require verified player email ownership.");
+if(verifiedEmailRequired&&process.env.RENDER==="true"&&
+   !require("./domino-wallet-email").configured())
+  throw Error("Verified wallet email delivery requires an approved sender and provider credentials.");
 // Render credits require explicit durable-disk confirmation. The JSON adapter is
 // development-only even if a writable local directory exists.
 if(creditsEnabled&&process.env.RENDER==="true"&&
