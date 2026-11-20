@@ -6,10 +6,13 @@ on:
     paths:
       - server.js
       - public/domino-wallet-client.js
+      - domino-wallet-email.js
+      - test/domino-verified-email-api.test.js
+      - test/domino-verified-email-recovery.test.js
       - test/domino-credit-sqlite-integration.test.js
       - test/domino-tournament-match-integration.test.js
       - test/domino-reward-intent-api.test.js
-      - test/domino-reward-provider-fail-closed.test.js
+      - test/domino-reward-provider-fail-closed.test.js test/domino-verified-email-recovery.test.js test/domino-verified-email-api.test.js
       - domino-wallet-sqlite.js
       - test/domino-wallet-sqlite.test.js
       - .github/workflows/domino-wallet-security.yml
