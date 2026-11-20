@@ -74,6 +74,16 @@ if(creditsEnabled){
      if(!verifiedEmailRequired)return res.status(503).json({error:"Verified email is not configured."});
      return result(res,()=>wallet.verifyRegistrationEmail(req.body?.id,req.body?.code));
    });
+   app.post("/api/domino/wallet/resend-email",async(req,res)=>{
+     res.set("Cache-Control","no-store");
+     if(!verifiedEmailRequired)return res.status(503).json({error:"Verified email is not configured."});
+     try{
+       const requested=wallet.resendRegistrationEmail(req.body?.id,req.body?.email);
+       await require("./domino-wallet-email").sendWalletEmail(
+         requested.email,"Verify your Jamaican Vibes wallet",requested.code,"verification");
+       return res.json({message:"A new verification email has been requested."});
+     }catch(e){return res.status(429).json({error:"Unable to resend right now. Check your email or try later."})}
+   });
    app.post("/api/domino/wallet/recovery-email",async(req,res)=>{
      res.set("Cache-Control","no-store");
      if(!verifiedEmailRequired)return res.status(503).json({error:"Verified email is not configured."});
