@@ -131,7 +131,7 @@ function createSqliteWallet(filename, options={}) {
   const normalizeEmail=value=>{
     if(typeof value!=='string')throw Error('Valid email address required.');
     const email=value.trim().toLowerCase();
-    if(email.length>254||!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email))
+    if(email.length>254||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
       throw Error('Valid email address required.');
     return email;
   };
