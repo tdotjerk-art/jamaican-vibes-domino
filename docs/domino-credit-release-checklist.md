@@ -107,7 +107,8 @@
 - [x] Add an isolated 3-entrant, two-round Socket.IO full-game integration test: first match played to six, bye advances, actual final played to six, server-authored bracket winner and exactly one tournament debit per player. Test file: `test/domino-tournament-multi-round-e2e.test.js`, commit `c22d531c8fdb51853bb09d72ef12027560a23bad`.
 - [x] Include the new test in `.github/workflows/domino-tournament-progression.yml` and extend its job timeout to 12 minutes, commit `559276cd228fa8bf98092fd73c4841e1fa154648`.
 - [ ] Confirm GitHub Actions actually ran the new workflow and all steps passed; the commit status API returned no runs/checks at time of review. New test is **unverified**, not a passing release gate.
-- [ ] Test actual completed 3- and 4-player Cut Throat tournament fixtures through final settlement, in addition to existing seat-assignment tests.
+- [x] Add isolated complete 3- and 4-player Cut Throat tournament match-to-bracket regression scenarios in `test/domino-tournament-multiseat-completion-e2e.test.js` (commit `7deba82e54ef941a1658f7716a259015f9c9167c`). The expanded CI workflow includes all three player counts plus the multi-round final (commit `87f30859eb646338d9fce61114faa004d5723258`).
+- [ ] Confirm those new 3- and 4-player scenarios actually pass CI, including final championship settlement; implementation is not verification.
 - [ ] Test full multi-round player-facing browser flows, forced network loss, process restart, and physical iPhone Safari. Keep credit pilot disabled until release gates pass.
 
 ## Wallet snapshot recovery regression (2026-11-19)
