@@ -7,6 +7,9 @@ const app=express(),server=http.createServer(app),io=new Server(server,{cors:{or
 // The pilot is OFF by default. Enable only with persistent storage and end-to-end tests.
 const creditsEnabled=process.env.DOMINO_CREDITS_ENABLED==="true";
 const sqliteCredits=creditsEnabled&&process.env.DOMINO_CREDIT_STORAGE==="sqlite";
+const verifiedEmailRequired=sqliteCredits&&process.env.DOMINO_VERIFIED_EMAIL_REQUIRED==="true";
+if(creditsEnabled&&process.env.RENDER==="true"&&!verifiedEmailRequired)
+  throw Error("Domino production credits require verified player email ownership.");
 // Render credits require explicit durable-disk confirmation. The JSON adapter is
 // development-only even if a writable local directory exists.
 if(creditsEnabled&&process.env.RENDER==="true"&&
@@ -24,7 +27,8 @@ if(creditsEnabled&&process.env.RENDER==="true"){
    throw Error("Domino credit persistent disk mount is missing; refusing to charge players.");
 }
 const wallet=creditsEnabled?
- (sqliteCredits?require("./domino-wallet-sqlite").createSqliteWallet(process.env.DOMINO_CREDIT_DB_PATH)
+ (sqliteCredits?require("./domino-wallet-sqlite").createSqliteWallet(process.env.DOMINO_CREDIT_DB_PATH,
+    {verifiedEmailRequired})
                :require("./domino-wallet").createWalletStore(process.env.DOMINO_WALLET_DIR)):null;
 if(wallet?.close)server.on("close",()=>wallet.close());
 if(wallet?.refundInterruptedPublicMatches){
@@ -43,7 +47,15 @@ if(creditsEnabled){
    try{
      // Do not trust user-supplied forwarding headers as an identity.
      const source=String(req.socket.remoteAddress||req.ip||"unknown");
-     const account=wallet.createAccount(req.body?.name,source);
+     const account=wallet.createAccount(req.body?.name,source,
+       verifiedEmailRequired?req.body?.email:undefined);
+     if(verifiedEmailRequired){
+       // Never return credentials for an unverified account.
+       return Promise.resolve(require("./domino-wallet-email").sendWalletEmail(
+         account.email,"Verify your Jamaican Vibes wallet",account.emailCode,"verification"))
+         .then(()=>res.json({account:{id:account.id,name:account.name},verificationRequired:true}))
+         .catch(()=>res.status(503).json({error:"Verification email could not be sent. Contact support; no wallet access was granted."}));
+     }
      return res.json({account:{id:account.id,name:account.name,balance:account.balance},token:account.token});
    }catch(e){
      const limited=/Too many wallet signups|temporarily at capacity/.test(e.message);
@@ -51,6 +63,36 @@ if(creditsEnabled){
    }
  });
  app.post("/api/domino/wallet/me",(req,res)=>result(res,()=>wallet.authenticate(req.body?.id,req.body?.token)));
+ // Email challenges never disclose existing wallet credentials and are
+ // single-use, expiring and stored only as hashes in the SQLite database.
+ if(sqliteCredits){
+   app.post("/api/domino/wallet/verify-email",(req,res)=>{
+     res.set("Cache-Control","no-store");
+     if(!verifiedEmailRequired)return res.status(503).json({error:"Verified email is not configured."});
+     return result(res,()=>wallet.verifyRegistrationEmail(req.body?.id,req.body?.code));
+   });
+   app.post("/api/domino/wallet/recovery-email",async(req,res)=>{
+     res.set("Cache-Control","no-store");
+     if(!verifiedEmailRequired)return res.status(503).json({error:"Verified email is not configured."});
+     try{
+       const message=wallet.requestEmailRecovery(req.body?.email);
+       if(message)await require("./domino-wallet-email").sendWalletEmail(
+         message.email,"Recover your Jamaican Vibes wallet",message.code,"recovery");
+       // The response never reveals if the address owns an account.
+       return res.json({message:"If that address is verified, a recovery code will be sent."});
+     }catch(e){return res.status(400).json({error:"Unable to process recovery request."})}
+   });
+   app.post("/api/domino/wallet/recovery-complete",(req,res)=>{
+     res.set("Cache-Control","no-store");
+     if(!verifiedEmailRequired)return res.status(503).json({error:"Verified email is not configured."});
+     try{
+       const account=wallet.completeEmailRecovery(req.body?.email,req.body?.code);
+       revokePaidSessions(account.id);
+       return res.json({account:{id:account.id,name:account.name,balance:account.balance},token:account.token});
+     }catch(e){return res.status(401).json({error:"Invalid or expired recovery code."})}
+   });
+ }
+
 
  // Rate-limit failed recovery-code changes per network and account ID.
  // The owner must present the current valid code; no identity-less reset exists.
