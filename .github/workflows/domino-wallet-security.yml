@@ -12,7 +12,7 @@ on:
       - test/domino-credit-sqlite-integration.test.js
       - test/domino-tournament-match-integration.test.js
       - test/domino-reward-intent-api.test.js
-      - test/domino-reward-provider-fail-closed.test.js test/domino-verified-email-recovery.test.js test/domino-verified-email-api.test.js
+      - test/domino-reward-provider-fail-closed.test.js
       - domino-wallet-sqlite.js
       - test/domino-wallet-sqlite.test.js
       - .github/workflows/domino-wallet-security.yml
@@ -30,6 +30,6 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Verify token revocation and persisted wallet behavior
-        run: node --test test/domino-wallet-sqlite.test.js test/domino-credit-sqlite-integration.test.js test/domino-tournament-match-integration.test.js test/domino-reward-intent-api.test.js test/domino-reward-provider-fail-closed.test.js
+        run: node --test test/domino-wallet-sqlite.test.js test/domino-credit-sqlite-integration.test.js test/domino-tournament-match-integration.test.js test/domino-reward-intent-api.test.js test/domino-reward-provider-fail-closed.test.js test/domino-verified-email-recovery.test.js test/domino-verified-email-api.test.js
       - name: Full development regression suite
         run: npm test
