@@ -33,6 +33,15 @@ test('consistent WAL backup restores wallet balances, debits and tournament regi
     backupConnection.close();
   }
 
+  // Reject corrupt or incomplete snapshots before treating them as restorable.
+  const snapshotCheck = new DatabaseSync(backupPath);
+  try {
+    assert.equal(snapshotCheck.prepare('PRAGMA integrity_check').get().integrity_check, 'ok');
+    assert.equal(snapshotCheck.prepare('PRAGMA foreign_key_check').all().length, 0);
+  } finally {
+    snapshotCheck.close();
+  }
+
   fs.mkdirSync(path.dirname(restoredPath), { recursive: true });
   fs.copyFileSync(backupPath, restoredPath);
   const restored = createSqliteWallet(restoredPath);
