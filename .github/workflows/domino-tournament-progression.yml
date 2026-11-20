@@ -25,5 +25,13 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - name: Confirm authentic tournament win and crash recovery
-        run: node --test test/domino-tournament-restart-replay.test.js test/domino-tournament-completion-e2e.test.js test/domino-tournament-multi-round-e2e.test.js test/domino-tournament-multiseat-completion-e2e.test.js test/domino-wallet-sqlite.test.js
+      - name: Verify wallet fixture persistence
+        run: node --test test/domino-wallet-sqlite.test.js
+      - name: Verify tournament crash and replay recovery
+        run: node --test test/domino-tournament-restart-replay.test.js
+      - name: Verify real two-player championship match
+        run: node --test test/domino-tournament-completion-e2e.test.js
+      - name: Verify three- and four-player completed games
+        run: node --test test/domino-tournament-multiseat-completion-e2e.test.js
+      - name: Verify two-round winner and bye advancement to final
+        run: node --test test/domino-tournament-multi-round-e2e.test.js
