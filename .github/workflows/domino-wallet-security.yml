@@ -8,7 +8,8 @@ on:
       - public/domino-wallet-client.js
       - test/domino-credit-sqlite-integration.test.js
       - test/domino-tournament-match-integration.test.js
-      - test/domino-reward-intent-api.test.js
+      - test/domino-reward-intent-api.test.js test/domino-reward-provider-fail-closed.test.js
+      - test/domino-reward-provider-fail-closed.test.js
       - domino-wallet-sqlite.js
       - test/domino-wallet-sqlite.test.js
       - .github/workflows/domino-wallet-security.yml
