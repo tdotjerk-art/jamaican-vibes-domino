@@ -66,7 +66,9 @@
     const response = await post('register', { name, email });
     if (response.verificationRequired) {
       sessionStorage.setItem('jvPendingEmailAccount', response.account.id);
-      message('Verification email requested. Enter the code sent to your email before you can use wallet credits.');
+      message(response.deliveryPending
+        ? 'Email delivery was unsuccessful. Your wallet is pending; use Resend verification email after the cooldown. No credits are available until verification.'
+        : 'Verification email requested. Enter the code sent to your email before you can use wallet credits.');
       return null;
     }
     credentials = { id: response.account.id, token: response.token };
