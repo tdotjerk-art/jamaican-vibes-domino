@@ -376,7 +376,22 @@
       socket.on('wallet-session-revoked', data => {
         message(String(data?.message || 'Wallet recovery changed. Reconnect with the new code before playing.'));
       });
-      socket.on('disconnect', () => { message('Disconnected from online Domino. Reconnect before using Play Round.'); });
+      let reconnectCountdown;
+      socket.on('private-state', state => {
+        clearInterval(reconnectCountdown);
+        if (state.phase !== 'paused' || !state.reconnectDeadline) return;
+        reconnectCountdown = setInterval(() => {
+          const status = document.getElementById('status');
+          if (!status) return;
+          const seconds = Math.max(0, Math.ceil((state.reconnectDeadline - Date.now()) / 1000));
+          status.textContent = 'Tournament paused. Reconnect time remaining: ' +
+            Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0');
+        }, 250);
+      });
+      socket.on('disconnect', () => {
+        clearInterval(reconnectCountdown);
+        message('Disconnected from online Domino. Reconnect before using Play Round.');
+      });
       socket.on('wallet-balance', data => {
         if (Number.isSafeInteger(data?.balance)) update(data.balance);
       });

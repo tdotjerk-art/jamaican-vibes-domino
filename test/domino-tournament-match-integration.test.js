@@ -7,13 +7,21 @@ const path=require('node:path');
 const {fork}=require('node:child_process');
 const {io}=require('socket.io-client');
 
-test('assigned tournament accounts join dedicated online rooms while outsiders are rejected',async t=>{
+test('assigned tournament players can reconnect, and expired seats forfeit',async t=>{
  const directory=fs.mkdtempSync(path.join(os.tmpdir(),'domino-tmatch-'));
  const secret='t'.repeat(48);
+ // Shorten only the tournament timeout in this isolated server process.
+ const clock=path.join(directory,'clock.cjs');
+ fs.writeFileSync(clock,`
+ const schedule=global.setTimeout;
+ global.setTimeout=(callback,delay,...args)=>schedule(callback,delay===180000?1500:delay,...args);
+ `);
+
  const child=fork(path.join(__dirname,'../test-support/credit-server.js'),[],{
    env:{...process.env,RENDER:'false',DOMINO_CREDITS_ENABLED:'true',
      DOMINO_CREDIT_STORAGE:'sqlite',DOMINO_CREDIT_DB_PATH:path.join(directory,'wallet.sqlite'),
      DOMINO_TOURNAMENT_ADMIN_TOKEN:secret},
+   execArgv:['--require',clock],
    stdio:['ignore','ignore','pipe','ipc']
  });
  const sockets=[];
@@ -74,6 +82,7 @@ test('assigned tournament accounts join dedicated online rooms while outsiders a
  second.disconnect();
  const snapshot=await paused;
  assert.equal(snapshot.phase,'paused');
+ assert.ok(snapshot.reconnectDeadline-Date.now()>175000);
  const third=await connect(),resumed=event(first,'private-state');
  const ack=event(third,'reconnect-ok');
  third.emit('reconnect-player',{roomCode:seat.code,token:otherSeat.token});
@@ -120,4 +129,38 @@ test('assigned tournament accounts join dedicated online rooms while outsiders a
  assert.match(await failure,/not assigned/);
  assert.equal((await api('me',{id:a.account.id,token:a.token})).body.balance,75);
  assert.equal((await api('me',{id:b.account.id,token:b.token})).body.balance,75);
+ const won=event(fourth,'private-state',s=>s.phase==='match-over');
+ first.disconnect();
+ assert.match((await won).message,/forfeited.*BracketTwo advances/);
+ const late=await connect();
+ const expired=event(late,'room-error');
+ late.emit('reconnect-player',{roomCode:seat.code,token:seat.token});
+ assert.match(await expired,/deadline expired/);
+ const bracket=await fetch(url+'/api/domino/wallet/tournaments/fixture1').then(r=>r.json());
+ assert.equal(bracket.status,'completed');
+ assert.equal(bracket.matches[0].winnerId,b.account.id);
+
+ const players=[a,b,outsider];
+ assert.equal((await api('tournaments',{id:'fixture3',capacity:3,playerCount:3},true)).status,200);
+ for(const player of players)await api('tournaments/fixture3/join',{id:player.account.id,token:player.token});
+ await api('tournaments/fixture3/start',{},true);
+ const clients=[];
+ let playingWithThree;
+ for(const player of players){
+   const s=await connect();
+   clients.push(s);
+   const joined=event(s,'seat-assigned');
+   if(clients.length===3)playingWithThree=event(clients[0],'private-state',state=>state.phase==='playing');
+   s.emit('join-tournament-match',{tournamentId:'fixture3',round:1,slot:1,
+     accountId:player.account.id,accountToken:player.token});
+   await joined;
+ }
+ const started=await playingWithThree;
+ const continued=event(clients[0],'private-state',s=>s.phase==='playing'&&s.players[2].forfeited);
+ clients[2].disconnect();
+ const reduced=await continued;
+ assert.deepEqual(reduced.board,started.board);
+ assert.equal(reduced.handCounts[2],0);
+ assert.notEqual(reduced.turn,2);
+
 });

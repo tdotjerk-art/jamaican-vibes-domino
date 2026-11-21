@@ -131,6 +131,12 @@
 4. Test live URL and monitor credit entry, refund and provider verification logs.
 5. Keep an immediate rollback path that disables credits without breaking private and computer games.
 
+## Tournament disconnect policy
+
+An active Cut Throat match pauses for up to three minutes per disconnected player, with a countdown for the connected players. Rejoining before the deadline resumes the same seat and board without another debit. On expiry, the server forfeits that seat. Two or more eligible players continue on the current board once they are connected. A sole connected survivor advances. If every seat expires, the pending fixture can be replayed from My Matches with a fresh deal and no extra charge. An interrupted process also starts a fresh attempt from the original fixture roster. The public-table grace period stays 90 seconds.
+
+This applies once the first hand has started. Pregame no-shows and physical iPhone verification remain open.
+
 ## Full tournament integration expansion (2026-11-20)
 
 - [x] Add an isolated 3-entrant, two-round Socket.IO full-game integration test: first match played to six, bye advances, actual final played to six, server-authored bracket winner and exactly one tournament debit per player. Test file: `test/domino-tournament-multi-round-e2e.test.js`, commit `c22d531c8fdb51853bb09d72ef12027560a23bad`.

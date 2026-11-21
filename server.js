@@ -215,6 +215,7 @@ app.get("/health",(req,res)=>res.status(200).send("ok"));
 const rooms=new Map();
 const tournamentRooms=new Map();
 const GRACE_MS=90000;
+const TOURNAMENT_GRACE_MS=180000;
 const NEXT_HAND_DELAY_MS=5000;
 
 const clampTarget=()=>6;
@@ -234,6 +235,11 @@ const orientRight=(t,R)=>t.a===R?{...t}:{a:t.b,b:t.a,faceA:t.faceB??t.b,faceB:t.
 // then 30 seconds while they hold 1-3 dominoes.
 const turnSeconds=c=>c>=1&&c<=3?30:20;
 const connectedPlayers=r=>r.players.filter(p=>p&&p.connected).length;
+const requiredPlayers=r=>r.players.length-r.players.filter(p=>p?.forfeited).length;
+function tournamentReconnectDeadline(r){
+ const deadlines=r.players.map(p=>p?.reconnectDeadline).filter(Boolean);
+ return deadlines.length?Math.min(...deadlines):0;
+}
 const addHistory=(r,s)=>{r.history.push(s);if(r.history.length>60)r.history.shift()};
 
 function clearTimer(r){if(r.timer){clearTimeout(r.timer);r.timer=null}}
@@ -254,13 +260,14 @@ function finishPaidPublicMatch(r){
    }
  }
 }
-function publicPlayers(r){return r.players.map(p=>p?{name:p.name,seat:p.seat,connected:!!p.connected,ready:!!p.ready}:null)}
+function publicPlayers(r){return r.players.map(p=>p?{name:p.name,seat:p.seat,connected:!!p.connected,ready:!!p.ready,...(p.forfeited?{forfeited:true}:{})}:null)}
 function roomState(r){return {
  code:r.code,playerCount:r.players.length,players:publicPlayers(r),hostSeat:r.hostSeat,mode:r.mode,target:r.target,tieRule:tieRuleOf(r.tieRule),phase:r.phase,publicTable:!!r.publicTable,
  message:r.message||"",spectatorCount:r.spectators.size,rematchVotes:[...r.rematchVotes]
 }}
 function gameBase(r){return {
  code:r.code,playerCount:r.players.length,players:publicPlayers(r),hostSeat:r.hostSeat,mode:r.mode,target:r.target,tieRule:tieRuleOf(r.tieRule),phase:r.phase,
+ reconnectDeadline:r.tournamentFixture?tournamentReconnectDeadline(r):0,
  turn:r.turn,handNo:r.handNo,handValue:r.handValue,board:r.board,handCounts:r.hands.map(h=>h.length),
  revealHands:r.revealHands,scores:r.scores,teamScores:r.teamScores,deadline:r.deadline||0,dealUntil:r.dealUntil||0,message:r.message||"",
  poseOptions:r.poseOptions||[],history:r.history,lastEvent:r.lastEvent||"",spectatorCount:r.spectators.size,
@@ -340,7 +347,7 @@ function applyBruckAndStartWin(r,winnerSeat){
 }
 function scheduleTurn(r){
  clearTimer(r);if(r.phase!=="playing"||r.turn==null)return;
- if(connectedPlayers(r)<r.players.length){pauseForDisconnect(r);return}
+ if(connectedPlayers(r)<requiredPlayers(r)){pauseForDisconnect(r);return}
  const sec=turnSeconds(r.hands[r.turn].length),intro=Math.max(0,(r.dealUntil||0)-Date.now());r.deadline=Date.now()+intro+sec*1000;
  r.timer=setTimeout(()=>autoAction(r),intro+sec*1000+75);r.timer.unref?.();emitAll(r)
 }
@@ -348,6 +355,11 @@ function allBlocked(r){return r.hands.every(h=>!h.some(t=>canPlay(r.board,t)))}
 function nextPlayableTurn(r){
  let guard=0;
  while(guard++<r.players.length&&r.phase==="playing"){
+   if(r.players[r.turn]?.forfeited){
+     if(allBlocked(r)){finishBlocked(r);return}
+     r.turn=(r.turn+1)%r.players.length;
+     continue;
+   }
    if(r.hands[r.turn].some(t=>canPlay(r.board,t)))break;
    if(allBlocked(r)){finishBlocked(r);return}
    const n=r.players[r.turn]?.name||"Player";addHistory(r,`${n} passed.`);setEvent(r,"pass",`${n} passes.`);
@@ -423,12 +435,14 @@ function finishWin(r,seat){
 }
 function finishBlocked(r){
  clearTimer(r);r.revealHands=true;r.deadline=0;
- const counts=r.hands.map(pips),low=Math.min(...counts),lows=counts.map((v,i)=>v===low?i:-1).filter(i=>i>=0);
+ const counts=r.hands.map((hand,i)=>r.players[i]?.forfeited?Infinity:pips(hand));
+ const low=Math.min(...counts),lows=counts.map((v,i)=>v===low?i:-1).filter(i=>i>=0);
+ const countText=counts.map(count=>Number.isFinite(count)?count:"forfeit").join(", ");
  let tied=false,winner=null;
  if(r.mode==="partner"){const teams=[...new Set(lows.map(teamOf))];tied=teams.length>1;if(!tied)winner=lows[0]}
  else{tied=lows.length>1;if(!tied)winner=lows[0]}
  if(tied){
-   r.tiedCarry=true;r.phase="hand-over";r.turn=null;r.message=`Blocked tie. Next hand is worth ${r.mode==="individual"&&tieRuleOf(r.tieRule)==="last-winner-one"?1:2} point${r.mode==="individual"&&tieRuleOf(r.tieRule)==="last-winner-one"?"":"s"}. Counts: ${counts.join(", ")}.`;
+   r.tiedCarry=true;r.phase="hand-over";r.turn=null;r.message=`Blocked tie. Next hand is worth ${r.mode==="individual"&&tieRuleOf(r.tieRule)==="last-winner-one"?1:2} point${r.mode==="individual"&&tieRuleOf(r.tieRule)==="last-winner-one"?"":"s"}. Counts: ${countText}.`;
    addHistory(r,r.message);r.lastEvent="blocked-win";emitAll(r);scheduleNextHand(r);return
  }
  const n=r.players[winner]?.name||"Player";
@@ -436,13 +450,13 @@ function finishBlocked(r){
    const bs=applyBruckAndStartWin(r,winner);
    r.lastWinnerTeam=bs.bruck?null:teamOf(winner);
    if(bs.oneOne){
-     addHistory(r,`${n} wins the blocked hand with ${low}, making it ONE-ONE. The next hand plays for 2. Counts: ${counts.join(", ")}.`);
+     addHistory(r,`${n} wins the blocked hand with ${low}, making it ONE-ONE. The next hand plays for 2. Counts: ${countText}.`);
    }else if(bs.oneOneResolved){
-     addHistory(r,`${n} wins ONE-ONE PLAY TWO on a blocked hand. Team ${bs.team===0?"A":"B"} goes 2. Counts: ${counts.join(", ")}.`);
+     addHistory(r,`${n} wins ONE-ONE PLAY TWO on a blocked hand. Team ${bs.team===0?"A":"B"} goes 2. Counts: ${countText}.`);
    }else if(bs.bruck){
-     addHistory(r,`${n} BRUCKS the game on a blocked hand. The score resets and the next hand starts at 0–0 with the double-six holder posing, playing for 1. Counts: ${counts.join(", ")}.`);
+     addHistory(r,`${n} BRUCKS the game on a blocked hand. The score resets and the next hand starts at 0–0 with the double-six holder posing, playing for 1. Counts: ${countText}.`);
    }else{
-     addHistory(r,`${n} wins the blocked hand with ${low}. Team ${bs.team===0?"A":"B"} goes ${bs.count}. Counts: ${counts.join(", ")}.`);
+     addHistory(r,`${n} wins the blocked hand with ${low}. Team ${bs.team===0?"A":"B"} goes ${bs.count}. Counts: ${countText}.`);
    }
    if(bs.won){
      r.phase="match-over";r.turn=null;r.rematchVotes.clear();
@@ -456,15 +470,21 @@ function finishBlocked(r){
      r.message=`${n} wins the Cut Throat game by reaching 6.`;
      addHistory(r,r.message);r.lastEvent="match-win";if(r.tournamentFixture)settleTournamentFixture(r,winner);finishPaidPublicMatch(r);emitAll(r);return
    }
-   addHistory(r,`${n} wins the blocked hand with ${low}. Counts: ${counts.join(", ")}.`);
+   addHistory(r,`${n} wins the blocked hand with ${low}. Counts: ${countText}.`);
  }
  r.phase="hand-over";r.turn=null;
- r.message=`${n} wins the blocked hand with ${low}. Counts: ${counts.join(", ")}.`;
+ r.message=`${n} wins the blocked hand with ${low}. Counts: ${countText}.`;
  r.lastEvent="blocked-win";emitAll(r);scheduleNextHand(r)
 }
 function beginHand(r,poser=null){
  r.dealUntil=Date.now()+4000;
- clearTimer(r);const d=shuffle(makeDeck());const n=r.players.length,at=d.findIndex(t=>t.a===6&&t.b===6);if(at>=n*7){const slot=Math.floor(Math.random()*n*7);[d[slot],d[at]]=[d[at],d[slot]];}r.hands=Array.from({length:n},(_,i)=>d.slice(i*7,i*7+7));
+ clearTimer(r);const d=shuffle(makeDeck());const n=requiredPlayers(r),at=d.findIndex(t=>t.a===6&&t.b===6);if(at>=n*7){const slot=Math.floor(Math.random()*n*7);[d[slot],d[at]]=[d[at],d[slot]];}let offset=0;
+ r.hands=r.players.map(p=>{
+   if(p?.forfeited)return [];
+   const hand=d.slice(offset,offset+7);
+   offset+=7;
+   return hand;
+ });
  r.board=[];r.playSequence=0;r.revealHands=false;r.handNo++;r.handValue=r.mode==="individual"?(r.tiedCarry&&tieRuleOf(r.tieRule)==="double-six-two"?2:1):(r.tiedCarry?2:(r.nextPlayFor||1));r.phase="playing";r.poseOptions=[];r.message="";
 
  // FIRST HAND AND BRUCK RESTART RULE:
@@ -499,7 +519,7 @@ function beginHand(r,poser=null){
  if(r.tiedCarry){r.turn=r.lastIndividualWinner;r.tiedCarry=false}
  else if(Number.isInteger(poser))r.turn=poser;
  else if(r.mode==="individual"&&Number.isInteger(r.lastIndividualWinner))r.turn=r.lastIndividualWinner;
- else r.turn=0;
+ else r.turn=r.players.findIndex(p=>!p?.forfeited);
  addHistory(r,`Hand ${r.handNo} started.`);r.lastEvent="";scheduleTurn(r)
 }
 function nextHand(r){
@@ -529,25 +549,61 @@ function startIfReady(r){
 }
 function pauseForDisconnect(r){
  if(["playing","hand-over","choose-poser"].includes(r.phase)){
-   clearTimer(r);r.phaseBeforePause=r.phase;r.turnBeforePause=r.turn;r.phase="paused";r.deadline=0;
+   clearTimer(r);clearTimeout(r.restartTimer);r.restartTimer=null;r.phaseBeforePause=r.phase;r.turnBeforePause=r.turn;r.phase="paused";r.deadline=0;
    r.message="A player disconnected. Game paused while they reconnect.";addHistory(r,r.message);emitAll(r)
  }
 }
-function resumeIfPossible(r){
- if(r.phase!=="paused"||connectedPlayers(r)<r.players.length)return;
+function resumeIfPossible(r,message="All players reconnected."){
+ if(r.phase!=="paused"||connectedPlayers(r)<requiredPlayers(r))return;
  const prev=r.phaseBeforePause||"playing";r.phase=prev;r.turn=r.turnBeforePause;r.phaseBeforePause=null;r.turnBeforePause=null;
- r.message="All players reconnected.";addHistory(r,r.message);
- if(r.phase==="playing")scheduleTurn(r);else emitAll(r)
+ r.message=message;addHistory(r,r.message);
+ if(r.phase==="playing"){
+   if(r.players[r.turn]?.forfeited)nextPlayableTurn(r);
+   else scheduleTurn(r);
+ }else{
+   if(r.phase==="hand-over")scheduleNextHand(r);
+   emitAll(r);
+ }
 }
 function promoteHost(r){
  if(r.players[r.hostSeat])return;
  const idx=r.players.findIndex(Boolean);r.hostSeat=idx>=0?idx:0
 }
+function forfeitTournamentSeat(r,p){
+ if(p.connected||p.forfeited||r.phase==="match-over")return;
+ p.graceTimer=null;p.reconnectDeadline=0;p.forfeited=true;
+ r.hands[p.seat]=[];
+ if(r.lastIndividualWinner===p.seat)r.lastIndividualWinner=null;
+ const remaining=r.players.filter(player=>player&&!player.forfeited);
+ const notice=`${p.name} forfeited after the reconnect deadline.`;
+ if(remaining.length>1 || (remaining.length===1&&!remaining[0].connected)){
+   r.message=notice;
+   if(connectedPlayers(r)===requiredPlayers(r))resumeIfPossible(r,notice);
+   else{addHistory(r,notice);emitAll(r);}
+   return;
+ }
+ clearTimer(r);clearTimeout(r.restartTimer);r.restartTimer=null;
+ r.phase="match-over";r.turn=null;r.deadline=0;
+ if(remaining.length){
+   const winner=remaining[0];
+   r.message=`${notice} ${winner.name} advances.`;
+   r.lastEvent="match-win";
+   settleTournamentFixture(r,winner.seat);
+ }else{
+   r.message="All players disconnected. Rejoin from My Matches for a fresh deal at no extra charge.";
+   tournamentRooms.delete(r.tournamentFixture.key);
+   rooms.delete(r.code);
+ }
+ addHistory(r,r.message);emitAll(r);
+}
 function holdTournamentSeat(r,seat){
  const p=r.players[seat];if(!p)return;
- if(p.graceTimer){clearTimeout(p.graceTimer);p.graceTimer=null}
  p.connected=false;p.id=null;p.ready=false;
- // Never forfeit or discard tournament boards after a connection timeout.
+ if(r.handNo>0&&r.phase!=="match-over"&&!p.graceTimer){
+   p.reconnectDeadline=Date.now()+TOURNAMENT_GRACE_MS;
+   p.graceTimer=setTimeout(()=>forfeitTournamentSeat(r,p),TOURNAMENT_GRACE_MS);
+   p.graceTimer.unref?.();
+ }
  if(r.phase!=="match-over")pauseForDisconnect(r);
  emitAll(r);
 }
@@ -572,8 +628,7 @@ function revokePaidSessions(accountId){
       roomCode:r.code,seat
     });
    }
-   // Apply existing interruption policies: tournament boards are held;
-   // paid public games pause and retain their normal 90-second grace.
+   // Apply the grace period for the room type after revoking the session.
    if(r.tournamentFixture){holdTournamentSeat(r,seat);continue;}
    if(r.phase==='waiting'&&r.handNo===0){abandonSeat(r,seat);continue;}
    if(p.graceTimer)clearTimeout(p.graceTimer);
@@ -811,6 +866,10 @@ io.on("connection",socket=>{
    const code=String(roomCode||"").trim().toUpperCase(),r=rooms.get(code);if(!r)return socket.emit("room-error","Room no longer exists.");
    const seat=r.players.findIndex(p=>p&&p.token===token);if(seat<0)return socket.emit("room-error","Reconnect seat not found.");
    const p=r.players[seat];
+   if(p.reconnectDeadline&&Date.now()>=p.reconnectDeadline){
+     clearTimeout(p.graceTimer);forfeitTournamentSeat(r,p);
+   }
+   if(p.forfeited)return socket.emit("room-error","The tournament reconnect deadline expired.");
    if(sqliteCredits&&(r.publicTable||r.tournamentFixture)&&p.credentialHash&&
      !wallet.credentialFingerprintCurrent(p.accountId,p.credentialHash)){
      // A room token alone is never sufficient after wallet recovery rotation.
@@ -825,15 +884,19 @@ io.on("connection",socket=>{
    if(p.connected&&p.id!==socket.id)return socket.emit('room-error','This seat is already connected. Close the other tab first.');
    if(p.id!==socket.id)leaveCurrentRoom(socket);
    else delete socket.data.spectator;
-   if(p.graceTimer){clearTimeout(p.graceTimer);p.graceTimer=null}p.id=socket.id;p.connected=true;
+   if(p.graceTimer){clearTimeout(p.graceTimer);p.graceTimer=null}p.reconnectDeadline=0;p.id=socket.id;p.connected=true;
    socket.data.roomCode=code;socket.data.seat=seat;socket.join(code);socket.emit("reconnect-ok",{code,seat,token});
    if(r.tournamentFixture&&r.phase==="waiting"&&r.handNo===0){
      p.ready=true;startIfReady(r);
+   }else if(r.tournamentFixture&&r.phase==="paused"&&requiredPlayers(r)===1){
+     r.phase="match-over";r.turn=null;r.deadline=0;
+     r.message=`${p.name} advances after the other players forfeited.`;
+     r.lastEvent="match-win";addHistory(r,r.message);settleTournamentFixture(r,seat);
    }else resumeIfPossible(r);
    emitAll(r)
  });
  socket.on("set-room-options",({mode,target,tieRule})=>{
-   const r=seatedRoom(socket),seat=socket.data.seat;if(!r||r.publicTable||seat!==r.hostSeat||r.phase!=="waiting")return;
+   const r=seatedRoom(socket),seat=socket.data.seat;if(!r||r.publicTable||r.tournamentFixture||seat!==r.hostSeat||r.phase!=="waiting")return;
    r.mode=r.players.length<4||mode==="individual"?"individual":"partner";r.target=r.mode==="partner"?6:clampTarget(target);r.tieRule=tieRuleOf(tieRule);emitAll(r)
  });
  socket.on("toggle-ready",()=>{
