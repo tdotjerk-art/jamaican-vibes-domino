@@ -135,7 +135,7 @@
 
 An active Cut Throat match pauses for up to three minutes per disconnected player, with a countdown for the connected players. Rejoining before the deadline resumes the same seat and board without another debit. On expiry, the server forfeits that seat. Two or more eligible players continue on the current board once they are connected. A sole connected survivor advances. If every seat expires, the pending fixture can be replayed from My Matches with a fresh deal and no extra charge. An interrupted process also starts a fresh attempt from the original fixture roster. The public-table grace period stays 90 seconds.
 
-This applies once the first hand has started. Pregame no-shows and physical iPhone verification remain open.
+Each fixture opens for five minutes when the organizer starts the tournament or when the previous round completes. All assigned players joining starts play immediately. At cutoff, the players who joined and remain connected advance alone or play a reduced table. If nobody is connected, the fixture waits for the organizer to record an adjudicated result. The cutoff is stored in SQLite. Physical iPhone verification remains open.
 
 ## Full tournament integration expansion (2026-11-20)
 

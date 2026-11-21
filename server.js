@@ -267,6 +267,7 @@ function roomState(r){return {
 }}
 function gameBase(r){return {
  code:r.code,playerCount:r.players.length,players:publicPlayers(r),hostSeat:r.hostSeat,mode:r.mode,target:r.target,tieRule:tieRuleOf(r.tieRule),phase:r.phase,
+ checkInDeadline:r.phase==="waiting"?r.tournamentFixture?.checkInDeadline:undefined,
  reconnectDeadline:r.tournamentFixture?tournamentReconnectDeadline(r):0,
  turn:r.turn,handNo:r.handNo,handValue:r.handValue,board:r.board,handCounts:r.hands.map(h=>h.length),
  revealHands:r.revealHands,scores:r.scores,teamScores:r.teamScores,deadline:r.deadline||0,dealUntil:r.dealUntil||0,message:r.message||"",
@@ -544,7 +545,13 @@ function choosePoser(r,seat){
 }
 function startIfReady(r){
  if(r.phase!=="waiting")return;
- if(r.players.every(p=>p&&p.connected&&p.ready)){r.players.forEach(p=>p.ready=false);beginHand(r)}
+ if(r.players.every(p=>p?.forfeited||(p?.connected&&p.ready))){
+   if(r.tournamentFixture){
+     const {id,round,slot}=r.tournamentFixture;
+     wallet.setTournamentCheckIn(id,round,slot,null);
+   }
+   r.players.forEach(p=>p.ready=false);beginHand(r);
+ }
  else emitAll(r)
 }
 function pauseForDisconnect(r){
@@ -569,6 +576,38 @@ function promoteHost(r){
  if(r.players[r.hostSeat])return;
  const idx=r.players.findIndex(Boolean);r.hostSeat=idx>=0?idx:0
 }
+function closeTournamentCheckIn({id,round,slot}){
+ const r=rooms.get(tournamentRooms.get(id+":"+round+":"+slot));
+ const attending=r?.players.filter(p=>p?.connected)||[];
+ if(!attending.length){
+   wallet.setTournamentCheckIn(id,round,slot,0);
+ }else if(attending.length===1){
+   wallet.recordTournamentWinner(id,round,slot,attending[0].accountId);
+ }else{
+   // Keep existing seat numbers, which are already known to each client.
+   r.players=r.players.map((p,seat)=>p?.connected?p:{seat,name:"No-show",forfeited:true});
+   startIfReady(r);
+   r.message="Check-in closed. The match starts with the players who joined.";
+   addHistory(r,r.message);
+   emitAll(r);
+   return;
+ }
+ if(!r)return;
+ r.phase="match-over";
+ r.message=attending.length
+   ? `${attending[0].name} advances by no-show forfeit.`
+   : "Nobody checked in. The organizer will review this match.";
+ addHistory(r,r.message);emitAll(r);
+}
+if(sqliteCredits){
+ wallet.reopenInterruptedTournamentCheckIns();
+ const checkInTimer=setInterval(()=>{
+   try{for(const fixture of wallet.dueTournamentCheckIns())closeTournamentCheckIn(fixture)}
+   catch(error){console.error("Tournament check-in settlement failed:",error.message)}
+ },1000);
+ checkInTimer.unref();
+ server.on("close",()=>clearInterval(checkInTimer));
+}
 function forfeitTournamentSeat(r,p){
  if(p.connected||p.forfeited||r.phase==="match-over")return;
  p.graceTimer=null;p.reconnectDeadline=0;p.forfeited=true;
@@ -591,7 +630,9 @@ function forfeitTournamentSeat(r,p){
    settleTournamentFixture(r,winner.seat);
  }else{
    r.message="All players disconnected. Rejoin from My Matches for a fresh deal at no extra charge.";
-   tournamentRooms.delete(r.tournamentFixture.key);
+   const {id,round,slot,key}=r.tournamentFixture;
+   wallet.reopenTournamentCheckIn(id,round,slot);
+   tournamentRooms.delete(key);
    rooms.delete(r.code);
  }
  addHistory(r,r.message);emitAll(r);
@@ -725,6 +766,12 @@ io.on("connection",socket=>{
        throw Error("Tournament match is not awaiting players.");
      if(!match.playerIds.includes(account.id))
        throw Error("Your account is not assigned to this tournament match.");
+     if(match.checkInDeadline===0)
+       throw Error("Nobody checked in. The organizer will review this match.");
+     if(match.checkInDeadline&&Date.now()>=match.checkInDeadline){
+       closeTournamentCheckIn({id:tournamentId,round,slot});
+       throw Error("The five-minute tournament check-in window has closed.");
+     }
    }catch(e){return socket.emit("room-error",e.message)}
    const key=tournamentId+":"+round+":"+slot;
    const current=seatedRoom(socket);
@@ -748,10 +795,10 @@ io.on("connection",socket=>{
      try{attempt=wallet.openTournamentFixtureAttempt(tournamentId,round,slot)}
      catch(e){return socket.emit("room-error",e.message)}
      const created=newRoom(account.name,"individual",6,socket,"double-six-two",match.playerIds.length);
-     room=created.room;room.tournamentFixture={id:tournamentId,round,slot,key,attempt:attempt.attempt};
+     room=created.room;room.tournamentFixture={id:tournamentId,round,slot,key,attempt:attempt.attempt,checkInDeadline:match.checkInDeadline};
      room.message=attempt.replay?
        "Tournament match replay after interruption: previous unfinished board was reset. No extra credits charged.":
-       "Tournament match: waiting for both assigned players.";
+       "Tournament match: waiting for all assigned players.";
      tournamentRooms.set(key,room.code);
      room.players[0].accountId=account.id;room.players[0].credentialHash=crypto.createHash('sha256').update(accountToken).digest('hex');room.players[0].ready=true;
      socket.data.roomCode=room.code;socket.data.seat=0;socket.join(room.code);
@@ -766,7 +813,7 @@ io.on("connection",socket=>{
    }
    if(room.tournamentFixture?.attempt>1&&room.handNo===0)
      room.message="Replay of interrupted tournament match. Fresh deal, no additional credits charged.";
-   else room.message="Tournament match: both assigned players must join to begin.";
+   else room.message="Tournament match: all assigned players must join to begin.";
    startIfReady(room);
  });
  socket.on("join-public-table",({name,playerCount,mode,accountId,accountToken})=>{
@@ -866,6 +913,10 @@ io.on("connection",socket=>{
    const code=String(roomCode||"").trim().toUpperCase(),r=rooms.get(code);if(!r)return socket.emit("room-error","Room no longer exists.");
    const seat=r.players.findIndex(p=>p&&p.token===token);if(seat<0)return socket.emit("room-error","Reconnect seat not found.");
    const p=r.players[seat];
+   if(r.tournamentFixture&&r.phase==="waiting"&&Date.now()>=r.tournamentFixture.checkInDeadline){
+     if(r.tournamentFixture.checkInDeadline)closeTournamentCheckIn(r.tournamentFixture);
+     return socket.emit("room-error","The five-minute tournament check-in window has closed.");
+   }
    if(p.reconnectDeadline&&Date.now()>=p.reconnectDeadline){
      clearTimeout(p.graceTimer);forfeitTournamentSeat(r,p);
    }
@@ -900,7 +951,7 @@ io.on("connection",socket=>{
    r.mode=r.players.length<4||mode==="individual"?"individual":"partner";r.target=r.mode==="partner"?6:clampTarget(target);r.tieRule=tieRuleOf(tieRule);emitAll(r)
  });
  socket.on("toggle-ready",()=>{
-   const r=seatedRoom(socket),seat=socket.data.seat;if(!r)return socket.emit("action-error","Join a player seat first.");if(!Number.isInteger(seat)||r.phase!=="waiting"||(r.publicTable&&r.handNo===0&&r.players.some(p=>!p)))return;
+   const r=seatedRoom(socket),seat=socket.data.seat;if(!r)return socket.emit("action-error","Join a player seat first.");if(r.tournamentFixture||!Number.isInteger(seat)||r.phase!=="waiting"||(r.publicTable&&r.handNo===0&&r.players.some(p=>!p)))return;
    const p=r.players[seat];if(!p||!p.connected)return;p.ready=!p.ready;setEvent(r,"ready",`${p.name} is ${p.ready?"ready":"not ready"}.`);startIfReady(r)
  });
  socket.on("play-domino",({tileId,side})=>{

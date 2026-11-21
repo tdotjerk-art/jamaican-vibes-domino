@@ -9,6 +9,7 @@ const hash = value => crypto.createHash('sha256').update(value).digest('hex');
 const idOK = x => typeof x === 'string' && /^[a-f0-9]{32}$/.test(x);
 const tokenOK = x => typeof x === 'string' && /^[a-f0-9]{64}$/.test(x);
 const opOK = x => typeof x === 'string' && /^[A-Za-z0-9:_-]{1,120}$/.test(x);
+const TOURNAMENT_CHECK_IN_MS = 5 * 60 * 1000;
 const tourOK = x => typeof x === 'string' && /^[A-Za-z0-9_-]{1,48}$/.test(x);
 
 function createSqliteWallet(filename, options={}) {
@@ -113,6 +114,8 @@ function createSqliteWallet(filename, options={}) {
   const signupSalt=db.prepare("SELECT value FROM signup_guard_config WHERE key='salt'").get().value;
   if(!db.prepare('PRAGMA table_info(tournaments)').all().some(c=>c.name==='player_count'))
     db.exec('ALTER TABLE tournaments ADD COLUMN player_count INTEGER NOT NULL DEFAULT 2 CHECK(player_count IN (2,3,4))');
+  if(!db.prepare('PRAGMA table_info(tournament_matches)').all().some(c=>c.name==='check_in_deadline'))
+    db.exec('ALTER TABLE tournament_matches ADD COLUMN check_in_deadline INTEGER');
   // Opt-in email ownership: legacy development fixtures remain unchanged until
   // the verified-registration gate is explicitly enabled.
   db.exec(`
@@ -414,7 +417,7 @@ function createSqliteWallet(filename, options={}) {
   }
   function tournamentMatches(id,accountId=null){
     const matches=db.prepare(`SELECT m.round,m.slot,m.player_a AS playerA,m.player_b AS playerB,
-      m.winner_id AS winnerId,m.status,coalesce(a.attempts,0) AS attempts
+      m.winner_id AS winnerId,m.status,m.check_in_deadline AS checkInDeadline,coalesce(a.attempts,0) AS attempts
       FROM tournament_matches m LEFT JOIN tournament_fixture_attempts a
         ON a.tournament_id=m.tournament_id AND a.round=m.round AND a.slot=m.slot
       WHERE m.tournament_id=? ORDER BY m.round,m.slot`).all(id);
@@ -517,11 +520,30 @@ function createSqliteWallet(filename, options={}) {
       return {attempt:attempts,replay:attempts>1};
     });
   }
+  function dueTournamentCheckIns(now=Date.now()) {
+    return db.prepare(`SELECT m.tournament_id AS id,m.round,m.slot FROM tournament_matches m
+      JOIN tournaments t ON t.id=m.tournament_id
+      WHERE t.status='started' AND m.status='pending'
+        AND m.check_in_deadline>0 AND m.check_in_deadline<=?`).all(now);
+  }
+  function setTournamentCheckIn(id,round,slot,deadline) {
+    db.prepare(`UPDATE tournament_matches SET check_in_deadline=?
+      WHERE tournament_id=? AND round=? AND slot=? AND status='pending'`).run(deadline,id,round,slot);
+  }
+  // NULL marks a match that began. A server restart gives it a fresh window.
+  // A zero deadline holds an unattended fixture for organizer review.
+  function reopenInterruptedTournamentCheckIns() {
+    db.prepare(`UPDATE tournament_matches SET check_in_deadline=?
+      WHERE status='pending' AND check_in_deadline IS NULL`).run(Date.now()+TOURNAMENT_CHECK_IN_MS);
+  }
+  function reopenTournamentCheckIn(id,round,slot) {
+    setTournamentCheckIn(id,round,slot,Date.now()+TOURNAMENT_CHECK_IN_MS);
+  }
   function createRound(id,round,ids) {
     if(ids.length<2)throw Error('Cannot create a round with fewer than two competitors.');
     const count=tour(id).playerCount;
     const insert=db.prepare(`INSERT INTO tournament_matches
-      (tournament_id,round,slot,player_a,player_b,winner_id,status) VALUES(?,?,?,?,?,?,?)`);
+      (tournament_id,round,slot,player_a,player_b,winner_id,status,check_in_deadline) VALUES(?,?,?,?,?,?,?,?)`);
     const seatInsert=db.prepare(`INSERT INTO tournament_match_seats
       (tournament_id,round,slot,seat,account_id) VALUES(?,?,?,?,?)`);
     const full=Math.floor(ids.length/count),groups=[];
@@ -529,9 +551,10 @@ function createSqliteWallet(filename, options={}) {
       for(let i=0;i<full;i++)groups.push(ids.slice(i*count,(i+1)*count));
       for(const id of ids.slice(full*count))groups.push([id]);
     }else groups.push(ids); // Final or small tournament: two or more can play.
+    const deadline=Date.now()+TOURNAMENT_CHECK_IN_MS;
     groups.forEach((players,i)=>{
       const slot=i+1,bye=players.length===1;
-      insert.run(id,round,slot,players[0],players[1]||null,bye?players[0]:null,bye?'bye':'pending');
+      insert.run(id,round,slot,players[0],players[1]||null,bye?players[0]:null,bye?'bye':'pending',bye?null:deadline);
       players.forEach((account,seat)=>seatInsert.run(id,round,slot,seat,account));
     });
   }
@@ -657,7 +680,7 @@ function createSqliteWallet(filename, options={}) {
       return tx(()=>change(id,'daily:'+day,20,'daily-login'));
     },
     enterPublic,reservePublicRematch,refundPublic,finishPublic,refundInterruptedPublicMatches,
-    createTournament,joinTournament,withdrawTournament,cancelTournament,startTournament,recordTournamentWinner,openTournamentFixtureAttempt,tournamentStatus,listTournaments,myTournamentMatches,
+    createTournament,joinTournament,withdrawTournament,cancelTournament,startTournament,recordTournamentWinner,openTournamentFixtureAttempt,dueTournamentCheckIns,setTournamentCheckIn,reopenTournamentCheckIn,reopenInterruptedTournamentCheckIns,tournamentStatus,listTournaments,myTournamentMatches,
     close:()=>db.close()
   };
 }

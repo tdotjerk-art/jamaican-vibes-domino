@@ -7,12 +7,19 @@ const path=require('node:path');
 const {fork}=require('node:child_process');
 const {io}=require('socket.io-client');
 
-test('assigned tournament players can reconnect, and expired seats forfeit',async t=>{
+test('tournament check-in and reconnect deadlines settle assigned seats',async t=>{
  const directory=fs.mkdtempSync(path.join(os.tmpdir(),'domino-tmatch-'));
  const secret='t'.repeat(48);
  // Shorten only the tournament timeout in this isolated server process.
  const clock=path.join(directory,'clock.cjs');
  fs.writeFileSync(clock,`
+ const now=Date.now;
+ let offset=0;
+ Date.now=()=>now()+offset;
+ process.on('message',delta=>{
+   offset+=delta;
+   process.send({clockAdvanced:true});
+ });
  const schedule=global.setTimeout;
  global.setTimeout=(callback,delay,...args)=>schedule(callback,delay===180000?1500:delay,...args);
  `);
@@ -162,5 +169,56 @@ test('assigned tournament players can reconnect, and expired seats forfeit',asyn
  assert.deepEqual(reduced.board,started.board);
  assert.equal(reduced.handCounts[2],0);
  assert.notEqual(reduced.turn,2);
+
+ // Use fresh accounts so the still-active reduced table is unaffected.
+ const checkInPlayers=[];
+ for(const name of ['EarlyOne','EarlyTwo','AbsentThree'])
+   checkInPlayers.push((await api('register',{name})).body);
+ async function startFixture(id){
+   assert.equal((await api('tournaments',{id,capacity:3,playerCount:3},true)).status,200);
+   for(const player of checkInPlayers)
+     assert.equal((await api('tournaments/'+id+'/join',{id:player.account.id,token:player.token})).status,200);
+   return (await api('tournaments/'+id+'/start',{},true)).body.matches[0];
+ }
+ async function joinFixture(id,player){
+   const s=await connect(), ack=event(s,'seat-assigned');
+   s.emit('join-tournament-match',{tournamentId:id,round:1,slot:1,
+     accountId:player.account.id,accountToken:player.token});
+   await ack;
+   return s;
+ }
+ async function expireCheckIn(){
+   const advanced=new Promise(resolve=>child.once('message',resolve));
+   child.send(300001);
+   assert.equal((await advanced).clockAdvanced,true);
+ }
+ const nobody=await startFixture('nobody');
+ assert.ok(nobody.checkInDeadline-Date.now()>295000);
+ const solo=await startFixture('solo');
+ const soloSocket=await joinFixture('solo',checkInPlayers[0]);
+ const soloWin=event(soloSocket,'private-state',s=>s.phase==='match-over');
+ await expireCheckIn();
+ assert.match((await soloWin).message,/EarlyOne advances by no-show/);
+ const review=await fetch(url+'/api/domino/wallet/tournaments/nobody').then(r=>r.json());
+ assert.equal(review.matches[0].checkInDeadline,0);
+ assert.equal(review.matches[0].winnerId,null);
+ assert.ok(solo.checkInDeadline>0);
+ const early=await startFixture('early');
+ const earlySocket=await joinFixture('early',checkInPlayers[0]);
+ await joinFixture('early',checkInPlayers[1]);
+ const startsReduced=event(earlySocket,'private-state',s=>s.phase==='playing');
+ await expireCheckIn();
+ const earlyState=await startsReduced;
+ assert.equal(earlyState.players[2].forfeited,true);
+ assert.equal(earlyState.handCounts[2],0);
+ assert.equal(earlyState.handNo,1);
+ assert.ok(early.checkInDeadline>solo.checkInDeadline);
+ const latePlayer=await connect(), lateError=event(latePlayer,'room-error');
+ const missing=checkInPlayers[2];
+ latePlayer.emit('join-tournament-match',{tournamentId:'early',round:1,slot:1,
+   accountId:missing.account.id,accountToken:missing.token});
+ assert.match(await lateError,/already in progress/);
+ for(const player of checkInPlayers)
+   assert.equal((await api('me',{id:player.account.id,token:player.token})).body.balance,25);
 
 });

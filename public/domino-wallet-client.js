@@ -168,7 +168,12 @@
         const pending = (event.matches || []).filter(match => match.status === 'pending' &&
           Array.isArray(match.playerIds) && match.playerIds.length >= 2 && match.playerIds.includes(credentials.id));
         if (pending.length) {
-          for (const match of pending) {
+          for (const match of pending.filter(match => match.checkInDeadline === 0)) {
+            const note = document.createElement('p');
+            note.textContent = 'Round ' + match.round + ', match ' + match.slot + ': awaiting organizer review.';
+            line.append(note);
+          }
+          for (const match of pending.filter(match => match.checkInDeadline !== 0)) {
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.textContent = 'Play round ' + match.round + ', match ' + match.slot;
@@ -193,6 +198,11 @@
               } catch (error) { message(error.message); }
             };
             line.append(btn);
+            if (match.checkInDeadline > 0) {
+              const deadline = document.createElement('p');
+              deadline.textContent = 'Check in by ' + new Date(match.checkInDeadline).toLocaleString();
+              line.append(deadline);
+            }
             if (Number(match.attempts) > 1) {
               const replay = document.createElement('p');
               replay.style.margin = '4px 0';
@@ -358,8 +368,10 @@
     window.io = function (...args) {
       const socket = originalIo.apply(this, args);
       gameSocket = socket;
+      let tournamentCountdown;
       const originalEmit = socket.emit;
       socket.emit = function (event, data, ...rest) {
+        if (event === 'leave-room') clearInterval(tournamentCountdown);
         if (event === 'join-public-table') {
           if (!isValid(credentials)) { message('Create or recover your wallet first.'); return this; }
           return originalEmit.call(this, event, {...data, accountId: credentials.id, accountToken: credentials.token}, ...rest);
@@ -374,22 +386,24 @@
       socket.on('room-error', error => { message('Unable to join match: ' + String(error)); });
       socket.on('seat-assigned', () => { message('Tournament seat assigned. Follow the game screen to play.'); });
       socket.on('wallet-session-revoked', data => {
+        clearInterval(tournamentCountdown);
         message(String(data?.message || 'Wallet recovery changed. Reconnect with the new code before playing.'));
       });
-      let reconnectCountdown;
       socket.on('private-state', state => {
-        clearInterval(reconnectCountdown);
-        if (state.phase !== 'paused' || !state.reconnectDeadline) return;
-        reconnectCountdown = setInterval(() => {
-          const status = document.getElementById('status');
+        clearInterval(tournamentCountdown);
+        const waiting = state.phase === 'waiting' && state.checkInDeadline > 0;
+        const deadline = waiting ? state.checkInDeadline : state.reconnectDeadline;
+        if (!deadline || (!waiting && state.phase !== 'paused')) return;
+        tournamentCountdown = setInterval(() => {
+          const status = document.getElementById(waiting ? 'jvLobbyMessage' : 'status');
           if (!status) return;
-          const seconds = Math.max(0, Math.ceil((state.reconnectDeadline - Date.now()) / 1000));
-          status.textContent = 'Tournament paused. Reconnect time remaining: ' +
+          const seconds = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+          status.textContent = (waiting ? 'Tournament check-in closes in ' : 'Tournament paused. Reconnect time remaining: ') +
             Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0');
         }, 250);
       });
       socket.on('disconnect', () => {
-        clearInterval(reconnectCountdown);
+        clearInterval(tournamentCountdown);
         message('Disconnected from online Domino. Reconnect before using Play Round.');
       });
       socket.on('wallet-balance', data => {
