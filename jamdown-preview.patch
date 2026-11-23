@@ -158,10 +158,10 @@ index 39355fc..93165fd 100644
  <li><strong>Four of a kind</strong> — Four cards of one rank, plus a fifth card.</li>
 diff --git a/public/jamdown-sponsor.css b/public/jamdown-sponsor.css
 new file mode 100644
-index 0000000..0f450ba
+index 0000000..708baaf
 --- /dev/null
 +++ b/public/jamdown-sponsor.css
-@@ -0,0 +1,26 @@
+@@ -0,0 +1,33 @@
 +body #contactTicker:has(> a) {
 +  display: grid !important;
 +  place-items: center;
@@ -187,6 +187,13 @@ index 0000000..0f450ba
 +#contactTicker > a:focus-visible {
 +  outline: 2px solid #fff6d8;
 +  outline-offset: -3px;
++}
++
++/* Put the sponsor artwork on the felt, below the playing surface and controls. */
++body .app > .table::before {
++  background: #145330 url("/jamdown-tdot-jerk.jpg") center / auto 90% no-repeat !important;
++  background-size: contain !important;
++  background-clip: padding-box !important;
 +}
 diff --git a/public/privacy.html b/public/privacy.html
 index 910c584..bebb930 100644
