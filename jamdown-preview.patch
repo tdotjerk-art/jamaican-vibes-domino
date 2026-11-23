@@ -1,0 +1,286 @@
+diff --git a/index.html b/index.html
+index c51c427..5be4688 100644
+--- a/index.html
++++ b/index.html
+@@ -3,7 +3,7 @@
+ <head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+-<title>Jamaican Vibes Domino</title>
++<title>JamDown Games Domino</title>
+ <script src="/sound-settings.js"></script>
+ <style>
+ :root{
+@@ -1668,7 +1668,7 @@ button#yardTalkBtn{display:none !important;}
+ 
+ <style id="jv-phone-fit-v1">
+ /* =========================================================
+-   JAMAICAN VIBES DOMINO — PHONE FIT
++   JAMDOWN GAMES DOMINO — PHONE FIT
+    Visual/responsive changes only. Game rules are untouched.
+    ========================================================= */
+ 
+@@ -2038,7 +2038,7 @@ button#yardTalkBtn{display:none !important;}
+ 
+ <style id="jv-restored-full-design">
+ /* ============================================================
+-   FULL RESTORED JAMAICAN VIBES DOMINO DESIGN
++   FULL RESTORED JAMDOWN GAMES DOMINO DESIGN
+    - New wooden green-felt table design
+    - Exact user-supplied red maple-leaf TDOT JERK logo
+    - Original advertising window, players, hands, timers, scores,
+@@ -2518,7 +2518,7 @@ button[onclick*="quit"]{
+ 
+ <style id="jv-everything-feature-css">
+ /* ============================================================
+-   JAMAICAN VIBES DOMINO — COMPLETE FEATURE PACK
++   JAMDOWN GAMES DOMINO — COMPLETE FEATURE PACK
+    This layer adds atmosphere/UI/game feedback only.
+    It does NOT alter the approved domino corner geometry.
+    ============================================================ */
+@@ -2885,14 +2885,15 @@ body.jv-theme-party #jvThemeOverlay{
+ @media(prefers-reduced-motion:reduce){.turn-light.on{animation:none}}
+ #jvHintBtn,#jvHintInside,#jvCoach,label:has(#jvTutorial),label:has(#jvSetupTutorial){display:none!important}
+ </style>
++<link rel="stylesheet" href="/jamdown-sponsor.css">
+ </head>
+ <body>
+ <div id="turnTimer"></div>
+ 
+ <div class="app">
+-  <div class="brand">🇯🇲 JAMAICAN VIBES DOMINO • REBUILT FROM SCRATCH</div>
++  <div class="brand">🇯🇲 JAMDOWN GAMES DOMINO</div>
+   <header>
+-    <h1><span class="gold">JAMAICAN VIBES</span> DOMINO</h1>
++    <h1><span class="gold">JAMDOWN GAMES</span> DOMINO</h1>
+     <div class="pill">Hand <b id="handNo">0</b> • Worth <b id="handValue">1</b> pt</div>
+   </header>
+ 
+@@ -2909,11 +2910,10 @@ body.jv-theme-party #jvThemeOverlay{
+     <span id="turnLight3" class="turn-light turn-light-3" role="img" aria-label="Player 3 — waiting"></span>
+     <span id="turnLight4" class="turn-light turn-light-4" role="img" aria-label="Player 4 — waiting"></span>
+ 
+-<div id="contactTicker" aria-label="TDOT JERK contact information">
+-  <div class="contact-ticker-track">
+-    <span><span class="ticker-brand-flash"><span class="ticker-tdot">TDOT</span>&nbsp;<span class="ticker-jerk">JERK</span></span> • This is absolutely the best authentic jerk chicken in Toronto • Call or order online now • 416-534-5375 • tdotjerk.ca • 26 Roncesvalles Ave., Toronto, Ontario</span>
+-    <span aria-hidden="true"><span class="ticker-brand-flash"><span class="ticker-tdot">TDOT</span>&nbsp;<span class="ticker-jerk">JERK</span></span> • This is absolutely the best authentic jerk chicken in Toronto • Call or order online now • 416-534-5375 • tdotjerk.ca • 26 Roncesvalles Ave., Toronto, Ontario</span>
+-  </div>
++<div id="contactTicker">
++  <a href="https://tdotjerk.ca/" target="_blank" rel="noopener noreferrer">
++    <strong>Tdot Jerk</strong> · Free jerk chicken sample before you buy
++  </a>
+ </div>
+ 
+     <div class="player p-you" id="p1">Player 1 • YOU<div id="c1" class="count"></div></div>
+@@ -4875,7 +4875,7 @@ button.rules-active{
+ 
+ <div id="gameRulesPanel" style="display:none;position:fixed;z-index:2147483647;left:50%;top:50%;transform:translate(-50%,-50%);width:min(680px,90vw);max-height:78vh;overflow:auto;background:#082d18;color:white;border:3px solid #ffd92f;border-radius:14px;padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif;">
+   <button id="closeGameRules" style="float:right;background:#ffd92f;color:#111;border:0;border-radius:7px;padding:7px 12px;font-weight:900;cursor:pointer;">CLOSE</button>
+-  <h2 style="color:#ffd92f;margin-top:0;">Jamaican Vibes Domino Rules</h2>
++  <h2 style="color:#ffd92f;margin-top:0;">JamDown Games Domino Rules</h2>
+   <div data-rulebook-version="2026-10-19">
+   <h3>Playing a hand</h3>
+   <ul>
+@@ -5147,7 +5147,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
+ #roomStatus{font-size:.92em;line-height:1.4;margin-top:8px}
+ </style>
+ <div id="onlineModePanel">
+-  <h2 style="color:#ffd92f;margin-top:0">Jamaican Vibes Domino</h2>
++  <h2 style="color:#ffd92f;margin-top:0">JamDown Games Domino</h2>
+   <button id="singlePlayerModeBtn">SINGLE PLAYER</button>
+   <hr style="border-color:#456">
+   <input id="onlineName" maxlength="20" placeholder="Your name">
+@@ -5556,13 +5556,13 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
+ 
+ <div id="jvHome" class="jv-screen" style="display:flex">
+   <div class="jv-card">
+-    <h1 class="jv-title">JAMAICAN VIBES DOMINO</h1>
++    <h1 class="jv-title">JAMDOWN GAMES</h1>
+     <div class="jv-grid">
+       <button class="jv-btn" id="jvSingle">SINGLE PLAYER — CHOOSE MODE</button>
+       <button class="jv-btn green" id="jvIndividualSix">CUT THROAT — FIRST TO 6</button>
+       <button class="jv-btn" id="jvOnline">PLAY ONLINE</button>
+       <a class="jv-btn green" href="/holdem/" style="display:block;text-align:center;text-decoration:none">JAMAICAN TEXAS HOLD’EM</a>
+-      <a class="jv-btn green" href="/three-cards.html" style="display:block;text-align:center;text-decoration:none">JAMAICAN 3 CARDS</a>
++      <a class="jv-btn green" href="/three-cards.html" style="display:block;text-align:center;text-decoration:none">PITTA POT</a>
+       <a class="jv-btn green" href="/draff/" style="display:block;text-align:center;text-decoration:none">JAMAICAN DRAFF</a>
+       <a class="jv-btn green" href="/ludi/" style="display:block;text-align:center;text-decoration:none">LUDI</a>
+       <button class="jv-btn secondary" id="jvRules">RULES</button>
+@@ -6578,7 +6578,7 @@ padding:20px;box-shadow:0 10px 35px rgba(0,0,0,.75);font-family:Arial,sans-serif
+ 
+ <div id="jvExtrasPanel">
+   <div id="jvExtrasCard">
+-    <h2>✨ Jamaican Vibes Game Extras</h2>
++    <h2>✨ JamDown Games Game Extras</h2>
+     <div class="jv-feature-grid">
+ 
+       <section class="jv-feature-section">
+diff --git a/preview-access.js b/preview-access.js
+new file mode 100644
+index 0000000..9221b26
+--- /dev/null
++++ b/preview-access.js
+@@ -0,0 +1,24 @@
++'use strict';
++
++const { createHash, timingSafeEqual } = require('node:crypto');
++
++function protectPreview(app, io, password) {
++  if (!password) throw new Error('JAMDOWN_PREVIEW_PASSWORD is required for a hosted preview.');
++
++  const digest = value => createHash('sha256').update(value).digest();
++  const expected = digest('Basic ' + Buffer.from('jamdown:' + password).toString('base64'));
++
++  function authorize(req, res, next) {
++    res.setHeader('Cache-Control', 'private, no-store');
++    res.setHeader('X-Robots-Tag', 'noindex');
++    if (timingSafeEqual(digest(req.headers.authorization || ''), expected)) return next();
++
++    res.writeHead(401, { 'WWW-Authenticate': 'Basic realm="JamDown Games", charset="UTF-8"' });
++    res.end('JamDown Games private preview');
++  }
++
++  app.use(authorize);
++  io.engine.use(authorize);
++}
++
++module.exports = { protectPreview };
+diff --git a/public/holdem/index.html b/public/holdem/index.html
+index 39355fc..93165fd 100644
+--- a/public/holdem/index.html
++++ b/public/holdem/index.html
+@@ -1,5 +1,5 @@
+ <!doctype html><html lang="en"><head>
+-<script src="/analytics-client.js"></script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#073d2a"><title>Jamaican Texas Hold’em</title><link rel="stylesheet" href="style.css?v=showdown-payouts"><script defer src="/socket.io/socket.io.js"></script><script defer src="engine.js?v=table-switch-actions"></script><script defer src="ui.js?v=select-split-winner"></script></head><body><main><nav><a href="/">← All games</a><a href="/privacy.html" aria-label="Privacy policy">Privacy</a><span>JAMAICAN VIBES</span><button id="rulesBtn">Rules</button></nav><header><p class="eyebrow">JAMAICAN VIBES · POKER CLUB</p><h1>Texas <em>Hold’em</em></h1><p>NO-LIMIT TEXAS HOLD’EM · 8-SEAT TABLE</p></header><div class="stats"><span id="handNo">YOUR SEAT IS READY</span><span>BLINDS <b>10 / 20</b></span><button id="reset">New table</button></div><section class="felt" aria-label="Poker table with eight seats"><div class="table-brand" aria-hidden="true"><span>JAMAICAN</span><strong>VIBES</strong><small>POKER CLUB</small></div><div class="betting-line" aria-hidden="true"></div><div id="seats"></div><div class="centre"><div id="board" class="cards"></div><div id="potSummary"><p id="pot"></p><p id="winnerNotice" role="status" hidden></p></div><span id="street"></span></div></section><section class="controls"><button id="friendsButton" type="button">Play With Friends</button><button id="pauseTable">Pause</button><button id="tableOptions" type="button">Table options</button><p id="tableMode"></p><p id="message" role="status" aria-live="polite">Pull up a chair. Start your first hand.</p><div id="actions"></div><p id="error" role="alert"></p></section><details><summary>Table activity</summary><ol id="history"></ol></details><footer>No cash, purchases, or cash prizes. Chips are for this game only.</footer><dialog id="friendsLobby"><h2>Play With Friends</h2><p id="friendsStatus" role="status"></p><ul id="friendsSeats"></ul><details><summary>Public tables</summary><button id="refreshTables">Refresh tables</button><ul id="publicTables"></ul></details><div id="friendsFields"><label>Your name <input id="friendsName" maxlength="20" autocomplete="nickname"></label><label>Room code <input id="friendsCode" maxlength="6" autocapitalize="characters"></label></div><div class="option-buttons"><button id="friendsCreate">Create room</button><button id="friendsTournament">Create tournament room</button><button id="friendsJoin">Join room</button><button id="publicJoin">Join public table</button><button id="friendsSit" hidden>Sit out next hand</button><button id="friendsInvite" hidden>Copy invite link</button><button id="friendsFind" hidden>Find another table</button><button id="friendsLeave" hidden>Leave room</button><button id="friendsClose">Back to table</button></div></dialog><dialog id="tableSettings"><h2>Table options</h2><p>Tournament starts with 1,000 chips per seat. Blinds double every five hands, and busted players sit out.</p><label><input id="tableSound" type="checkbox"> Sound effects</label><label><input id="fourColourDeck" type="checkbox" checked> Four-colour deck</label><label><input id="tableMotion" type="checkbox" checked> Card and chip animations</label><label>Computer speed <select id="computerSpeed"><option value="fast">Fast · 1.4 seconds</option><option value="normal" selected>Normal · 3 seconds</option><option value="relaxed">Relaxed · 6 seconds</option></select></label><div class="option-buttons"><button id="showSessionSummary">Session summary</button><button id="practiceMode">New practice table</button><button id="tournamentMode">New tournament</button><button id="closeOptions">Back to table</button></div></dialog><dialog id="handRecap"><h2 id="recapTitle">Hand recap</h2><p id="recapBoard"></p><div id="potPayouts" aria-label="Pot payouts"></div><div id="recapWinners"></div><ol id="recapLog"></ol><button id="closeRecap">Back to table</button></dialog><dialog id="rules"><h2>How to play</h2><p>Make the best five-card poker hand using any combination of your two private cards and the five community cards.</p><p>Eight seats: you and seven computer opponents. Each player starts with 1,000 play chips. The dealer button rotates. Starting blinds: 10 / 20. Tournament blinds double every five hands. Betting rounds: preflop, flop (3 cards), turn (1), river (1).</p><p>Check when no chips are owed, call to match, raise to increase the total bet, or fold. The minimum full raise is the size of the previous full raise. A short all-in does not reopen raising unless the cumulative increase is a full raise.</p><p>Strongest first: straight flush, four of a kind, full house, flush, straight, three of a kind, two pair, pair, high card. Aces can be low in A–2–3–4–5. Suits never break ties. Equal hands split the pot; odd chips go clockwise after the dealer. All-ins create side pots, awarded only to eligible players.</p><p>Opponent cards are revealed at showdown. If everybody else folds, the winner’s private cards remain hidden. Busted seats sit out; the table ends when one player has all the chips. New table resets all chips.</p><h3>Poker hands · strongest first</h3><ol>
++<script src="/analytics-client.js"></script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#073d2a"><title>Jamaican Texas Hold’em</title><link rel="stylesheet" href="style.css?v=showdown-payouts"><script defer src="/socket.io/socket.io.js"></script><script defer src="engine.js?v=table-switch-actions"></script><script defer src="ui.js?v=select-split-winner"></script></head><body><main><nav><a href="/">← All games</a><a href="/privacy.html" aria-label="Privacy policy">Privacy</a><span>JAMDOWN GAMES</span><button id="rulesBtn">Rules</button></nav><header><p class="eyebrow">JAMDOWN GAMES · POKER CLUB</p><h1>Texas <em>Hold’em</em></h1><p>NO-LIMIT TEXAS HOLD’EM · 8-SEAT TABLE</p></header><div class="stats"><span id="handNo">YOUR SEAT IS READY</span><span>BLINDS <b>10 / 20</b></span><button id="reset">New table</button></div><section class="felt" aria-label="Poker table with eight seats"><div class="table-brand" aria-hidden="true"><span>JAMAICAN</span><strong>VIBES</strong><small>POKER CLUB</small></div><div class="betting-line" aria-hidden="true"></div><div id="seats"></div><div class="centre"><div id="board" class="cards"></div><div id="potSummary"><p id="pot"></p><p id="winnerNotice" role="status" hidden></p></div><span id="street"></span></div></section><section class="controls"><button id="friendsButton" type="button">Play With Friends</button><button id="pauseTable">Pause</button><button id="tableOptions" type="button">Table options</button><p id="tableMode"></p><p id="message" role="status" aria-live="polite">Pull up a chair. Start your first hand.</p><div id="actions"></div><p id="error" role="alert"></p></section><details><summary>Table activity</summary><ol id="history"></ol></details><footer>No cash, purchases, or cash prizes. Chips are for this game only.</footer><dialog id="friendsLobby"><h2>Play With Friends</h2><p id="friendsStatus" role="status"></p><ul id="friendsSeats"></ul><details><summary>Public tables</summary><button id="refreshTables">Refresh tables</button><ul id="publicTables"></ul></details><div id="friendsFields"><label>Your name <input id="friendsName" maxlength="20" autocomplete="nickname"></label><label>Room code <input id="friendsCode" maxlength="6" autocapitalize="characters"></label></div><div class="option-buttons"><button id="friendsCreate">Create room</button><button id="friendsTournament">Create tournament room</button><button id="friendsJoin">Join room</button><button id="publicJoin">Join public table</button><button id="friendsSit" hidden>Sit out next hand</button><button id="friendsInvite" hidden>Copy invite link</button><button id="friendsFind" hidden>Find another table</button><button id="friendsLeave" hidden>Leave room</button><button id="friendsClose">Back to table</button></div></dialog><dialog id="tableSettings"><h2>Table options</h2><p>Tournament starts with 1,000 chips per seat. Blinds double every five hands, and busted players sit out.</p><label><input id="tableSound" type="checkbox"> Sound effects</label><label><input id="fourColourDeck" type="checkbox" checked> Four-colour deck</label><label><input id="tableMotion" type="checkbox" checked> Card and chip animations</label><label>Computer speed <select id="computerSpeed"><option value="fast">Fast · 1.4 seconds</option><option value="normal" selected>Normal · 3 seconds</option><option value="relaxed">Relaxed · 6 seconds</option></select></label><div class="option-buttons"><button id="showSessionSummary">Session summary</button><button id="practiceMode">New practice table</button><button id="tournamentMode">New tournament</button><button id="closeOptions">Back to table</button></div></dialog><dialog id="handRecap"><h2 id="recapTitle">Hand recap</h2><p id="recapBoard"></p><div id="potPayouts" aria-label="Pot payouts"></div><div id="recapWinners"></div><ol id="recapLog"></ol><button id="closeRecap">Back to table</button></dialog><dialog id="rules"><h2>How to play</h2><p>Make the best five-card poker hand using any combination of your two private cards and the five community cards.</p><p>Eight seats: you and seven computer opponents. Each player starts with 1,000 play chips. The dealer button rotates. Starting blinds: 10 / 20. Tournament blinds double every five hands. Betting rounds: preflop, flop (3 cards), turn (1), river (1).</p><p>Check when no chips are owed, call to match, raise to increase the total bet, or fold. The minimum full raise is the size of the previous full raise. A short all-in does not reopen raising unless the cumulative increase is a full raise.</p><p>Strongest first: straight flush, four of a kind, full house, flush, straight, three of a kind, two pair, pair, high card. Aces can be low in A–2–3–4–5. Suits never break ties. Equal hands split the pot; odd chips go clockwise after the dealer. All-ins create side pots, awarded only to eligible players.</p><p>Opponent cards are revealed at showdown. If everybody else folds, the winner’s private cards remain hidden. Busted seats sit out; the table ends when one player has all the chips. New table resets all chips.</p><h3>Poker hands · strongest first</h3><ol>
+ <li><strong>Royal flush</strong> — A K Q J 10, all the same suit.</li>
+ <li><strong>Straight flush</strong> — Five consecutive cards, all the same suit.</li>
+ <li><strong>Four of a kind</strong> — Four cards of one rank, plus a fifth card.</li>
+diff --git a/public/jamdown-sponsor.css b/public/jamdown-sponsor.css
+new file mode 100644
+index 0000000..0f450ba
+--- /dev/null
++++ b/public/jamdown-sponsor.css
+@@ -0,0 +1,26 @@
++body #contactTicker:has(> a) {
++  display: grid !important;
++  place-items: center;
++  min-height: 22px;
++  z-index: 8;
++}
++#contactTicker > a {
++  display: grid;
++  grid-auto-flow: column;
++  place-content: center;
++  gap: .35em;
++  width: 100%;
++  height: 100%;
++  align-items: center;
++  color: #fff6d8;
++  font: 600 clamp(9px, 2.45vw, 12px)/1.1 system-ui, sans-serif;
++  text-decoration: none;
++  pointer-events: auto;
++}
++#contactTicker strong {
++  color: #ffd447;
++}
++#contactTicker > a:focus-visible {
++  outline: 2px solid #fff6d8;
++  outline-offset: -3px;
++}
+diff --git a/public/privacy.html b/public/privacy.html
+index 910c584..bebb930 100644
+--- a/public/privacy.html
++++ b/public/privacy.html
+@@ -1,9 +1,9 @@
+ <!doctype html>
+-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Privacy Policy | Jamaican Vibes Games</title><style>
++<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Privacy Policy | JamDown Games</title><style>
+ :root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#0b1c16;color:#f6f4e7;font:16px/1.65 system-ui,-apple-system,sans-serif}main{max-width:790px;margin:0 auto;padding:24px 22px 64px}a{color:#f7d55a}h1,h2{line-height:1.3}h1{font-size:clamp(28px,5vw,38px)}h2{font-size:21px;margin-top:30px}p,li{color:#e1e6df}nav{margin:0 0 28px}small{color:#b5c5ba}ul{padding-left:24px}footer{border-top:1px solid #40574c;margin-top:38px;padding-top:16px}</style></head>
+-<body><main><nav><a href="/">← Back to Jamaican Vibes games</a></nav>
+-<h1>Privacy Policy</h1><p><small>Jamaican Vibes Games · Last updated November 19, 2026</small></p>
+-<p>This notice describes information used when you visit or play Jamaican Vibes Domino, LUDI, Jamaican Draff, Jamaican 3 Cards, and Jamaican Texas Hold’em on this site. It also describes advertising that may be enabled after approval.</p>
++<body><main><nav><a href="/">← Back to JamDown Games</a></nav>
++<h1>Privacy Policy</h1><p><small>JamDown Games · Last updated November 19, 2026</small></p>
++<p>This notice describes information used when you visit or play JamDown Games Domino, LUDI, Jamaican Draff, Pitta Pot, and Jamaican Texas Hold’em on this site. It also explains our table sponsorship.</p>
+ <h2>Information used to operate the games</h2>
+ <ul><li><strong>Player names and game information.</strong> Names you enter, multiplayer room codes, seats, game actions, scores, and tournament or player-profile records may be processed to run a game, reconnect players, display results, and prevent invalid moves. Your display name and gameplay may be visible to other players.</li>
+ <li><strong>Stored game settings and reconnect credentials.</strong> The website may keep your display name, sound preferences, saved game choices, player-profile identifiers, and reconnect tokens in your browser's local storage. These help remember your choices or resume games on the same device.</li>
+@@ -11,10 +11,10 @@
+ <li><strong>Technical data.</strong> Hosting providers and other website services may process information such as your IP address, browser details, requests, and error logs to deliver, secure, and troubleshoot the site.</li>
+ <li><strong>Optional voice chat.</strong> If you choose to turn on in-game voice chat, your browser requests microphone permission and sends audio to other players in the connected session using WebRTC. Network connection data may be exposed as part of establishing peer connections. Do not share sensitive information over voice chat.</li></ul>
+ <h2>How information is used</h2><p>We use information to deliver game sessions, maintain player profiles and reconnect functionality, show player names and results, detect technical problems, understand game activity, and improve reliability. We do not ask players to post passwords or financial details in the game.</p>
+-<h2>Advertising and cookies</h2><p>The site has added Google AdSense verification code, but Google site review and advertising permissions may still be pending. If advertising is activated, Google and its partners may use cookies or other identifiers to deliver, measure, and personalize ads as allowed by your settings and applicable law. See <a href="https://policies.google.com/technologies/ads">Google's advertising technology information</a> and <a href="https://policies.google.com/privacy">Google's Privacy Policy</a>. Any future rewarded ads will be optional and subject to the applicable program requirements. The presence of verification code does not mean rewarded ads are currently active.</p>
++<h2>Table sponsorship</h2><p>JamDown Games displays its own Tdot Jerk promotions. If you follow a sponsor link, the destination site handles your visit under its own privacy policy.</p>
+ <h2>Sharing and service providers</h2><p>Game information is shared with other participants as needed for multiplayer play. Technical hosting and advertising partners may process information to provide their services. We do not intentionally publish saved room tokens or private account credentials to other players.</p>
+ <h2>Your choices</h2><p>You can stop playing, decline optional microphone access, and use your browser settings to clear cookies or local storage. Clearing browser storage may remove preferences, remembered names, and saved reconnect credentials, and could prevent resuming an existing game. You can also manage Google's ad personalization settings at <a href="https://myadcenter.google.com/">My Ad Center</a>.</p>
+ <h2>Children and sensitive information</h2><p>Please do not enter sensitive personal information in your display name, player messages, or voice chat. Parents and guardians should supervise children's internet use. Games and advertising must comply with any applicable age and consent requirements.</p>
+ <h2>Questions and requests</h2><p>For a general privacy question, you can <a href="https://github.com/tdotjerk-art/jamaican-vibes-domino/issues/new">contact the site operator through the project's issue tracker</a>. <strong>Issues are public.</strong> Do not include private information, passwords, authentication tokens, or sensitive data in a public issue. For a private data-access or deletion request, ask for a private contact method without posting personal information.</p>
+ <h2>Changes</h2><p>We may revise this notice when game features, storage, or advertising change. The date above indicates the last update.</p>
+-<footer><small>Jamaican Vibes Games</small></footer></main></body></html>
+\ No newline at end of file
++<footer><small>JamDown Games</small></footer></main></body></html>
+\ No newline at end of file
+diff --git a/public/three-cards.html b/public/three-cards.html
+index 6aa2def..8f33666 100644
+--- a/public/three-cards.html
++++ b/public/three-cards.html
+@@ -1,10 +1,10 @@
+ <!doctype html><html lang="en"><head>
+-<script src="/analytics-client.js"></script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Jamaican 3 Cards</title><link rel="stylesheet" href="/three-cards.css"><script defer src="/socket.io/socket.io.js"></script><script defer src="/three-cards-engine.js"></script><script defer src="/three-cards-ui.js"></script></head><body><main>
+-<header><a href="/">← Domino & home</a><a href="/privacy.html" aria-label="Privacy policy">Privacy</a><button id="rulesBtn" class="quiet">Rules</button></header><p class="eyebrow">JAMAICAN VIBES · CARD TABLE</p><h1>Jamaican <span>3 Cards</span></h1><p class="subtitle">Automatic calls. Match the number. Finish your hand.</p>
++<script src="/analytics-client.js"></script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Pitta Pot</title><link rel="stylesheet" href="/three-cards.css"><script defer src="/socket.io/socket.io.js"></script><script defer src="/three-cards-engine.js"></script><script defer src="/three-cards-ui.js"></script></head><body><main>
++<header><a href="/">← Domino & home</a><a href="/privacy.html" aria-label="Privacy policy">Privacy</a><button id="rulesBtn" class="quiet">Rules</button></header><p class="eyebrow">JAMDOWN GAMES · CARD TABLE</p><h1><span>Pitta Pot</span></h1><p class="subtitle">Automatic calls. Match the number. Finish your hand.</p>
+ <section id="setup" class="panel"><label>Your name<input id="name" maxlength="20" value="Player 1" autocomplete="nickname"></label><div class="setup-row"><label>Players<select id="count"><option>2</option><option>3</option><option selected>4</option></select></label><label>Number of games<input id="total" type="number" min="5" max="1000" step="5" value="5"></label></div><button id="solo">Play against computers</button><div class="divider">OR PLAY WITH FRIENDS</div><button id="create" class="green">Create online table</button><div class="join"><input id="code" placeholder="Room code" maxlength="6" aria-label="Room code"><button id="join" class="quiet">Join</button></div><p class="muted">2–4 players · game counts in steps of 5</p></section>
+ <section id="lobby" class="panel" hidden><p class="eyebrow">SHARE THIS ROOM CODE</p><h2 id="roomCode"></h2><div id="seatList"></div><label>Your choice: number of games<input id="lobbyTotal" type="number" min="5" max="1000" step="5" value="5"></label><div class="actions"><button id="ready">Ready</button><button id="start" class="green">Start agreed games</button></div><p class="muted">Every player must choose the same number and tap Ready.</p></section>
+ <section id="game" hidden><div class="meta"><span id="progress"></span><span id="modeLabel"></span></div><p id="callResult" role="status" aria-live="polite" aria-atomic="true" hidden></p><section class="table" aria-label="Card table for two to four players"><div id="players" class="players"></div><div class="centre"><div><div class="eyebrow">PLAYED CARDS</div><div id="tableCard" class="cards played-pile" aria-label="Played pile: latest card on top"></div><div id="remaining" class="muted"></div></div></div><div id="yourHand" class="your-hand"></div></section><div class="controls"><div id="message" role="status" aria-live="polite"></div><div id="actions" class="actions"></div><p id="hint" class="muted"></p></div><section id="extension" class="panel" hidden><h2>Keep playing?</h2><p>Scores carry forward. Online players must all agree.</p><label>Add games<input id="extra" type="number" min="5" max="1000" step="5" value="5"></label><button id="extend">Agree & add games</button><div id="extensionVotes" class="muted"></div></section><details class="history"><summary>Game activity</summary><ol id="log"></ol></details></section>
+ <p id="error" role="alert"></p><button id="leave" class="quiet" hidden>Leave table</button>
+-<dialog id="rules"><h2>Jamaican 3 Cards</h2><p>Use a regular 52-card pack. Everyone picks a card; highest deals. Ace is high in this version. Tied highest players pick again.</p><ol><li>The dealer shuffles, deals 3 cards each, then turns up a trump card. A 6 or Jack gives the dealer 1 point per opponent, excluding the dealer (2 players = 1 point; 3 players = 2 points; 4 players = 3 points). Play continues.</li><li>Before anyone plays a card, the game automatically checks every player’s three cards for a flush, straight, flush and straight, or flush, straight and threes. No declaration buttons are needed. Only the highest-ranking call is announced to all players immediately after the deal, above the table and beside the caller, before the hand is finished. Lower calls are never announced or revealed. When several players have the same category, only the highest hand is declared; exact highest ties share the declaration. Only the strongest call receives call points, with exact ties sharing points. Calls are settled once before matching-card play; play continues for the separate winning point.</li><li>Calls, strongest first: <strong>Flush, straight and threes — 3 points each</strong>: three cards of the same rank beats two Jacks and a six, which beats two sixes and a Jack. Higher three-of-a-kind beats lower. This is the Jamaican special category name; it does not require the cards to form a flush or a straight. <strong>Flush and straight — 2 points each</strong>: three consecutive cards of one suit. <strong>Flush — 1 point each</strong>: three cards of one suit. <strong>Straight — 1 point each</strong>: three consecutive ranks.</li><li>For the same call, compare the highest card, then the second, then the third. Ace is high except in A–2–3, the lowest straight; Q–K–A is the highest straight. K–A–2 is not a straight. Suits do not break ties.</li><li>Each other player pays the strongest caller the call’s point value: at a four-player table, a three-point call gives the winner +9 and each opponent −3. If the strongest declared hands tie exactly, the non-winning players each pay the call value and the tied winners share that pool equally. For example, two tied three-point callers get +3 each, and the other two players lose 3 each. Equal shares can include fractions. If everyone ties, no points move.</li><li>Starting to the dealer’s right, a player holding the same rank can play their matching card plus another card from their hand. The turned-up card stays on the table.</li><li>The other card played becomes the next rank to match. Chances to use it pass to the right. You can decline.</li><li>With a pair and one different card (for example 2, 2, King), keep the pair and wait for a matching table card for the different rank to win. A card matching the pair is automatically skipped; this applies to every pair, for people and computers. Match the different card to win and clear all three cards, including the pair. Your chance must come in rotation, including after someone declines a drawn card.</li><li>With just one card left, use a matching table card to play your last card alone and win.</li><li>If nobody uses the opening card, the second player to the dealer’s right draws. A draw turns up one card; it does not enter anyone’s hand. The drawer has first choice, then chances pass to the right. If nobody uses it, the next player draws.</li><li>Only the strongest callers’ call names stay beside their seats. Each player’s played cards stay face up beside their seat until the hand ends, so everyone can verify the plays. Unplayed opponent cards stay face down beside those cards. The centre pile still shows only its latest card. Winning call cards that have not yet been played stay hidden. Only after the hand is complete are the strongest callers’ original cards revealed at their seats; tied strongest callers each show their cards. When a player wins the matching-card hand, their finishing cards are shown face up in front of them with VICTORY until the next game.</li><li>The matching-card hand winner receives 1 point from each opponent: +1 with 2 players, +2 with 3 players, or +3 with 4 players. Every opponent loses 1 point. These hand points are separate from calls and dealer bonuses. The winner deals next.</li><li>If the deck runs out, no hand points change, but all call points and the dealer’s bonus are kept. The game counts; everyone picks again to select a dealer.</li></ol><p>Agree on 5, 10, 15 games or more. At the end, positive scores win; negative scores lose; zero is even. Add more games in steps of 5 by agreement.</p><p>Two, three, or four players can play. For computer play, choose the total number of players: you plus one, two, or three computers. Online, the host chooses 2, 3, or 4 players and starts when that many are connected once everyone chooses the same game count and taps Ready. Online play pauses if someone disconnects. Reopen this page on the same browser to reconnect. Tables are currently held in server memory and can be lost when the server restarts.</p><button id="closeRules">Back to the table</button></dialog>
++<dialog id="rules"><h2>Pitta Pot</h2><p>Use a regular 52-card pack. Everyone picks a card; highest deals. Ace is high in this version. Tied highest players pick again.</p><ol><li>The dealer shuffles, deals 3 cards each, then turns up a trump card. A 6 or Jack gives the dealer 1 point per opponent, excluding the dealer (2 players = 1 point; 3 players = 2 points; 4 players = 3 points). Play continues.</li><li>Before anyone plays a card, the game automatically checks every player’s three cards for a flush, straight, flush and straight, or flush, straight and threes. No declaration buttons are needed. Only the highest-ranking call is announced to all players immediately after the deal, above the table and beside the caller, before the hand is finished. Lower calls are never announced or revealed. When several players have the same category, only the highest hand is declared; exact highest ties share the declaration. Only the strongest call receives call points, with exact ties sharing points. Calls are settled once before matching-card play; play continues for the separate winning point.</li><li>Calls, strongest first: <strong>Flush, straight and threes — 3 points each</strong>: three cards of the same rank beats two Jacks and a six, which beats two sixes and a Jack. Higher three-of-a-kind beats lower. This is the Jamaican special category name; it does not require the cards to form a flush or a straight. <strong>Flush and straight — 2 points each</strong>: three consecutive cards of one suit. <strong>Flush — 1 point each</strong>: three cards of one suit. <strong>Straight — 1 point each</strong>: three consecutive ranks.</li><li>For the same call, compare the highest card, then the second, then the third. Ace is high except in A–2–3, the lowest straight; Q–K–A is the highest straight. K–A–2 is not a straight. Suits do not break ties.</li><li>Each other player pays the strongest caller the call’s point value: at a four-player table, a three-point call gives the winner +9 and each opponent −3. If the strongest declared hands tie exactly, the non-winning players each pay the call value and the tied winners share that pool equally. For example, two tied three-point callers get +3 each, and the other two players lose 3 each. Equal shares can include fractions. If everyone ties, no points move.</li><li>Starting to the dealer’s right, a player holding the same rank can play their matching card plus another card from their hand. The turned-up card stays on the table.</li><li>The other card played becomes the next rank to match. Chances to use it pass to the right. You can decline.</li><li>With a pair and one different card (for example 2, 2, King), keep the pair and wait for a matching table card for the different rank to win. A card matching the pair is automatically skipped; this applies to every pair, for people and computers. Match the different card to win and clear all three cards, including the pair. Your chance must come in rotation, including after someone declines a drawn card.</li><li>With just one card left, use a matching table card to play your last card alone and win.</li><li>If nobody uses the opening card, the second player to the dealer’s right draws. A draw turns up one card; it does not enter anyone’s hand. The drawer has first choice, then chances pass to the right. If nobody uses it, the next player draws.</li><li>Only the strongest callers’ call names stay beside their seats. Each player’s played cards stay face up beside their seat until the hand ends, so everyone can verify the plays. Unplayed opponent cards stay face down beside those cards. The centre pile still shows only its latest card. Winning call cards that have not yet been played stay hidden. Only after the hand is complete are the strongest callers’ original cards revealed at their seats; tied strongest callers each show their cards. When a player wins the matching-card hand, their finishing cards are shown face up in front of them with VICTORY until the next game.</li><li>The matching-card hand winner receives 1 point from each opponent: +1 with 2 players, +2 with 3 players, or +3 with 4 players. Every opponent loses 1 point. These hand points are separate from calls and dealer bonuses. The winner deals next.</li><li>If the deck runs out, no hand points change, but all call points and the dealer’s bonus are kept. The game counts; everyone picks again to select a dealer.</li></ol><p>Agree on 5, 10, 15 games or more. At the end, positive scores win; negative scores lose; zero is even. Add more games in steps of 5 by agreement.</p><p>Two, three, or four players can play. For computer play, choose the total number of players: you plus one, two, or three computers. Online, the host chooses 2, 3, or 4 players and starts when that many are connected once everyone chooses the same game count and taps Ready. Online play pauses if someone disconnects. Reopen this page on the same browser to reconnect. Tables are currently held in server memory and can be lost when the server restarts.</p><button id="closeRules">Back to the table</button></dialog>
+ </main></body></html>
+ 
+diff --git a/server.js b/server.js
+index 2af5b48..660dd77 100644
+--- a/server.js
++++ b/server.js
+@@ -4,6 +4,9 @@ const {Server}=require("socket.io");
+ const crypto=require("crypto");
+ 
+ const app=express(),server=http.createServer(app),io=new Server(server,{cors:{origin:"*"}});
++if (process.env.RENDER === "true" || process.env.JAMDOWN_PREVIEW_PASSWORD) {
++  require("./preview-access").protectPreview(app, io, process.env.JAMDOWN_PREVIEW_PASSWORD);
++}
+ const analytics=require("./analytics").installAnalytics(app);
+ const draffRouter=require("./draff-online").createDraffRouter();
+ app.use("/api/draff",draffRouter);
+@@ -11,7 +14,7 @@ const ludiRouter=require("./ludi-online").createLUDIRouter();
+ app.use("/api/ludi",ludiRouter);
+ server.on("close",()=>ludiRouter.close());
+ app.use(express.static("public"));
+-app.get("/",(req,res)=>{const fs=require("node:fs");fs.readFile(__dirname+"/index.html","utf8",(error,html)=>{if(error)return res.sendStatus(500);res.type("html").send(html.replace("Single Player works locally. Private online play supports 2–4 players, private hands, reconnecting, ready-up, rematches and spectators.</p>","Single Player works locally. Private online play supports 2–4 players, private hands, reconnecting, ready-up, rematches and spectators.</p><p class=\"jv-small\" style=\"text-align:center;margin:4px 0 0\"><a href=\"/privacy.html\" style=\"color:#ffd447\">Privacy policy</a></p>").replace("<head>",'<head><script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7136618234862981" crossorigin="anonymous"></script><script src="/analytics-client.js"></script>'))})});
++app.get("/",(req,res)=>{const fs=require("node:fs");fs.readFile(__dirname+"/index.html","utf8",(error,html)=>{if(error)return res.sendStatus(500);res.type("html").send(html.replace("Single Player works locally. Private online play supports 2–4 players, private hands, reconnecting, ready-up, rematches and spectators.</p>","Single Player works locally. Private online play supports 2–4 players, private hands, reconnecting, ready-up, rematches and spectators.</p><p class=\"jv-small\" style=\"text-align:center;margin:4px 0 0\"><a href=\"/privacy.html\" style=\"color:#ffd447\">Privacy policy</a></p>").replace("<head>",'<head><script src="/analytics-client.js"></script>'))})});
+ app.get("/health",(req,res)=>res.status(200).send("ok"));
+ const rooms=new Map();
+ const GRACE_MS=90000;
+@@ -492,7 +495,7 @@ io.on("connection",socket=>{
+ 
+ const PORT=process.env.PORT||3000;
+ if(require.main===module){
+- server.listen(PORT,"0.0.0.0",()=>console.log(`Jamaican Vibes Domino server ready on port ${PORT}.`));
++ server.listen(PORT,"0.0.0.0",()=>console.log(`JamDown Games Domino server ready on port ${PORT}.`));
+ }
+ 
+ module.exports={server,io,turnSeconds,makeDeck,ends,canPlay,orientLeft,orientRight,applyBruckAndStartWin,nextHand,finishWin,finishBlocked,choosePoser};
+diff --git a/test/privacy-notice.test.js b/test/privacy-notice.test.js
+index 912f7e4..74dfb97 100644
+--- a/test/privacy-notice.test.js
++++ b/test/privacy-notice.test.js
+@@ -5,7 +5,7 @@ const read=name=>fs.readFileSync(path.join(root,name),'utf8');
+ 
+ test('privacy notice includes actual analytics storage and advertising disclosures',()=>{
+  const policy=read('public/privacy.html');
+- for(const part of ['<title>Privacy Policy','jv_analytics_browser','local storage','90 days','Google','microphone','Privacy Policy','https://github.com/tdotjerk-art/jamaican-vibes-domino/issues/new'])assert.ok(policy.includes(part),part);
++ for(const part of ['<title>Privacy Policy','jv_analytics_browser','local storage','90 days','Table sponsorship','microphone','Privacy Policy','https://github.com/tdotjerk-art/jamaican-vibes-domino/issues/new'])assert.ok(policy.includes(part),part);
+ });
+ 
+ test('each additional game links to the privacy notice',()=>{
