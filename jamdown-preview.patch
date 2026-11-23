@@ -256,8 +256,54 @@ index 910c584..bebb930 100644
 \ No newline at end of file
 +<footer><small>JamDown Games</small></footer></main></body></html>
 \ No newline at end of file
+diff --git a/public/three-cards-ui.js b/public/three-cards-ui.js
+index ba037f8..4c7f630 100644
+--- a/public/three-cards-ui.js
++++ b/public/three-cards-ui.js
+@@ -34,14 +34,34 @@
+   $('progress').textContent=`Game ${Math.min(g.completed+(!['hand-over','session-over'].includes(g.phase)?1:0),g.total)} of ${g.total}`;
+   $('modeLabel').textContent=online?'ROOM '+remote.code:'VS COMPUTERS';
+   $('players').replaceChildren();g.players.forEach((p,i)=>{const relative=(i-seat+g.players.length)%g.players.length;const position=relative===0?'south':g.players.length===2?'north':g.players.length===3?(relative===1?'east':'west'):['south','east','north','west'][relative];const el=node('article',undefined,'player seat-'+position+(g.turn===i?' active':''));el.append(node('h3',p.name+(i===seat?' · YOU':'')),node('div',E.scoreText(p.score),'score'),node('p',(g.dealer===i?'Dealer · ':'')+p.count+(p.count===1?' card':' cards')));
+-   const victory=['hand-over','session-over'].includes(g.phase)&&g.winner===i&&g.winningHand?.length;
+-   const callHand=g.callSummary?.hands?.find(h=>h.seat===i);
+-   const complete=['hand-over','session-over'].includes(g.phase);const revealed=victory?(p.played?.length?p.played:g.winningHand):complete?callHand?.cards:null;
+-   const detected=g.callSummary?.winners?.includes(i)?g.callSummary?.calls?.[i]:null;if(detected&&!complete&&!['pick','deal'].includes(g.phase))el.append(node('p','CALL: '+detected.name,'winning-call-name'));
+-   if(revealed?.length){el.classList.add('revealed-winner');el.append(node('p',victory?'VICTORY':g.callSummary.tied?'TIED CALL': 'WINNING CALL','victory-label'));if(!victory)el.append(node('p',g.callSummary.name,'winning-call-name'));const reveal=node('div',undefined,'cards winning-cards');reveal.setAttribute('aria-label',victory?'Winning cards':'Winning call cards');revealed.forEach(c=>reveal.append(card(c)));el.append(reveal);}
++   const complete=['hand-over','session-over'].includes(g.phase);
++   const victory=complete&&g.winner===i;
++   const callCards=complete?g.callSummary?.hands?.find(h=>h.seat===i)?.cards:null;
++   const detected=g.callSummary?.calls?.[i];
++   if(detected&&!complete&&!['pick','deal'].includes(g.phase))el.append(node('p','CALL: '+detected.name,'winning-call-name'));
++   if(victory||callCards?.length){
++    el.classList.add('revealed-winner');
++    el.append(node('p',victory?'VICTORY':g.callSummary.tied?'TIED CALL':'WINNING CALL','victory-label'));
++   }
++   if(callCards?.length){
++    el.append(node('p',g.callSummary.name,'winning-call-name'));
++    const reveal=node('div',undefined,'cards winning-cards');
++    reveal.setAttribute('aria-label','Winning call cards');
++    callCards.forEach(c=>reveal.append(card(c)));
++    el.append(reveal);
++   }else if(['pick','deal'].includes(g.phase)){
++    const pick=node('div',undefined,'cards small');
++    pick.append(card(g.picks[i]));
++    el.append(pick);
++   }else if(i!==seat&&p.count){
++    const backs=node('div',undefined,'cards small');
++    for(let n=0;n<p.count;n++)backs.append(card(null));
++    el.append(backs);
++   }
+    if(g.phase==='declare')el.append(node('p',g.declarations[i]===null?'Choosing call…':'Ready'));
+-   if(['pick','deal'].includes(g.phase)){const wrap=node('div',undefined,'cards small');wrap.append(g.picks[i]?card(g.picks[i]):card(null));el.append(wrap);}
+-   if(!revealed?.length&&!['pick','deal'].includes(g.phase)){const played=p.played||[];if(played.length){el.append(node('p',i!==seat&&p.count?'PLAYED · HIDDEN':'PLAYED','played-label'));const row=node('div',undefined,'cards played-cards');row.setAttribute('aria-label',p.name+' played cards, followed by hidden unplayed cards');played.forEach(c=>row.append(card(c)));if(i!==seat)for(let n=0;n<p.count;n++)row.append(card(null));el.append(row);}else if(i!==seat&&p.count){const backs=node('div',undefined,'cards small');for(let n=0;n<p.count;n++)backs.append(card(null));el.append(backs);}}if(g.phase==='session-over')el.append(node('p',p.score>0?'WINNER':p.score<0?'LOSS':'EVEN'));$('players').append(el);});
++   if(g.phase==='session-over')el.append(node('p',p.score>0?'WINNER':p.score<0?'LOSS':'EVEN'));
++   $('players').append(el);
++  });
+   $('tableCard').replaceChildren(card(g.top));$('remaining').textContent=g.top?g.remaining+' cards in deck'+(g.bonus?' · Dealer bonus +'+g.bonus:''):'';
+   $('tableCard').classList.toggle('stacked',(g.recent||[]).length>1);
+   const hand=g.players[seat].hand;$('yourHand').replaceChildren(node('h3','YOUR HAND'));
 diff --git a/public/three-cards.css b/public/three-cards.css
-index f5893c3..902040d 100644
+index f5893c3..6dfe87a 100644
 --- a/public/three-cards.css
 +++ b/public/three-cards.css
 @@ -2,7 +2,7 @@
@@ -269,13 +315,29 @@ index f5893c3..902040d 100644
  @media(min-width:650px){.table{min-height:540px;border-width:15px;border-radius:45% / 48%;max-width:850px;margin:0 auto}.table::before{border-radius:45% / 48%;inset:19px}.player{width:125px}.player h3{font-size:14px}.player .card{width:28px;height:39px;font-size:14px}.seat-north{top:14px;width:145px}.seat-east{right:28px;top:35%}.seat-west{left:28px;top:35%}.seat-south{bottom:145px;width:130px}.centre{top:158px;width:230px;flex-direction:row;justify-content:center;gap:24px}.your-hand{bottom:20px}.your-hand .card{width:67px;height:94px}.centre .small .card{width:29px;height:42px}.centre .eyebrow{font-size:9px}}
  @media(max-width:350px){.table{min-height:580px;border-width:8px}.player{width:76px}.seat-south{width:104px}.seat-north{width:100px}.seat-east{right:1px}.seat-west{left:1px}.centre{width:116px;top:150px}.your-hand .card{width:58px;height:81px}.player h3{font-size:10px}}
  @media(max-width:649px){.seat-south{bottom:140px}.centre{top:143px}.centre .small .card{height:31px}.centre .small{min-height:31px}.your-hand{bottom:20px}}
-@@ -59,29 +59,45 @@
-  #game .player>.cards,#game .player>.winning-call-name,#game .player>.victory-label,#game .player>.played-label{grid-column:1 / -1}
+@@ -21,8 +21,8 @@
+ /* Keep controls scrollable above overlaid phone browser toolbars. */
+ @media(max-width:649px){main{padding-bottom:calc(140px + env(safe-area-inset-bottom,0px))}.controls{scroll-margin-bottom:calc(110px + env(safe-area-inset-bottom,0px))}.controls .actions{flex-direction:column;align-items:stretch}.controls .actions button{width:100%;min-height:48px}}
+ 
+-/* Played cards remain visible at their owner's seat; hidden cards share the row. */
+-.player .played-label{font-size:8px;letter-spacing:.5px;color:#f6cf5a}.player .played-cards{gap:2px}.player .played-cards .card{flex:1 1 0;min-width:0;max-width:32px;height:40px;padding:2px;font-size:14px;border-width:1px}
++/* Face the side seats' cards away from the viewer. */
++.seat-east .card,.seat-west .card{transform:rotate(180deg)}
+ 
+ /* All players see call announcements above the table during the hand. */
+ #callResult{padding:12px 14px;margin:12px 0 16px;border:1px solid #f6cf5a;border-radius:12px;background:#253821;color:#fff1bd;font-size:14px;font-weight:700;line-height:1.6;overflow-wrap:anywhere}
+@@ -56,32 +56,48 @@
+  #game .player h3{grid-column:1 / -1;font-size:10px;line-height:1.2;margin:0}
+  #game .player .score{font-size:12px;line-height:1.1}
+  #game .player p{font-size:8px;line-height:1.15;margin:1px 0}
+- #game .player>.cards,#game .player>.winning-call-name,#game .player>.victory-label,#game .player>.played-label{grid-column:1 / -1}
++ #game .player>.cards,#game .player>.winning-call-name,#game .player>.victory-label{grid-column:1 / -1}
   #game .player .cards{margin:2px 0 0;gap:2px}
-  #game .player .card,#game .player .winning-cards .card,#game .player .played-cards .card{width:20px;max-width:24px;height:24px;min-height:0;padding:1px;font-size:10px;flex:0 1 24px}
+- #game .player .card,#game .player .winning-cards .card,#game .player .played-cards .card{width:20px;max-width:24px;height:24px;min-height:0;padding:1px;font-size:10px;flex:0 1 24px}
 - #game .seat-north{top:4px;left:50%;width:114px}
 - #game .seat-south{bottom:8px;left:50%;width:114px}
 - #game .table:has(.your-hand .card) .seat-south{left:calc(50% + 68px);width:100px;transform:none}
++ #game .player .card,#game .player .winning-cards .card{width:20px;max-width:24px;height:24px;min-height:0;padding:1px;font-size:10px;flex:0 1 24px}
 + /* Give the north panel, played pile and hand separate rows. */
 + #game>.table{
 +  display:grid;
@@ -326,19 +388,19 @@ index f5893c3..902040d 100644
 - #game .table:has(.your-hand .card) .seat-south{left:calc(50% + 79px);width:90px}
 - #game .centre{top:45%}
 +@media (orientation:landscape) and (max-height:320px){
-+ #game .player .card,#game .player .winning-cards .card,#game .player .played-cards .card{height:19px}
++ #game .player .card,#game .player .winning-cards .card{height:19px}
 + #game .centre .card{height:33px}
 + #game .your-hand .card{height:38px}
  }
 diff --git a/public/three-cards.html b/public/three-cards.html
-index 6aa2def..77603f3 100644
+index 6aa2def..600a930 100644
 --- a/public/three-cards.html
 +++ b/public/three-cards.html
 @@ -1,10 +1,10 @@
  <!doctype html><html lang="en"><head>
 -<script src="/analytics-client.js"></script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Jamaican 3 Cards</title><link rel="stylesheet" href="/three-cards.css"><script defer src="/socket.io/socket.io.js"></script><script defer src="/three-cards-engine.js"></script><script defer src="/three-cards-ui.js"></script></head><body><main>
 -<header><a href="/">← Domino & home</a><a href="/privacy.html" aria-label="Privacy policy">Privacy</a><button id="rulesBtn" class="quiet">Rules</button></header><p class="eyebrow">JAMAICAN VIBES · CARD TABLE</p><h1>Jamaican <span>3 Cards</span></h1><p class="subtitle">Automatic calls. Match the number. Finish your hand.</p>
-+<script src="/analytics-client.js"></script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Pitta Pot</title><link rel="stylesheet" href="/three-cards.css?v=clear-seats"><script defer src="/socket.io/socket.io.js"></script><script defer src="/three-cards-engine.js"></script><script defer src="/three-cards-ui.js"></script></head><body><main>
++<script src="/analytics-client.js"></script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Pitta Pot</title><link rel="stylesheet" href="/three-cards.css?v=played-pile"><script defer src="/socket.io/socket.io.js"></script><script defer src="/three-cards-engine.js"></script><script defer src="/three-cards-ui.js?v=played-pile"></script></head><body><main>
 +<header><a href="/">← Domino & home</a><a href="/privacy.html" aria-label="Privacy policy">Privacy</a><button id="rulesBtn" class="quiet">Rules</button></header><p class="eyebrow">JAMDOWN GAMES · CARD TABLE</p><h1><span>Pitta Pot</span></h1><p class="subtitle">Automatic calls. Match the number. Finish your hand.</p>
  <section id="setup" class="panel"><label>Your name<input id="name" maxlength="20" value="Player 1" autocomplete="nickname"></label><div class="setup-row"><label>Players<select id="count"><option>2</option><option>3</option><option selected>4</option></select></label><label>Number of games<input id="total" type="number" min="5" max="1000" step="5" value="5"></label></div><button id="solo">Play against computers</button><div class="divider">OR PLAY WITH FRIENDS</div><button id="create" class="green">Create online table</button><div class="join"><input id="code" placeholder="Room code" maxlength="6" aria-label="Room code"><button id="join" class="quiet">Join</button></div><p class="muted">2–4 players · game counts in steps of 5</p></section>
  <section id="lobby" class="panel" hidden><p class="eyebrow">SHARE THIS ROOM CODE</p><h2 id="roomCode"></h2><div id="seatList"></div><label>Your choice: number of games<input id="lobbyTotal" type="number" min="5" max="1000" step="5" value="5"></label><div class="actions"><button id="ready">Ready</button><button id="start" class="green">Start agreed games</button></div><p class="muted">Every player must choose the same number and tap Ready.</p></section>
@@ -393,3 +455,38 @@ index 912f7e4..74dfb97 100644
  });
  
  test('each additional game links to the privacy notice',()=>{
+diff --git a/test/three-cards-ui.test.js b/test/three-cards-ui.test.js
+index 783e7a6..55da22a 100644
+--- a/test/three-cards-ui.test.js
++++ b/test/three-cards-ui.test.js
+@@ -65,3 +65,30 @@ test('a lost online table returns to setup instead of trapping the player in a p
+  assert.equal(ui.get('setup').hidden,false);assert.equal(ui.get('game').hidden,true);
+  assert.match(ui.get('error').textContent,/no longer available/);
+ });
++
++test('keeps played faces in the centre pile and reveals only qualifying call cards at seats',()=>{
++ const game=settle(fixture());
++ const ui=boot();
++ ui.get('create').onclick();
++ const seats=game.players.map(p=>({name:p.name,connected:true,total:5,ready:true}));
++ const current=game.view(0);
++ const played={id:'♣5',rank:5,suit:'♣'};
++ current.players[1].played=[played];
++ current.players[1].count=2;
++ current.top=played;
++ current.recent=[game.pile[0],played];
++ ui.handlers.state({code:'ABCDEF',seat:0,seats,game:current});
++ const cards=seat=>descendants(ui.get('players').children[seat]).filter(el=>el.className.split(' ').includes('card'));
++ assert.deepEqual(cards(1).map(el=>el.attributes['aria-label']),['Hidden card','Hidden card']);
++ assert.equal(ui.get('tableCard').children[0].attributes['aria-label'],'5♣');
++
++ game.finish(1);
++ const complete=game.view(0);
++ complete.players[1].played=[played];
++ complete.players[1].count=0;
++ complete.winningHand=[played];
++ ui.handlers.state({code:'ABCDEF',seat:0,seats,game:complete});
++ assert.equal(cards(1).length,0);
++ assert.match(text(ui.get('players').children[1]),/VICTORY/);
++ assert.deepEqual(cards(3).map(el=>el.attributes['aria-label']),['2♠','2♥','2♦']);
++});
