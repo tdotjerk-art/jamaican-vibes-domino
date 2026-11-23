@@ -257,7 +257,7 @@ index 910c584..bebb930 100644
 +<footer><small>JamDown Games</small></footer></main></body></html>
 \ No newline at end of file
 diff --git a/public/three-cards-ui.js b/public/three-cards-ui.js
-index ba037f8..4c7f630 100644
+index ba037f8..427c7a7 100644
 --- a/public/three-cards-ui.js
 +++ b/public/three-cards-ui.js
 @@ -34,14 +34,34 @@
@@ -302,8 +302,30 @@ index ba037f8..4c7f630 100644
    $('tableCard').replaceChildren(card(g.top));$('remaining').textContent=g.top?g.remaining+' cards in deck'+(g.bonus?' · Dealer bonus +'+g.bonus:''):'';
    $('tableCard').classList.toggle('stacked',(g.recent||[]).length>1);
    const hand=g.players[seat].hand;$('yourHand').replaceChildren(node('h3','YOUR HAND'));
+@@ -84,6 +104,21 @@
+  $('extend').onclick=()=>{try{const amount=total('extra');if(local){if(!local.extend(amount))throw Error('Cannot extend this session beyond 1000 games.');render();}else socket.emit('extend',{amount});}catch(e){error(e.message);}};
+  $('leave').onclick=()=>{if(!confirm('Leave this table? Single-player progress will end. An online table pauses until you return in this browser.'))return;clearTimeout(timer);if(socket){socket.disconnect();socket=null;}local=null;remote=null;render();};
+  $('rulesBtn').onclick=()=>{clearTimeout(timer);$('rules').showModal();};$('closeRules').onclick=()=>$('rules').close();$('rules').addEventListener('close',()=>render());
++ const landscape=globalThis.matchMedia?.('(orientation: landscape) and (max-height: 600px)');
++ function placeGameNotes(){
++  const calls=$('callResult'),hint=$('hint');
++  $('gameDetailsLabel').textContent=landscape.matches?'Game details':'Game activity';
++  if(landscape.matches){
++   $('landscapeNotes').append(calls,hint);
++  }else{
++   $('game').insertBefore(calls,$('game').querySelector('.table'));
++   $('actions').after(hint);
++  }
++ }
++ if(landscape){
++  placeGameNotes();
++  landscape.addEventListener('change',placeGameNotes);
++ }
+  if(saved()){try{connect();}catch(e){error(e.message);}}render();
+ })();
+ 
 diff --git a/public/three-cards.css b/public/three-cards.css
-index f5893c3..a4f7370 100644
+index f5893c3..9759685 100644
 --- a/public/three-cards.css
 +++ b/public/three-cards.css
 @@ -2,7 +2,7 @@
@@ -315,7 +337,7 @@ index f5893c3..a4f7370 100644
  @media(min-width:650px){.table{min-height:540px;border-width:15px;border-radius:45% / 48%;max-width:850px;margin:0 auto}.table::before{border-radius:45% / 48%;inset:19px}.player{width:125px}.player h3{font-size:14px}.player .card{width:28px;height:39px;font-size:14px}.seat-north{top:14px;width:145px}.seat-east{right:28px;top:35%}.seat-west{left:28px;top:35%}.seat-south{bottom:145px;width:130px}.centre{top:158px;width:230px;flex-direction:row;justify-content:center;gap:24px}.your-hand{bottom:20px}.your-hand .card{width:67px;height:94px}.centre .small .card{width:29px;height:42px}.centre .eyebrow{font-size:9px}}
  @media(max-width:350px){.table{min-height:580px;border-width:8px}.player{width:76px}.seat-south{width:104px}.seat-north{width:100px}.seat-east{right:1px}.seat-west{left:1px}.centre{width:116px;top:150px}.your-hand .card{width:58px;height:81px}.player h3{font-size:10px}}
  @media(max-width:649px){.seat-south{bottom:140px}.centre{top:143px}.centre .small .card{height:31px}.centre .small{min-height:31px}.your-hand{bottom:20px}}
-@@ -21,67 +21,81 @@
+@@ -21,67 +21,94 @@
  /* Keep controls scrollable above overlaid phone browser toolbars. */
  @media(max-width:649px){main{padding-bottom:calc(140px + env(safe-area-inset-bottom,0px))}.controls{scroll-margin-bottom:calc(110px + env(safe-area-inset-bottom,0px))}.controls .actions{flex-direction:column;align-items:stretch}.controls .actions button{width:100%;min-height:48px}}
  
@@ -325,7 +347,8 @@ index f5893c3..a4f7370 100644
  /* All players see call announcements above the table during the hand. */
  #callResult{padding:12px 14px;margin:12px 0 16px;border:1px solid #f6cf5a;border-radius:12px;background:#253821;color:#fff1bd;font-size:14px;font-weight:700;line-height:1.6;overflow-wrap:anywhere}
  
- /* Landscape play stays in one visible frame with controls beside the table. */
+-/* Landscape play stays in one visible frame with controls beside the table. */
++/* Landscape play uses the full width, with controls below the table. */
  @media (orientation:landscape) and (max-height:600px){
 - body:has(#game:not([hidden])) main{height:100dvh;max-width:none;padding:max(4px,env(safe-area-inset-top)) max(6px,env(safe-area-inset-right)) max(4px,env(safe-area-inset-bottom)) max(6px,env(safe-area-inset-left));display:grid;grid-template-rows:30px minmax(0,1fr);gap:4px;overflow:hidden}
 + body:has(#game:not([hidden])) main{height:100dvh;max-width:none;padding:max(4px,env(safe-area-inset-top)) max(6px,env(safe-area-inset-right)) max(4px,env(safe-area-inset-bottom)) max(6px,env(safe-area-inset-left));display:grid;grid-template:30px minmax(0,1fr) / minmax(0,1fr) auto;gap:4px 8px;overflow:hidden}
@@ -335,23 +358,42 @@ index f5893c3..a4f7370 100644
   body:has(#game:not([hidden])) header button{min-height:28px;padding:3px 10px;font-size:12px}
   body:has(#game:not([hidden])) header a{font-size:12px}
 - #game:not([hidden]){min-height:0;display:grid;grid-template-columns:minmax(0,1fr) clamp(180px,25vw,240px);grid-template-rows:auto auto minmax(0,1fr) auto;gap:5px 8px}
-+ #game:not([hidden]){grid-area:2 / 1 / 3 / -1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) clamp(132px,19%,180px);grid-template-rows:auto auto minmax(0,1fr) auto;gap:4px 6px}
-  #game>.table{grid-area:1 / 1 / 5 / 2;zoom:1;width:100%;height:100%;min-height:0;max-width:none;margin:0;border-width:8px;border-radius:44% / 48%;padding:0}
+- #game>.table{grid-area:1 / 1 / 5 / 2;zoom:1;width:100%;height:100%;min-height:0;max-width:none;margin:0;border-width:8px;border-radius:44% / 48%;padding:0}
++ #game:not([hidden]){
++  grid-area:2 / 1 / 3 / -1;min-height:0;position:relative;display:grid;
++  grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:minmax(0,1fr) 38px;
++  align-items:center;gap:4px 8px;
++ }
++ #game>.table{grid-area:1 / 1 / 2 / -1;zoom:1;width:100%;height:100%;min-height:0;max-width:none;margin:0;border-width:8px;border-radius:44% / 48%;padding:0}
   #game>.table::before{inset:10px;border-radius:44% / 48%}
 - #game>.meta{grid-area:1 / 2 / 2 / 3;margin:0;font-size:10px;flex-wrap:wrap}
-+ #game>.meta{grid-area:1 / 2 / 2 / 3;margin:0;font-size:10px;flex-wrap:wrap;gap:2px 6px}
-  #game>#callResult{grid-area:2 / 2 / 3 / 3;font-size:11px;line-height:1.3;margin:0;padding:5px 7px;max-height:64px;overflow:auto}
+- #game>#callResult{grid-area:2 / 2 / 3 / 3;font-size:11px;line-height:1.3;margin:0;padding:5px 7px;max-height:64px;overflow:auto}
 - #game>.controls{grid-area:3 / 2 / 4 / 3;min-height:0;padding:0;overflow:auto}
-+ #game>.controls{grid-area:3 / 2 / 4 / 3;min-height:0;padding:0;overflow:auto;display:flex;flex-direction:column;text-align:left;overflow-wrap:anywhere}
-  #game #message{font-size:12px;line-height:1.3;min-height:0}
+- #game #message{font-size:12px;line-height:1.3;min-height:0}
 - #game .actions{margin:6px 0;gap:5px}
 - #game .actions button{min-height:36px;padding:7px 9px;font-size:12px;flex:1 1 auto}
-+ #game .actions{order:-1;margin:0 0 6px;gap:4px;flex:0 0 auto;flex-direction:column;align-items:stretch}
+- #game #hint{font-size:10px;line-height:1.3;margin:5px 0}
+- #game>.history{grid-area:4 / 2 / 5 / 3;font-size:10px;max-height:70px;overflow:auto;margin:0;padding-top:4px}
+- #game>#extension{grid-area:3 / 2 / 4 / 3;z-index:4;min-height:0;overflow:auto;margin:0;padding:8px}
++ #game>.meta{grid-area:2 / 1;margin:0;font-size:10px;flex-direction:column;gap:2px}
++ #game>.controls{grid-area:2 / 2;min-width:0;padding:0;display:flex;align-items:center;gap:8px;text-align:left}
++ #game #message{flex:1;min-width:0;max-height:38px;overflow:auto;font-size:11px;line-height:1.3;min-height:0;overflow-wrap:anywhere}
++ #game .actions{order:-1;margin:0;gap:4px;flex:0 0 auto;flex-wrap:nowrap}
 + #game .actions:empty{display:none}
-+ #game .actions button{min-height:36px;padding:5px 7px;font-size:12px;flex:none}
-  #game #hint{font-size:10px;line-height:1.3;margin:5px 0}
-  #game>.history{grid-area:4 / 2 / 5 / 3;font-size:10px;max-height:70px;overflow:auto;margin:0;padding-top:4px}
-  #game>#extension{grid-area:3 / 2 / 4 / 3;z-index:4;min-height:0;overflow:auto;margin:0;padding:8px}
++ #game .actions button{min-height:36px;padding:4px 8px;font-size:11px}
++ #game>.history{grid-area:2 / 3;font-size:11px;margin:0;padding:0;border:0}
++ #game>.history summary{padding:8px 4px}
++ #gameDetails{
++  position:absolute;z-index:5;inset:auto 0 42px auto;width:min(100%,420px);
++  max-height:calc(100% - 48px);overflow:auto;padding:10px;
++  background:#102a20;border:1px solid #74663d;border-radius:12px;
++ }
++ #gameDetails #callResult{font-size:12px;line-height:1.35;margin:0 0 6px;padding:6px 8px}
++ #gameDetails #hint{margin:4px 0;font-size:12px}
++ #game>#extension{
++  position:absolute;z-index:4;inset:auto 12px 42px auto;width:min(100%,250px);
++  max-height:calc(100% - 48px);overflow:auto;margin:0;padding:8px
++ }
   #game>#extension h2{font-size:15px;margin:0}
   #game>#extension p,#game>#extension label{font-size:11px;margin:4px 0}
   #game>#extension :is(button,input){min-height:30px;padding:5px;font-size:12px}
@@ -426,18 +468,19 @@ index f5893c3..a4f7370 100644
 + #game .your-hand .card{height:38px}
  }
 diff --git a/public/three-cards.html b/public/three-cards.html
-index 6aa2def..086623b 100644
+index 6aa2def..37d83e1 100644
 --- a/public/three-cards.html
 +++ b/public/three-cards.html
 @@ -1,10 +1,10 @@
  <!doctype html><html lang="en"><head>
 -<script src="/analytics-client.js"></script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Jamaican 3 Cards</title><link rel="stylesheet" href="/three-cards.css"><script defer src="/socket.io/socket.io.js"></script><script defer src="/three-cards-engine.js"></script><script defer src="/three-cards-ui.js"></script></head><body><main>
 -<header><a href="/">← Domino & home</a><a href="/privacy.html" aria-label="Privacy policy">Privacy</a><button id="rulesBtn" class="quiet">Rules</button></header><p class="eyebrow">JAMAICAN VIBES · CARD TABLE</p><h1>Jamaican <span>3 Cards</span></h1><p class="subtitle">Automatic calls. Match the number. Finish your hand.</p>
-+<script src="/analytics-client.js"></script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Pitta Pot</title><link rel="stylesheet" href="/three-cards.css?v=wider-table"><script defer src="/socket.io/socket.io.js"></script><script defer src="/three-cards-engine.js"></script><script defer src="/three-cards-ui.js?v=played-pile"></script></head><body><main>
++<script src="/analytics-client.js"></script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Pitta Pot</title><link rel="stylesheet" href="/three-cards.css?v=full-width"><script defer src="/socket.io/socket.io.js"></script><script defer src="/three-cards-engine.js"></script><script defer src="/three-cards-ui.js?v=full-width"></script></head><body><main>
 +<header><a href="/">← Domino & home</a><a href="/privacy.html" aria-label="Privacy policy">Privacy</a><button id="rulesBtn" class="quiet">Rules</button></header><p class="eyebrow">JAMDOWN GAMES · CARD TABLE</p><h1><span>Pitta Pot</span></h1><p class="subtitle">Automatic calls. Match the number. Finish your hand.</p>
  <section id="setup" class="panel"><label>Your name<input id="name" maxlength="20" value="Player 1" autocomplete="nickname"></label><div class="setup-row"><label>Players<select id="count"><option>2</option><option>3</option><option selected>4</option></select></label><label>Number of games<input id="total" type="number" min="5" max="1000" step="5" value="5"></label></div><button id="solo">Play against computers</button><div class="divider">OR PLAY WITH FRIENDS</div><button id="create" class="green">Create online table</button><div class="join"><input id="code" placeholder="Room code" maxlength="6" aria-label="Room code"><button id="join" class="quiet">Join</button></div><p class="muted">2–4 players · game counts in steps of 5</p></section>
  <section id="lobby" class="panel" hidden><p class="eyebrow">SHARE THIS ROOM CODE</p><h2 id="roomCode"></h2><div id="seatList"></div><label>Your choice: number of games<input id="lobbyTotal" type="number" min="5" max="1000" step="5" value="5"></label><div class="actions"><button id="ready">Ready</button><button id="start" class="green">Start agreed games</button></div><p class="muted">Every player must choose the same number and tap Ready.</p></section>
- <section id="game" hidden><div class="meta"><span id="progress"></span><span id="modeLabel"></span></div><p id="callResult" role="status" aria-live="polite" aria-atomic="true" hidden></p><section class="table" aria-label="Card table for two to four players"><div id="players" class="players"></div><div class="centre"><div><div class="eyebrow">PLAYED CARDS</div><div id="tableCard" class="cards played-pile" aria-label="Played pile: latest card on top"></div><div id="remaining" class="muted"></div></div></div><div id="yourHand" class="your-hand"></div></section><div class="controls"><div id="message" role="status" aria-live="polite"></div><div id="actions" class="actions"></div><p id="hint" class="muted"></p></div><section id="extension" class="panel" hidden><h2>Keep playing?</h2><p>Scores carry forward. Online players must all agree.</p><label>Add games<input id="extra" type="number" min="5" max="1000" step="5" value="5"></label><button id="extend">Agree & add games</button><div id="extensionVotes" class="muted"></div></section><details class="history"><summary>Game activity</summary><ol id="log"></ol></details></section>
+-<section id="game" hidden><div class="meta"><span id="progress"></span><span id="modeLabel"></span></div><p id="callResult" role="status" aria-live="polite" aria-atomic="true" hidden></p><section class="table" aria-label="Card table for two to four players"><div id="players" class="players"></div><div class="centre"><div><div class="eyebrow">PLAYED CARDS</div><div id="tableCard" class="cards played-pile" aria-label="Played pile: latest card on top"></div><div id="remaining" class="muted"></div></div></div><div id="yourHand" class="your-hand"></div></section><div class="controls"><div id="message" role="status" aria-live="polite"></div><div id="actions" class="actions"></div><p id="hint" class="muted"></p></div><section id="extension" class="panel" hidden><h2>Keep playing?</h2><p>Scores carry forward. Online players must all agree.</p><label>Add games<input id="extra" type="number" min="5" max="1000" step="5" value="5"></label><button id="extend">Agree & add games</button><div id="extensionVotes" class="muted"></div></section><details class="history"><summary>Game activity</summary><ol id="log"></ol></details></section>
++<section id="game" hidden><div class="meta"><span id="progress"></span><span id="modeLabel"></span></div><p id="callResult" role="status" aria-live="polite" aria-atomic="true" hidden></p><section class="table" aria-label="Card table for two to four players"><div id="players" class="players"></div><div class="centre"><div><div class="eyebrow">PLAYED CARDS</div><div id="tableCard" class="cards played-pile" aria-label="Played pile: latest card on top"></div><div id="remaining" class="muted"></div></div></div><div id="yourHand" class="your-hand"></div></section><div class="controls"><div id="message" role="status" aria-live="polite"></div><div id="actions" class="actions"></div><p id="hint" class="muted"></p></div><section id="extension" class="panel" hidden><h2>Keep playing?</h2><p>Scores carry forward. Online players must all agree.</p><label>Add games<input id="extra" type="number" min="5" max="1000" step="5" value="5"></label><button id="extend">Agree & add games</button><div id="extensionVotes" class="muted"></div></section><details class="history"><summary id="gameDetailsLabel">Game activity</summary><div id="gameDetails"><div id="landscapeNotes"></div><ol id="log"></ol></div></details></section>
  <p id="error" role="alert"></p><button id="leave" class="quiet" hidden>Leave table</button>
 -<dialog id="rules"><h2>Jamaican 3 Cards</h2><p>Use a regular 52-card pack. Everyone picks a card; highest deals. Ace is high in this version. Tied highest players pick again.</p><ol><li>The dealer shuffles, deals 3 cards each, then turns up a trump card. A 6 or Jack gives the dealer 1 point per opponent, excluding the dealer (2 players = 1 point; 3 players = 2 points; 4 players = 3 points). Play continues.</li><li>Before anyone plays a card, the game automatically checks every player’s three cards for a flush, straight, flush and straight, or flush, straight and threes. No declaration buttons are needed. Only the highest-ranking call is announced to all players immediately after the deal, above the table and beside the caller, before the hand is finished. Lower calls are never announced or revealed. When several players have the same category, only the highest hand is declared; exact highest ties share the declaration. Only the strongest call receives call points, with exact ties sharing points. Calls are settled once before matching-card play; play continues for the separate winning point.</li><li>Calls, strongest first: <strong>Flush, straight and threes — 3 points each</strong>: three cards of the same rank beats two Jacks and a six, which beats two sixes and a Jack. Higher three-of-a-kind beats lower. This is the Jamaican special category name; it does not require the cards to form a flush or a straight. <strong>Flush and straight — 2 points each</strong>: three consecutive cards of one suit. <strong>Flush — 1 point each</strong>: three cards of one suit. <strong>Straight — 1 point each</strong>: three consecutive ranks.</li><li>For the same call, compare the highest card, then the second, then the third. Ace is high except in A–2–3, the lowest straight; Q–K–A is the highest straight. K–A–2 is not a straight. Suits do not break ties.</li><li>Each other player pays the strongest caller the call’s point value: at a four-player table, a three-point call gives the winner +9 and each opponent −3. If the strongest declared hands tie exactly, the non-winning players each pay the call value and the tied winners share that pool equally. For example, two tied three-point callers get +3 each, and the other two players lose 3 each. Equal shares can include fractions. If everyone ties, no points move.</li><li>Starting to the dealer’s right, a player holding the same rank can play their matching card plus another card from their hand. The turned-up card stays on the table.</li><li>The other card played becomes the next rank to match. Chances to use it pass to the right. You can decline.</li><li>With a pair and one different card (for example 2, 2, King), keep the pair and wait for a matching table card for the different rank to win. A card matching the pair is automatically skipped; this applies to every pair, for people and computers. Match the different card to win and clear all three cards, including the pair. Your chance must come in rotation, including after someone declines a drawn card.</li><li>With just one card left, use a matching table card to play your last card alone and win.</li><li>If nobody uses the opening card, the second player to the dealer’s right draws. A draw turns up one card; it does not enter anyone’s hand. The drawer has first choice, then chances pass to the right. If nobody uses it, the next player draws.</li><li>Only the strongest callers’ call names stay beside their seats. Each player’s played cards stay face up beside their seat until the hand ends, so everyone can verify the plays. Unplayed opponent cards stay face down beside those cards. The centre pile still shows only its latest card. Winning call cards that have not yet been played stay hidden. Only after the hand is complete are the strongest callers’ original cards revealed at their seats; tied strongest callers each show their cards. When a player wins the matching-card hand, their finishing cards are shown face up in front of them with VICTORY until the next game.</li><li>The matching-card hand winner receives 1 point from each opponent: +1 with 2 players, +2 with 3 players, or +3 with 4 players. Every opponent loses 1 point. These hand points are separate from calls and dealer bonuses. The winner deals next.</li><li>If the deck runs out, no hand points change, but all call points and the dealer’s bonus are kept. The game counts; everyone picks again to select a dealer.</li></ol><p>Agree on 5, 10, 15 games or more. At the end, positive scores win; negative scores lose; zero is even. Add more games in steps of 5 by agreement.</p><p>Two, three, or four players can play. For computer play, choose the total number of players: you plus one, two, or three computers. Online, the host chooses 2, 3, or 4 players and starts when that many are connected once everyone chooses the same game count and taps Ready. Online play pauses if someone disconnects. Reopen this page on the same browser to reconnect. Tables are currently held in server memory and can be lost when the server restarts.</p><button id="closeRules">Back to the table</button></dialog>
 +<dialog id="rules"><h2>Pitta Pot</h2><p>Use a regular 52-card pack. Everyone picks a card; highest deals. Ace is high in this version. Tied highest players pick again.</p><ol><li>The dealer shuffles, deals 3 cards each, then turns up a trump card. A 6 or Jack gives the dealer 1 point per opponent, excluding the dealer (2 players = 1 point; 3 players = 2 points; 4 players = 3 points). Play continues.</li><li>Before anyone plays a card, the game automatically checks every player’s three cards for a flush, straight, flush and straight, or flush, straight and threes. No declaration buttons are needed. Only the highest-ranking call is announced to all players immediately after the deal, above the table and beside the caller, before the hand is finished. Lower calls are never announced or revealed. When several players have the same category, only the highest hand is declared; exact highest ties share the declaration. Only the strongest call receives call points, with exact ties sharing points. Calls are settled once before matching-card play; play continues for the separate winning point.</li><li>Calls, strongest first: <strong>Flush, straight and threes — 3 points each</strong>: three cards of the same rank beats two Jacks and a six, which beats two sixes and a Jack. Higher three-of-a-kind beats lower. This is the Jamaican special category name; it does not require the cards to form a flush or a straight. <strong>Flush and straight — 2 points each</strong>: three consecutive cards of one suit. <strong>Flush — 1 point each</strong>: three cards of one suit. <strong>Straight — 1 point each</strong>: three consecutive ranks.</li><li>For the same call, compare the highest card, then the second, then the third. Ace is high except in A–2–3, the lowest straight; Q–K–A is the highest straight. K–A–2 is not a straight. Suits do not break ties.</li><li>Each other player pays the strongest caller the call’s point value: at a four-player table, a three-point call gives the winner +9 and each opponent −3. If the strongest declared hands tie exactly, the non-winning players each pay the call value and the tied winners share that pool equally. For example, two tied three-point callers get +3 each, and the other two players lose 3 each. Equal shares can include fractions. If everyone ties, no points move.</li><li>Starting to the dealer’s right, a player holding the same rank can play their matching card plus another card from their hand. The turned-up card stays on the table.</li><li>The other card played becomes the next rank to match. Chances to use it pass to the right. You can decline.</li><li>With a pair and one different card (for example 2, 2, King), keep the pair and wait for a matching table card for the different rank to win. A card matching the pair is automatically skipped; this applies to every pair, for people and computers. Match the different card to win and clear all three cards, including the pair. Your chance must come in rotation, including after someone declines a drawn card.</li><li>With just one card left, use a matching table card to play your last card alone and win.</li><li>If nobody uses the opening card, the second player to the dealer’s right draws. A draw turns up one card; it does not enter anyone’s hand. The drawer has first choice, then chances pass to the right. If nobody uses it, the next player draws.</li><li>Only the strongest callers’ call names stay beside their seats. Each player’s played cards stay face up beside their seat until the hand ends, so everyone can verify the plays. Unplayed opponent cards stay face down beside those cards. The centre pile still shows only its latest card. Winning call cards that have not yet been played stay hidden. Only after the hand is complete are the strongest callers’ original cards revealed at their seats; tied strongest callers each show their cards. When a player wins the matching-card hand, their finishing cards are shown face up in front of them with VICTORY until the next game.</li><li>The matching-card hand winner receives 1 point from each opponent: +1 with 2 players, +2 with 3 players, or +3 with 4 players. Every opponent loses 1 point. These hand points are separate from calls and dealer bonuses. The winner deals next.</li><li>If the deck runs out, no hand points change, but all call points and the dealer’s bonus are kept. The game counts; everyone picks again to select a dealer.</li></ol><p>Agree on 5, 10, 15 games or more. At the end, positive scores win; negative scores lose; zero is even. Add more games in steps of 5 by agreement.</p><p>Two, three, or four players can play. For computer play, choose the total number of players: you plus one, two, or three computers. Online, the host chooses 2, 3, or 4 players and starts when that many are connected once everyone chooses the same game count and taps Ready. Online play pauses if someone disconnects. Reopen this page on the same browser to reconnect. Tables are currently held in server memory and can be lost when the server restarts.</p><button id="closeRules">Back to the table</button></dialog>
