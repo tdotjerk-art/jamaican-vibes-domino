@@ -325,19 +325,43 @@ index ba037f8..427c7a7 100644
  })();
  
 diff --git a/public/three-cards.css b/public/three-cards.css
-index f5893c3..9759685 100644
+index f5893c3..35ab60d 100644
 --- a/public/three-cards.css
 +++ b/public/three-cards.css
-@@ -2,7 +2,7 @@
- /* Four seats around an oval felt; local player always faces the table. */
- .table{position:relative;min-height:590px;border:10px solid #65432b;border-radius:46% / 25%;background:radial-gradient(ellipse at 50% 38%,#25694c 0%,#125339 50%,#0a3526 100%);box-shadow:0 0 0 2px #aa7b49,0 15px 36px #0008,inset 0 0 0 3px #c1ae6730,inset 0 0 55px #001b14;overflow:hidden;padding:0}
- .table::before{content:'';position:absolute;inset:19px;border:1px solid #d9c4752b;border-radius:46% / 25%;pointer-events:none}
+@@ -1,9 +1,27 @@
+ *{box-sizing:border-box}[hidden]{display:none!important}body{margin:0;background:#08130f;color:#f3efdc;font-family:system-ui,-apple-system,sans-serif}main{max-width:900px;margin:auto;padding:18px 16px 32px}header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}a{color:#d9decb;text-decoration:none;font-size:14px}button,input,select{font:inherit}button{cursor:pointer;min-height:48px;border:0;border-radius:11px;padding:12px 18px;font-weight:750;color:#17271a;background:#f6cf5a}button:disabled{opacity:.45;cursor:default}.quiet{background:#ffffff09;color:#dedccf;border:1px solid #ffffff25;font-size:13px}.green{background:#228457;color:white}.eyebrow{font-size:10px;letter-spacing:2px;color:#b7c1a0;font-weight:700}h1{font-size:clamp(30px,6vw,48px);margin:8px 0;letter-spacing:-1.5px}h1 span{color:#f6cf5a}.subtitle{color:#b0bdb3;font-size:14px;margin-bottom:24px}.panel{padding:22px;background:#12261d;border:1px solid #8f976332;border-radius:18px;margin:16px 0}label{display:block;font-size:13px;line-height:1.5;color:#c8d2c4;margin:0 0 16px}input,select{display:block;width:100%;background:#091c13;color:#fff;border:1px solid #788f714f;border-radius:9px;padding:12px;min-height:48px;margin-top:6px;font-size:16px}.setup-row,.join{display:flex;gap:12px}.setup-row label{flex:1;min-width:0}.panel>button{width:100%}.join{margin-top:14px}.join input{margin:0;min-width:0}.divider{text-align:center;font-size:10px;letter-spacing:2px;margin:24px 0;color:#a4b198}.muted{font-size:12px;color:#b1c0b2;line-height:1.6}#roomCode{font-size:32px;letter-spacing:5px;color:#f6cf5a}#seatList p{font-size:14px;border-bottom:1px solid #ffffff15;padding-bottom:10px}.meta{display:flex;justify-content:space-between;gap:10px;font-size:11px;color:#b6c8b7;margin:18px 0 12px}.table{background:radial-gradient(ellipse,#185b41,#0b3428);border:6px solid #64442e;box-shadow:0 0 0 1px #916543,inset 0 0 40px #001d18;border-radius:26px;padding:16px 10px}.players{display:grid;grid-template-columns:repeat(auto-fit,minmax(82px,1fr));gap:7px}.player{text-align:center;border:1px solid #ffffff10;border-radius:12px;padding:10px 3px;min-width:0}.player.active{border-color:#f6cf5a;background:#f6cf5512}.player h3{font-size:12px;margin:0 0 6px;overflow-wrap:anywhere}.score{font-size:20px;color:#f6cf5a;font-weight:800}.player p{font-size:10px;margin:5px 0;color:#d1dfd0}.centre{display:flex;justify-content:space-around;align-items:center;gap:12px;text-align:center;padding:20px 0}.cards{display:flex;justify-content:center;gap:5px;margin:10px 0}.card{width:54px;height:76px;border:2px solid #e8e2ca;border-radius:7px;background:#fffaf0;color:#17241e;box-shadow:0 2px 5px #0004;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;font-size:23px;font-weight:800;line-height:1.1;padding:4px;min-height:0}.card.red{color:#bf2937}.card.back{background:repeating-linear-gradient(45deg,#1d394b,#1d394b 4px,#294c5d 4px,#294c5d 7px);color:#ebce79;font-size:18px}.small .card{width:31px;height:45px;font-size:14px;border-width:1px}.your-hand{border-top:1px solid #ffffff24;padding:16px 4px 5px;text-align:center}.your-hand h3{font-size:12px;font-weight:600;color:#e2e8d6}.your-hand .cards{flex-wrap:wrap;gap:10px}.your-hand .card{width:67px;height:94px;font-size:29px}.card.selected{border:3px solid #f6cf5a;outline:2px solid #f6cf5a;transform:translateY(-6px)}button.card:disabled{opacity:1;cursor:default}.pick{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}.pick .card{cursor:pointer}.controls{text-align:center;padding:20px 0 8px}#message{font-size:15px;font-weight:700;line-height:1.6;min-height:25px}.actions{display:flex;flex-wrap:wrap;justify-content:center;gap:9px;margin:14px 0}.history{border-top:1px solid #ffffff20;margin-top:20px;padding-top:16px;color:#b3c2b4;font-size:12px}.history summary{cursor:pointer}.history ol{padding-left:20px;line-height:1.8}#error{color:#ffb7a1;font-size:14px}#leave{display:block;margin:24px auto}dialog{background:#102a20;color:#eee8d5;max-width:540px;width:calc(100% - 28px);max-height:85dvh;border:1px solid #74663d;border-radius:18px;padding:24px;line-height:1.65;font-size:14px}dialog::backdrop{background:#000b}dialog h2{color:#f6cf5a;margin-top:0}dialog button{width:100%}@media(min-width:650px){main{padding:28px 24px}.table{padding:24px}.player h3{font-size:15px}.your-hand .card{width:76px;height:106px}.panel{max-width:560px;margin:20px auto}}@media(max-width:350px){main{padding:12px 10px}.centre{gap:5px}.small .card{width:25px}.players{grid-template-columns:repeat(3,minmax(0,1fr))}.actions button{padding:12px}}
+-/* Four seats around an oval felt; local player always faces the table. */
+-.table{position:relative;min-height:590px;border:10px solid #65432b;border-radius:46% / 25%;background:radial-gradient(ellipse at 50% 38%,#25694c 0%,#125339 50%,#0a3526 100%);box-shadow:0 0 0 2px #aa7b49,0 15px 36px #0008,inset 0 0 0 3px #c1ae6730,inset 0 0 55px #001b14;overflow:hidden;padding:0}
+-.table::before{content:'';position:absolute;inset:19px;border:1px solid #d9c4752b;border-radius:46% / 25%;pointer-events:none}
 -.players{display:contents}.player{position:absolute;width:86px;padding:9px 4px;background:linear-gradient(#14251eec,#0c1c16e8);border:1px solid #c6af683b;box-shadow:0 3px 12px #0004;border-radius:15px;z-index:2}.player h3{font-size:11px}.player .score{font-size:19px}.player p{font-size:10px}.player.active{background:linear-gradient(#324323,#182d1c);border-color:#f6cf5a;box-shadow:0 0 0 2px #f6cf552a,0 3px 12px #0004}.seat-south{bottom:158px;left:50%;transform:translateX(-50%);width:114px}.seat-north{top:12px;left:50%;transform:translateX(-50%);width:110px}.seat-east{right:4px;top:39%}.seat-west{left:4px;top:39%}.player .cards{gap:2px;margin:7px 0 1px}.player .card{width:22px;height:32px;font-size:11px;border-radius:4px}.player .card.back{font-size:10px}.centre{position:absolute;left:50%;top:150px;transform:translateX(-50%);width:136px;display:flex;flex-direction:column;gap:11px;padding:0;z-index:1}.centre .eyebrow{font-size:8px;letter-spacing:1.5px}.centre .cards{margin:8px 0}.centre .muted{font-size:10px;line-height:1.5}.centre .small .card{width:26px;height:36px;font-size:12px}.centre .small{min-height:36px}.your-hand{position:absolute;bottom:12px;left:10px;right:10px;border:0;padding:0}.your-hand h3{margin:0 0 10px;font-size:10px;letter-spacing:2px}.your-hand .cards{margin:0;gap:10px}.your-hand .card{width:61px;height:86px;font-size:28px;box-shadow:0 6px 12px #0005}.your-hand .card.selected{transform:translateY(-5px)}
+-@media(min-width:650px){.table{min-height:540px;border-width:15px;border-radius:45% / 48%;max-width:850px;margin:0 auto}.table::before{border-radius:45% / 48%;inset:19px}.player{width:125px}.player h3{font-size:14px}.player .card{width:28px;height:39px;font-size:14px}.seat-north{top:14px;width:145px}.seat-east{right:28px;top:35%}.seat-west{left:28px;top:35%}.seat-south{bottom:145px;width:130px}.centre{top:158px;width:230px;flex-direction:row;justify-content:center;gap:24px}.your-hand{bottom:20px}.your-hand .card{width:67px;height:94px}.centre .small .card{width:29px;height:42px}.centre .eyebrow{font-size:9px}}
++/* Rounded table rail with an inset line around the playing surface. */
++.table{
++ --table-corner:34px;
++ --rail-inset:10px;
++ position:relative;
++ min-height:590px;
++ border:10px solid #67452f;
++ border-radius:var(--table-corner);
++ background:radial-gradient(ellipse at 50% 42%,#24674f,#134c37 64%,#0a3124);
++ box-shadow:0 0 0 1px #b88b52,0 10px 24px #0007,inset 0 0 0 2px #1b3829,inset 0 0 24px #091c16a6;
++ overflow:hidden;
++ padding:0;
++}
++.table::before{
++ content:'';
++ position:absolute;
++ inset:var(--rail-inset);
++ border:1px solid #ddba6840;
++ border-radius:max(6px,calc(var(--table-corner) - var(--rail-inset) - 8px));
++ pointer-events:none;
++}
 +.players{display:contents}.player{position:absolute;width:86px;padding:9px 4px;background:transparent;border:1px solid transparent;border-radius:15px;z-index:2}.player h3{font-size:11px}.player .score{font-size:19px}.player p{font-size:10px}.player.active{background:transparent;border-color:#f6cf5a;box-shadow:0 0 0 2px #f6cf552a}.seat-south{bottom:158px;left:50%;transform:translateX(-50%);width:114px}.seat-north{top:12px;left:50%;transform:translateX(-50%);width:110px}.seat-east{right:4px;top:39%}.seat-west{left:4px;top:39%}.player .cards{gap:2px;margin:7px 0 1px}.player .card{width:22px;height:32px;font-size:11px;border-radius:4px}.player .card.back{font-size:10px}.centre{position:absolute;left:50%;top:150px;transform:translateX(-50%);width:136px;display:flex;flex-direction:column;gap:11px;padding:0;z-index:1}.centre .eyebrow{font-size:8px;letter-spacing:1.5px}.centre .cards{margin:8px 0}.centre .muted{font-size:10px;line-height:1.5}.centre .small .card{width:26px;height:36px;font-size:12px}.centre .small{min-height:36px}.your-hand{position:absolute;bottom:12px;left:10px;right:10px;border:0;padding:0}.your-hand h3{margin:0 0 10px;font-size:10px;letter-spacing:2px}.your-hand .cards{margin:0;gap:10px}.your-hand .card{width:61px;height:86px;font-size:28px;box-shadow:0 6px 12px #0005}.your-hand .card.selected{transform:translateY(-5px)}
- @media(min-width:650px){.table{min-height:540px;border-width:15px;border-radius:45% / 48%;max-width:850px;margin:0 auto}.table::before{border-radius:45% / 48%;inset:19px}.player{width:125px}.player h3{font-size:14px}.player .card{width:28px;height:39px;font-size:14px}.seat-north{top:14px;width:145px}.seat-east{right:28px;top:35%}.seat-west{left:28px;top:35%}.seat-south{bottom:145px;width:130px}.centre{top:158px;width:230px;flex-direction:row;justify-content:center;gap:24px}.your-hand{bottom:20px}.your-hand .card{width:67px;height:94px}.centre .small .card{width:29px;height:42px}.centre .eyebrow{font-size:9px}}
++@media(min-width:650px){.table{min-height:540px;border-width:12px;max-width:850px;margin:0 auto}.player{width:125px}.player h3{font-size:14px}.player .card{width:28px;height:39px;font-size:14px}.seat-north{top:14px;width:145px}.seat-east{right:28px;top:35%}.seat-west{left:28px;top:35%}.seat-south{bottom:145px;width:130px}.centre{top:158px;width:230px;flex-direction:row;justify-content:center;gap:24px}.your-hand{bottom:20px}.your-hand .card{width:67px;height:94px}.centre .small .card{width:29px;height:42px}.centre .eyebrow{font-size:9px}}
  @media(max-width:350px){.table{min-height:580px;border-width:8px}.player{width:76px}.seat-south{width:104px}.seat-north{width:100px}.seat-east{right:1px}.seat-west{left:1px}.centre{width:116px;top:150px}.your-hand .card{width:58px;height:81px}.player h3{font-size:10px}}
  @media(max-width:649px){.seat-south{bottom:140px}.centre{top:143px}.centre .small .card{height:31px}.centre .small{min-height:31px}.your-hand{bottom:20px}}
-@@ -21,67 +21,94 @@
+ .player h3{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.player p{margin:3px 0}
+@@ -21,67 +39,93 @@
  /* Keep controls scrollable above overlaid phone browser toolbars. */
  @media(max-width:649px){main{padding-bottom:calc(140px + env(safe-area-inset-bottom,0px))}.controls{scroll-margin-bottom:calc(110px + env(safe-area-inset-bottom,0px))}.controls .actions{flex-direction:column;align-items:stretch}.controls .actions button{width:100%;min-height:48px}}
  
@@ -359,13 +383,7 @@ index f5893c3..9759685 100644
   body:has(#game:not([hidden])) header a{font-size:12px}
 - #game:not([hidden]){min-height:0;display:grid;grid-template-columns:minmax(0,1fr) clamp(180px,25vw,240px);grid-template-rows:auto auto minmax(0,1fr) auto;gap:5px 8px}
 - #game>.table{grid-area:1 / 1 / 5 / 2;zoom:1;width:100%;height:100%;min-height:0;max-width:none;margin:0;border-width:8px;border-radius:44% / 48%;padding:0}
-+ #game:not([hidden]){
-+  grid-area:2 / 1 / 3 / -1;min-height:0;position:relative;display:grid;
-+  grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:minmax(0,1fr) 38px;
-+  align-items:center;gap:4px 8px;
-+ }
-+ #game>.table{grid-area:1 / 1 / 2 / -1;zoom:1;width:100%;height:100%;min-height:0;max-width:none;margin:0;border-width:8px;border-radius:44% / 48%;padding:0}
-  #game>.table::before{inset:10px;border-radius:44% / 48%}
+- #game>.table::before{inset:10px;border-radius:44% / 48%}
 - #game>.meta{grid-area:1 / 2 / 2 / 3;margin:0;font-size:10px;flex-wrap:wrap}
 - #game>#callResult{grid-area:2 / 2 / 3 / 3;font-size:11px;line-height:1.3;margin:0;padding:5px 7px;max-height:64px;overflow:auto}
 - #game>.controls{grid-area:3 / 2 / 4 / 3;min-height:0;padding:0;overflow:auto}
@@ -375,6 +393,12 @@ index f5893c3..9759685 100644
 - #game #hint{font-size:10px;line-height:1.3;margin:5px 0}
 - #game>.history{grid-area:4 / 2 / 5 / 3;font-size:10px;max-height:70px;overflow:auto;margin:0;padding-top:4px}
 - #game>#extension{grid-area:3 / 2 / 4 / 3;z-index:4;min-height:0;overflow:auto;margin:0;padding:8px}
++ #game:not([hidden]){
++  grid-area:2 / 1 / 3 / -1;min-height:0;position:relative;display:grid;
++  grid-template-columns:auto minmax(0,1fr) auto;grid-template-rows:minmax(0,1fr) 38px;
++  align-items:center;gap:4px 8px;
++ }
++ #game>.table{grid-area:1 / 1 / 2 / -1;zoom:1;width:100%;height:100%;min-height:0;max-width:none;margin:0;border-width:8px;--table-corner:clamp(20px,7dvh,34px);--rail-inset:7px;padding:0}
 + #game>.meta{grid-area:2 / 1;margin:0;font-size:10px;flex-direction:column;gap:2px}
 + #game>.controls{grid-area:2 / 2;min-width:0;padding:0;display:flex;align-items:center;gap:8px;text-align:left}
 + #game #message{flex:1;min-width:0;max-height:38px;overflow:auto;font-size:11px;line-height:1.3;min-height:0;overflow-wrap:anywhere}
@@ -468,14 +492,14 @@ index f5893c3..9759685 100644
 + #game .your-hand .card{height:38px}
  }
 diff --git a/public/three-cards.html b/public/three-cards.html
-index 6aa2def..37d83e1 100644
+index 6aa2def..b1870be 100644
 --- a/public/three-cards.html
 +++ b/public/three-cards.html
 @@ -1,10 +1,10 @@
  <!doctype html><html lang="en"><head>
 -<script src="/analytics-client.js"></script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Jamaican 3 Cards</title><link rel="stylesheet" href="/three-cards.css"><script defer src="/socket.io/socket.io.js"></script><script defer src="/three-cards-engine.js"></script><script defer src="/three-cards-ui.js"></script></head><body><main>
 -<header><a href="/">← Domino & home</a><a href="/privacy.html" aria-label="Privacy policy">Privacy</a><button id="rulesBtn" class="quiet">Rules</button></header><p class="eyebrow">JAMAICAN VIBES · CARD TABLE</p><h1>Jamaican <span>3 Cards</span></h1><p class="subtitle">Automatic calls. Match the number. Finish your hand.</p>
-+<script src="/analytics-client.js"></script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Pitta Pot</title><link rel="stylesheet" href="/three-cards.css?v=full-width"><script defer src="/socket.io/socket.io.js"></script><script defer src="/three-cards-engine.js"></script><script defer src="/three-cards-ui.js?v=full-width"></script></head><body><main>
++<script src="/analytics-client.js"></script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Pitta Pot</title><link rel="stylesheet" href="/three-cards.css?v=rounded-table"><script defer src="/socket.io/socket.io.js"></script><script defer src="/three-cards-engine.js"></script><script defer src="/three-cards-ui.js?v=full-width"></script></head><body><main>
 +<header><a href="/">← Domino & home</a><a href="/privacy.html" aria-label="Privacy policy">Privacy</a><button id="rulesBtn" class="quiet">Rules</button></header><p class="eyebrow">JAMDOWN GAMES · CARD TABLE</p><h1><span>Pitta Pot</span></h1><p class="subtitle">Automatic calls. Match the number. Finish your hand.</p>
  <section id="setup" class="panel"><label>Your name<input id="name" maxlength="20" value="Player 1" autocomplete="nickname"></label><div class="setup-row"><label>Players<select id="count"><option>2</option><option>3</option><option selected>4</option></select></label><label>Number of games<input id="total" type="number" min="5" max="1000" step="5" value="5"></label></div><button id="solo">Play against computers</button><div class="divider">OR PLAY WITH FRIENDS</div><button id="create" class="green">Create online table</button><div class="join"><input id="code" placeholder="Room code" maxlength="6" aria-label="Room code"><button id="join" class="quiet">Join</button></div><p class="muted">2–4 players · game counts in steps of 5</p></section>
  <section id="lobby" class="panel" hidden><p class="eyebrow">SHARE THIS ROOM CODE</p><h2 id="roomCode"></h2><div id="seatList"></div><label>Your choice: number of games<input id="lobbyTotal" type="number" min="5" max="1000" step="5" value="5"></label><div class="actions"><button id="ready">Ready</button><button id="start" class="green">Start agreed games</button></div><p class="muted">Every player must choose the same number and tap Ready.</p></section>
