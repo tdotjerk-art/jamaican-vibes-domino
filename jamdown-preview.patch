@@ -117,31 +117,103 @@ index c51c427..f617a85 100644
        <section class="jv-feature-section">
 diff --git a/preview-access.js b/preview-access.js
 new file mode 100644
-index 0000000..9221b26
+index 0000000..8c52fc3
 --- /dev/null
 +++ b/preview-access.js
-@@ -0,0 +1,24 @@
+@@ -0,0 +1,96 @@
 +'use strict';
 +
-+const { createHash, timingSafeEqual } = require('node:crypto');
++const express = require('express');
++const { createHash, createHmac, timingSafeEqual } = require('node:crypto');
++
++const signInPath = '/preview-sign-in';
++const cookieName = 'jamdown_preview';
++const sessionDuration = 7 * 24 * 60 * 60 * 1000;
++const entryPaths = new Set(['/', '/three-cards.html', '/ludi', '/ludi/', '/draff', '/draff/', '/holdem', '/holdem/', '/privacy.html']);
 +
 +function protectPreview(app, io, password) {
 +  if (!password) throw new Error('JAMDOWN_PREVIEW_PASSWORD is required for a hosted preview.');
 +
 +  const digest = value => createHash('sha256').update(value).digest();
-+  const expected = digest('Basic ' + Buffer.from('jamdown:' + password).toString('base64'));
++  const expectedPassword = digest(password);
++  const expectedBasic = digest('Basic ' + Buffer.from('jamdown:' + password).toString('base64'));
++  const compare = (value, expected) => timingSafeEqual(digest(value), expected);
++  const signature = expiry => createHmac('sha256', password)
++    .update('jamdown-preview-session:' + expiry).digest('base64url');
 +
-+  function authorize(req, res, next) {
++  function privateHeaders(res) {
 +    res.setHeader('Cache-Control', 'private, no-store');
 +    res.setHeader('X-Robots-Tag', 'noindex');
-+    if (timingSafeEqual(digest(req.headers.authorization || ''), expected)) return next();
-+
-+    res.writeHead(401, { 'WWW-Authenticate': 'Basic realm="JamDown Games", charset="UTF-8"' });
-+    res.end('JamDown Games private preview');
 +  }
 +
-+  app.use(authorize);
-+  io.engine.use(authorize);
++  function signedIn(req) {
++    if (compare(req.headers.authorization || '', expectedBasic)) return true;
++    const token = (req.headers.cookie || '').match(/(?:^|;\s*)jamdown_preview=(\d{13})\.([\w-]{43})(?:;|$)/);
++    return !!token && Number(token[1]) > Date.now() && compare(token[2], digest(signature(token[1])));
++  }
++
++  function nextPage(value) {
++    return entryPaths.has(value) ? value : '/';
++  }
++
++  function showSignIn(res, next, failed = false) {
++    privateHeaders(res);
++    const action = signInPath + '?next=' + encodeURIComponent(next);
++    res.status(failed ? 401 : 200).type('html').send(`<!doctype html>
++<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
++<title>JamDown Games sign-in</title>
++<style>
++*{box-sizing:border-box}body{margin:0;min-height:100svh;display:grid;place-items:center;padding:24px;background:#081b14;color:#f5f2e5;font:16px system-ui,sans-serif}main{width:min(100%,390px);padding:24px;background:#102a20;border:1px solid #586c48;border-radius:16px}h1{margin:0 0 16px;font-size:25px}label{display:block;margin-bottom:6px}input,button{width:100%;min-height:48px;font:inherit;border-radius:9px;padding:10px 12px}input{background:#0a1d15;color:#fff;border:1px solid #72856b}button{margin-top:12px;background:#efc85a;color:#14241a;border:0;font-weight:700}p{color:#ffd0bd}
++</style></head><body><main><h1>JamDown Games preview</h1>
++<form method="post" action="${action}">
++<label for="password">Preview password</label>
++<input id="password" name="password" type="password" autocomplete="current-password" required>
++${failed ? '<p role="alert">That password didn’t match. Try again.</p>' : ''}
++<button type="submit">Open preview</button>
++</form></main></body></html>`);
++  }
++
++  app.get(signInPath, (req, res) => {
++    const next = nextPage(req.query.next);
++    privateHeaders(res);
++    if (signedIn(req)) return res.redirect(303, next);
++    showSignIn(res, next);
++  });
++
++  app.post(signInPath, express.urlencoded({ extended: false, limit: '1kb' }), (req, res) => {
++    const next = nextPage(req.query.next);
++    const supplied = req.body?.password;
++    if (typeof supplied !== 'string' || !compare(supplied, expectedPassword)) {
++      return showSignIn(res, next, true);
++    }
++
++    const expiry = String(Date.now() + sessionDuration);
++    privateHeaders(res);
++    res.cookie(cookieName, expiry + '.' + signature(expiry), {
++      httpOnly: true,
++      secure: process.env.RENDER === 'true' || req.secure,
++      sameSite: 'lax',
++      maxAge: sessionDuration,
++      path: '/',
++    });
++    res.redirect(303, next);
++  });
++
++  app.use((req, res, next) => {
++    privateHeaders(res);
++    if (signedIn(req)) return next();
++    if ((req.method === 'GET' || req.method === 'HEAD') && entryPaths.has(req.path)) {
++      return res.redirect(302, signInPath + '?next=' + encodeURIComponent(req.path));
++    }
++    res.status(401).send('JamDown Games private preview');
++  });
++
++  io.engine.use((req, res, next) => {
++    privateHeaders(res);
++    if (signedIn(req)) return next();
++    res.writeHead(401);
++    res.end('JamDown Games private preview');
++  });
 +}
 +
 +module.exports = { protectPreview };
