@@ -329,7 +329,7 @@ index 910c584..bebb930 100644
 +<footer><small>JamDown Games</small></footer></main></body></html>
 \ No newline at end of file
 diff --git a/public/three-cards-ui.js b/public/three-cards-ui.js
-index ba037f8..1947fec 100644
+index ba037f8..39a05fb 100644
 --- a/public/three-cards-ui.js
 +++ b/public/three-cards-ui.js
 @@ -10,8 +10,32 @@
@@ -366,7 +366,70 @@ index ba037f8..1947fec 100644
    socket=io('/three-cards');
    socket.on('assigned',remember);
    socket.on('state',r=>{remote=r;render();});
-@@ -34,19 +58,40 @@
+@@ -19,8 +43,61 @@
+   socket.on('disconnect',()=>{if(remote){error('Connection lost. Reconnecting…');render();}});
+   socket.on('connect',()=>{error('');const seat=saved();if(seat)socket.emit('resume',seat);});return socket;
+  }
++ let previousView=null,previousTable=null,cardFlight=null;
++ function stagePlay(table,played,playerSeat,localSeat){
++  const player=$('players').children[playerSeat];
++  const ownHand=$('yourHand');
++  const anchor=playerSeat===localSeat&&ownHand.querySelector('.card')?ownHand:player;
++  const layer=node('div',undefined,'cards played-preview');
++  layer.setAttribute('aria-hidden','true');
++  played.forEach(c=>layer.append(card(c)));
++  table.append(layer);
++
++  const bounds=table.getBoundingClientRect();
++  const from=anchor.getBoundingClientRect();
++  const target=$('tableCard').getBoundingClientRect();
++  const width=layer.offsetWidth,height=layer.offsetHeight;
++  const west=player.classList.contains('seat-west'),east=player.classList.contains('seat-east');
++  const north=player.classList.contains('seat-north');
++  const scale=bounds.width/table.offsetWidth||1;
++  const x=value=>(value-bounds.left)/scale-table.clientLeft;
++  const y=value=>(value-bounds.top)/scale-table.clientTop;
++  const frontX=west?x(from.right)+4:east?x(from.left)-width-4:x((from.left+from.right)/2)-width/2;
++  const frontY=west||east?y((from.top+from.bottom)/2)-height/2:north?y(from.bottom)+4:y(from.top)-height-4;
++  const startX=Math.max(2,Math.min(table.clientWidth-width-2,frontX));
++  const startY=Math.max(2,Math.min(table.clientHeight-height-2,frontY));
++  layer.style.left=startX+'px';
++  layer.style.top=startY+'px';
++  const dx=x((target.left+target.right)/2)-width/2-startX;
++  const dy=y((target.top+target.bottom)/2)-height/2-startY;
++  const reduced=globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
++  const animation=layer.animate(reduced?[{opacity:1},{opacity:1}]:[
++   {transform:'translate(0,0)',opacity:1,offset:0},
++   {transform:'translate(0,0)',opacity:1,offset:.62,easing:'ease-in-out'},
++   {transform:`translate(${dx}px,${dy}px) scale(.55)`,opacity:0,offset:1},
++  ],{duration:reduced?500:820,fill:'forwards'});
++  cardFlight=layer;
++  animation.onfinish=()=>{
++   layer.remove();
++   if(cardFlight===layer){cardFlight=null;render();}
++  };
++ }
+  function render(){globalThis.JVAnalytics?.state(local,local?.phase==='session-over');
+-  clearTimeout(timer);const online=!local&&remote,g=local?local.view(0):online?.game,seat=online?remote.seat:0;
++  const online=!local&&remote,g=local?local.view(0):online?.game,seat=online?remote.seat:0;
++  const tableIdentity=local||remote?.code;
++  if(cardFlight){
++   if(g&&tableIdentity===previousTable)return;
++   cardFlight.remove();cardFlight=null;
++  }
++  clearTimeout(timer);
++  const prior=tableIdentity===previousTable?previousView:null;
++  previousTable=tableIdentity;previousView=g;
++  const table=$('game').querySelector?.('.table');
++  const playerSeat=prior?.turn;
++  const played=table?.animate&&prior?.phase==='offer'&&Number.isInteger(playerSeat)
++   ?g?.players[playerSeat]?.played?.slice(prior.players[playerSeat].played.length):null;
++  const staging=!!played?.length;
++  const pile=staging?prior:g;
+   $('setup').hidden=!!(local||remote);$('lobby').hidden=!(online&&!g);$('game').hidden=!g;$('leave').hidden=!(local||remote);
+   if(online&&!g){
+    $('roomCode').textContent=remote.code; $('seatList').replaceChildren();remote.seats.forEach((p,i)=>$('seatList').append(node('p',`${p.name}${i===seat?' (you)':''} · ${p.total} games · ${p.connected?(p.ready?'Ready':'Choosing'):'Disconnected'}`)));
+@@ -34,29 +111,50 @@
    $('progress').textContent=`Game ${Math.min(g.completed+(!['hand-over','session-over'].includes(g.phase)?1:0),g.total)} of ${g.total}`;
    $('modeLabel').textContent=online?'ROOM '+remote.code:'VS COMPUTERS';
    $('players').replaceChildren();g.players.forEach((p,i)=>{const relative=(i-seat+g.players.length)%g.players.length;const position=relative===0?'south':g.players.length===2?'north':g.players.length===3?(relative===1?'east':'west'):['south','east','north','west'][relative];const el=node('article',undefined,'player seat-'+position+(g.turn===i?' active':''));el.append(node('h3',p.name+(i===seat?' · YOU':'')),node('div',E.scoreText(p.score),'score'),node('p',(g.dealer===i?'Dealer · ':'')+p.count+(p.count===1?' card':' cards')));
@@ -402,19 +465,25 @@ index ba037f8..1947fec 100644
     if(g.phase==='declare')el.append(node('p',g.declarations[i]===null?'Choosing call…':'Ready'));
 -   if(['pick','deal'].includes(g.phase)){const wrap=node('div',undefined,'cards small');wrap.append(g.picks[i]?card(g.picks[i]):card(null));el.append(wrap);}
 -   if(!revealed?.length&&!['pick','deal'].includes(g.phase)){const played=p.played||[];if(played.length){el.append(node('p',i!==seat&&p.count?'PLAYED · HIDDEN':'PLAYED','played-label'));const row=node('div',undefined,'cards played-cards');row.setAttribute('aria-label',p.name+' played cards, followed by hidden unplayed cards');played.forEach(c=>row.append(card(c)));if(i!==seat)for(let n=0;n<p.count;n++)row.append(card(null));el.append(row);}else if(i!==seat&&p.count){const backs=node('div',undefined,'cards small');for(let n=0;n<p.count;n++)backs.append(card(null));el.append(backs);}}if(g.phase==='session-over')el.append(node('p',p.score>0?'WINNER':p.score<0?'LOSS':'EVEN'));$('players').append(el);});
+-  $('tableCard').replaceChildren(card(g.top));$('remaining').textContent=g.top?g.remaining+' cards in deck'+(g.bonus?' · Dealer bonus +'+g.bonus:''):'';
+-  $('tableCard').classList.toggle('stacked',(g.recent||[]).length>1);
 +   if(g.phase==='session-over')el.append(node('p',p.score>0?'WINNER':p.score<0?'LOSS':'EVEN'));
 +   $('players').append(el);
 +  });
-   $('tableCard').replaceChildren(card(g.top));$('remaining').textContent=g.top?g.remaining+' cards in deck'+(g.bonus?' · Dealer bonus +'+g.bonus:''):'';
-   $('tableCard').classList.toggle('stacked',(g.recent||[]).length>1);
++  $('tableCard').replaceChildren(card(pile.top));$('remaining').textContent=g.top?g.remaining+' cards in deck'+(g.bonus?' · Dealer bonus +'+g.bonus:''):'';
++  $('tableCard').classList.toggle('stacked',(pile.recent||[]).length>1);
    const hand=g.players[seat].hand;$('yourHand').replaceChildren(node('h3','YOUR HAND'));
-   const cards=node('div',undefined,'cards');const canPlay=g.phase==='offer'&&g.turn===seat&&!paused;const pairWin=E.pairWin(hand,g.top?.rank);const single=E.pairSingle(hand);const waitingForSingle=single&&['offer','draw'].includes(g.phase)&&!pairWin;
+-  const cards=node('div',undefined,'cards');const canPlay=g.phase==='offer'&&g.turn===seat&&!paused;const pairWin=E.pairWin(hand,g.top?.rank);const single=E.pairSingle(hand);const waitingForSingle=single&&['offer','draw'].includes(g.phase)&&!pairWin;
++  const cards=node('div',undefined,'cards');const canPlay=g.phase==='offer'&&g.turn===seat&&!paused&&!staging;const pairWin=E.pairWin(hand,g.top?.rank);const single=E.pairSingle(hand);const waitingForSingle=single&&['offer','draw'].includes(g.phase)&&!pairWin;
    hand.forEach(c=>{const click=canPlay?()=>{if(match===c.id){match=null;other=null;}else if(!match){if(c.rank!==g.top.rank){error('Choose a card matching '+E.face(g.top)+' first.');return;}match=c.id;other=null;}else other=other===c.id?null:c.id;render();}:null;cards.append(card(c,click,match===c.id||other===c.id));});$('yourHand').append(cards);
 +  $('pass').hidden=!canPlay;
    $('message').textContent=paused?'Play paused. Waiting for every player to reconnect.':g.message;
    $('actions').replaceChildren();$('hint').textContent='Chances and draws move to the right. Matching plays use ranks; suits count for flush calls.';
-   if(!paused){
-@@ -56,7 +101,7 @@
+-  if(!paused){
++  if(!paused&&!staging){
+    if(g.phase==='pick'){
+     const eligible=g.pickSeats.includes(seat)&&!g.picks[seat];button('Pick your dealer card',()=>act('pick'),!eligible);$('hint').textContent='Highest card deals. Ace is high. Tied highest players pick again.';
+    }else if(g.phase==='deal'){button('Shuffle & deal 3 cards',()=>act('deal'),g.dealer!==seat);}
     else if(g.phase==='declare'){$('hint').textContent='The game checks calls automatically.';}
     else if(g.phase==='draw'){button('Draw one card',()=>act('draw'),g.turn!==seat);$('hint').textContent=g.turn===seat?'The card stays on the table. You get first choice to use it.':'Waiting for '+g.players[g.turn].name+' to draw.';}
     else if(g.phase==='offer'&&g.turn===seat){
@@ -423,7 +492,21 @@ index ba037f8..1947fec 100644
      $('hint').textContent=pairWin?'You have a pair. Tap your other card, then play it to win. All three cards clear when you win.':hand.length===1?'Tap your matching card, then play it to win.':!match?'Tap your matching '+E.face(g.top).slice(0,-1)+', then choose one other card.':!other?'Now choose another card from your hand.':'Play both selected cards. The second card becomes the rank to match.';
     }else if(g.phase==='hand-over'){button('Next game',()=>act('next'));}
    }
-@@ -77,13 +122,32 @@
+@@ -66,10 +164,11 @@
+   if($('callResult').textContent!==callNotice)$('callResult').textContent=callNotice;
+   $('callResult').hidden=!callNotice;
+ 
+-  $('extension').hidden=g.phase!=='session-over';$('extensionVotes').replaceChildren();
++  $('extension').hidden=staging||g.phase!=='session-over';$('extensionVotes').replaceChildren();
+   if(g.phase==='session-over'&&online)remote.seats.forEach(p=>$('extensionVotes').append(node('p',p.name+': '+(p.extension?'add '+p.extension+' games':'deciding'))));
+   $('log').replaceChildren();g.history.forEach(text=>$('log').append(node('li',text)));
+-  if(local&&!$('rules').open)scheduleComputer();
++  if(staging)stagePlay(table,played,playerSeat,seat);
++  else if(local&&!$('rules').open)scheduleComputer();
+  }
+  function scheduleComputer(){
+   let seat=null;const g=local;if(!g)return;
+@@ -77,13 +176,32 @@
    if(seat===undefined||seat===null||seat<0)return;
    timer=setTimeout(()=>{if(g!==local)return;if(g.phase==='pick')g.pick(seat);else if(g.phase==='deal')g.deal(seat);else if(g.phase==='declare')g.declare(seat,!!E.evaluateCall(g.players[seat].hand));else if(g.phase==='draw')g.draw(seat);else{const hand=g.players[seat].hand,m=hand.find(c=>c.rank===g.pile.at(-1).rank),o=hand.find(c=>c!==m);g.play(seat,m.id,o?.id);}render();},1600);
   }
@@ -460,7 +543,7 @@ index ba037f8..1947fec 100644
  })();
  
 diff --git a/public/three-cards.css b/public/three-cards.css
-index f5893c3..92b8877 100644
+index f5893c3..2df202c 100644
 --- a/public/three-cards.css
 +++ b/public/three-cards.css
 @@ -1,9 +1,27 @@
@@ -497,7 +580,7 @@ index f5893c3..92b8877 100644
  @media(max-width:350px){.table{min-height:580px;border-width:8px}.player{width:76px}.seat-south{width:104px}.seat-north{width:100px}.seat-east{right:1px}.seat-west{left:1px}.centre{width:116px;top:150px}.your-hand .card{width:58px;height:81px}.player h3{font-size:10px}}
  @media(max-width:649px){.seat-south{bottom:140px}.centre{top:143px}.centre .small .card{height:31px}.centre .small{min-height:31px}.your-hand{bottom:20px}}
  .player h3{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.player p{margin:3px 0}
-@@ -21,67 +39,119 @@
+@@ -21,67 +39,127 @@
  /* Keep controls scrollable above overlaid phone browser toolbars. */
  @media(max-width:649px){main{padding-bottom:calc(140px + env(safe-area-inset-bottom,0px))}.controls{scroll-margin-bottom:calc(110px + env(safe-area-inset-bottom,0px))}.controls .actions{flex-direction:column;align-items:stretch}.controls .actions button{width:100%;min-height:48px}}
  
@@ -579,7 +662,7 @@ index f5893c3..92b8877 100644
 + /* Give the north panel, played pile and hand separate rows. */
 + #game>.table{
 +  display:grid;
-+  grid-template-columns:minmax(0,1fr) minmax(170px,1.45fr) minmax(0,1fr);
++  grid-template-columns:minmax(0,1fr) minmax(200px,1.45fr) minmax(0,1fr);
 +  grid-template-rows:auto minmax(min-content,1fr) auto;
 +  gap:4px 3px;
 +  align-items:center;
@@ -615,6 +698,14 @@ index f5893c3..92b8877 100644
 - #game .your-hand .card{width:37px;height:52px;font-size:20px;padding:2px}
 + #game .your-hand .cards{flex-wrap:nowrap;gap:4px}
 + #game .your-hand .card{width:clamp(28px,4.65vw,37px);height:clamp(35px,14dvh,52px);font-size:clamp(14px,5dvh,20px);padding:2px}
++}
++
++/* Increase the previous 1.44 scale by 20%. */
++.table .card{zoom:1.728}
++@media (orientation:landscape) and (max-height:320px){
++ #game .player .card,#game .player .winning-cards .card{height:19px}
++ #game .centre .card{height:33px}
++ #game .your-hand .card{height:38px}
  }
  
 -/* Enlarge playing cards by 20% in hands, seats and the centre pile. */
@@ -625,14 +716,6 @@ index f5893c3..92b8877 100644
 - #game .seat-north,#game .seat-south{width:114px}
 - #game .table:has(.your-hand .card) .seat-south{left:calc(50% + 79px);width:90px}
 - #game .centre{top:45%}
-+/* Increase the previous 1.2 scale by 20%. */
-+.table .card{zoom:1.44}
-+@media (orientation:landscape) and (max-height:320px){
-+ #game .player .card,#game .player .winning-cards .card{height:19px}
-+ #game .centre .card{height:33px}
-+ #game .your-hand .card{height:38px}
-+}
-+
 +
 +/* Keep the phone's portrait table and action buttons inside the visible viewport. */
 +@media (orientation:portrait) and (max-width:650px){
@@ -655,16 +738,24 @@ index f5893c3..92b8877 100644
 + #game .your-hand .card{width:clamp(24px,8vw,37px)}
 + #gameDetails,#game>#extension{bottom:82px;max-height:calc(100% - 88px)}
 + #game>#extension{right:0}
++}
++
++
++.played-preview{
++ position:absolute;z-index:3;margin:0;gap:3px;pointer-events:none;
++}
++.played-preview .card{
++ width:22px;height:30px;min-height:0;font-size:13px;padding:1px;
  }
 diff --git a/public/three-cards.html b/public/three-cards.html
-index 6aa2def..5e07251 100644
+index 6aa2def..7eb1f6b 100644
 --- a/public/three-cards.html
 +++ b/public/three-cards.html
 @@ -1,10 +1,10 @@
  <!doctype html><html lang="en"><head>
 -<script src="/analytics-client.js"></script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Jamaican 3 Cards</title><link rel="stylesheet" href="/three-cards.css"><script defer src="/socket.io/socket.io.js"></script><script defer src="/three-cards-engine.js"></script><script defer src="/three-cards-ui.js"></script></head><body><main>
 -<header><a href="/">← Domino & home</a><a href="/privacy.html" aria-label="Privacy policy">Privacy</a><button id="rulesBtn" class="quiet">Rules</button></header><p class="eyebrow">JAMAICAN VIBES · CARD TABLE</p><h1>Jamaican <span>3 Cards</span></h1><p class="subtitle">Automatic calls. Match the number. Finish your hand.</p>
-+<script async src="/analytics-client.js"></script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Pitta Pot</title><link rel="stylesheet" href="/three-cards.css?v=pass-in-details"><script defer src="/three-cards-engine.js"></script><script defer src="/three-cards-ui.js?v=pass-in-details"></script></head><body><main>
++<script async src="/analytics-client.js"></script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Pitta Pot</title><link rel="stylesheet" href="/three-cards.css?v=played-cards"><script defer src="/three-cards-engine.js"></script><script defer src="/three-cards-ui.js?v=played-cards"></script></head><body><main>
 +<header><a href="/">← Domino & home</a><a href="/privacy.html" aria-label="Privacy policy">Privacy</a><button id="rulesBtn" class="quiet">Rules</button></header><p class="eyebrow">JAMDOWN GAMES · CARD TABLE</p><h1><span>Pitta Pot</span></h1><p class="subtitle">Automatic calls. Match the number. Finish your hand.</p>
  <section id="setup" class="panel"><label>Your name<input id="name" maxlength="20" value="Player 1" autocomplete="nickname"></label><div class="setup-row"><label>Players<select id="count"><option>2</option><option>3</option><option selected>4</option></select></label><label>Number of games<input id="total" type="number" min="5" max="1000" step="5" value="5"></label></div><button id="solo">Play against computers</button><div class="divider">OR PLAY WITH FRIENDS</div><button id="create" class="green">Create online table</button><div class="join"><input id="code" placeholder="Room code" maxlength="6" aria-label="Room code"><button id="join" class="quiet">Join</button></div><p class="muted">2–4 players · game counts in steps of 5</p></section>
  <section id="lobby" class="panel" hidden><p class="eyebrow">SHARE THIS ROOM CODE</p><h2 id="roomCode"></h2><div id="seatList"></div><label>Your choice: number of games<input id="lobbyTotal" type="number" min="5" max="1000" step="5" value="5"></label><div class="actions"><button id="ready">Ready</button><button id="start" class="green">Start agreed games</button></div><p class="muted">Every player must choose the same number and tap Ready.</p></section>
@@ -721,25 +812,31 @@ index 912f7e4..74dfb97 100644
  
  test('each additional game links to the privacy notice',()=>{
 diff --git a/test/three-cards-ui.test.js b/test/three-cards-ui.test.js
-index 783e7a6..11d6be0 100644
+index 783e7a6..2f7fd46 100644
 --- a/test/three-cards-ui.test.js
 +++ b/test/three-cards-ui.test.js
-@@ -6,12 +6,12 @@ function descendants(el){return el.children.flatMap(child=>[child,...descendants
+@@ -1,17 +1,17 @@
+ const test=require('node:test'),assert=require('node:assert/strict');
+ const fs=require('node:fs'),vm=require('node:vm');
+ const Engine=require('../public/three-cards-engine');
+-function element(){const el={children:[],textContent:'',className:'',attributes:{},hidden:false,disabled:false,value:'5',open:false,append(...nodes){this.children.push(...nodes);},replaceChildren(...nodes){this.children=nodes;},setAttribute(k,v){this.attributes[k]=v;},addEventListener(){},showModal(){this.open=true;},close(){this.open=false;}};el.classList={add(...names){el.className=[...new Set([...el.className.split(' ').filter(Boolean),...names])].join(' ');},remove(name){el.className=el.className.split(' ').filter(x=>x!==name).join(' ');},toggle(name,force){const has=el.className.split(' ').includes(name),on=force===undefined?!has:!!force;if(on)this.add(name);else this.remove(name);return on;}};return el;}
++function element(){const el={children:[],textContent:'',className:'',attributes:{},hidden:false,disabled:false,value:'5',open:false,append(...nodes){this.children.push(...nodes);},replaceChildren(...nodes){this.children=nodes;},setAttribute(k,v){this.attributes[k]=v;},addEventListener(){},showModal(){this.open=true;},close(){this.open=false;}};el.classList={contains(name){return el.className.split(' ').includes(name);},add(...names){el.className=[...new Set([...el.className.split(' ').filter(Boolean),...names])].join(' ');},remove(name){el.className=el.className.split(' ').filter(x=>x!==name).join(' ');},toggle(name,force){const has=el.className.split(' ').includes(name),on=force===undefined?!has:!!force;if(on)this.add(name);else this.remove(name);return on;}};return el;}
+ function descendants(el){return el.children.flatMap(child=>[child,...descendants(child)]);}
  function text(el){return [el,...descendants(el)].map(el=>el.textContent).filter(Boolean).join(' ');}
  function settle(g){for(let i=0;i<g.players.length;i++)g.declare(i,!!Engine.evaluateCall(g.players[i].hand));return g;}
  
 -function boot(api=Engine){
-+function boot(api=Engine,onlineClient=true){
++function boot(api=Engine,onlineClient=true,createElement=element){
   const elements=new Map(),timers=new Map(),handlers={},sent=[];let timerId=0;
   const get=id=>{if(!elements.has(id))elements.set(id,element());return elements.get(id);};
   get('name').value='Junior';get('count').value='4';
   const socket={connected:true,on:(event,fn)=>handlers[event]=fn,emit:(event,data)=>sent.push({event,data}),disconnect(){this.connected=false;}};
 - const context={JVThreeCards:api,document:{getElementById:get,createElement:element,activeElement:null},localStorage:{getItem:()=>null,setItem(){},removeItem(){}},setTimeout:fn=>{timers.set(++timerId,fn);return timerId;},clearTimeout:id=>timers.delete(id),confirm:()=>true,io:()=>socket};
-+ const context={JVThreeCards:api,document:{getElementById:get,createElement:element,activeElement:null},localStorage:{getItem:()=>null,setItem(){},removeItem(){}},setTimeout:fn=>{timers.set(++timerId,fn);return timerId;},clearTimeout:id=>timers.delete(id),confirm:()=>true,io:onlineClient?()=>socket:undefined};
++ const context={JVThreeCards:api,document:{getElementById:get,createElement,activeElement:null},localStorage:{getItem:()=>null,setItem(){},removeItem(){}},setTimeout:fn=>{timers.set(++timerId,fn);return timerId;},clearTimeout:id=>timers.delete(id),confirm:()=>true,io:onlineClient?()=>socket:undefined};
   vm.createContext(context);vm.runInContext(fs.readFileSync('public/three-cards-ui.js','utf8'),context);
   const tick=()=>{const next=timers.entries().next().value;if(next){timers.delete(next[0]);next[1]();}return !!next;};
   return {get,tick,handlers,sent,socket};
-@@ -65,3 +65,56 @@ test('a lost online table returns to setup instead of trapping the player in a p
+@@ -65,3 +65,92 @@ test('a lost online table returns to setup instead of trapping the player in a p
   assert.equal(ui.get('setup').hidden,false);assert.equal(ui.get('game').hidden,true);
   assert.match(ui.get('error').textContent,/no longer available/);
  });
@@ -795,4 +892,40 @@ index 783e7a6..11d6be0 100644
 + assert.equal(ui.sent.at(-1).data.type,'pass');
 + ui.handlers.state({...state,game:{...state.game,turn:1}});
 + assert.equal(ui.get('pass').hidden,true);
++});
++
++test('shows played cards in front of the seat before updating the centre pile',()=>{
++ const animation={};
++ const bounds={left:0,right:400,top:0,bottom:500,width:400};
++ const createElement=()=>Object.assign(element(),{
++  style:{},offsetWidth:40,offsetHeight:50,
++  getBoundingClientRect:()=>bounds,
++  animate:()=>animation,
++  remove(){this.removed=true;},
++ });
++ const ui=boot(Engine,true,createElement);
++ const table=Object.assign(createElement(),{offsetWidth:400,clientWidth:400,clientHeight:500,clientTop:0,clientLeft:0});
++ ui.get('game').querySelector=()=>table;
++ ui.get('tableCard').getBoundingClientRect=()=>bounds;
++ ui.get('create').onclick();
++ const game=settle(fixture());
++ const seats=game.players.map(p=>({name:p.name,connected:true,total:5,ready:true}));
++ const update=g=>ui.handlers.state({code:'ABCDEF',seat:0,seats,game:g});
++ const before={...game.view(0),phase:'offer',turn:1};
++ update(before);
++ const player=()=>ui.get('players').children[1];
++ // Geometry is supplied by createElement. Each rerender creates a new seat node.
++ const after={...game.view(0),phase:'draw',turn:0};
++ const played={id:'♣5',rank:5,suit:'♣'};
++ after.players[1].played=[played];
++ after.top=played;
++ update(after);
++ assert.match(player().className,/seat-east/);
++ assert.equal(table.children[0].children[0].attributes['aria-label'],'5♣');
++ assert.equal(ui.get('tableCard').children[0].attributes['aria-label'],'K♣');
++ assert.equal(ui.get('actions').children.length,0);
++ animation.onfinish();
++ assert.equal(table.children[0].removed,true);
++ assert.equal(ui.get('tableCard').children[0].attributes['aria-label'],'5♣');
++ assert.equal(ui.get('actions').children[0].textContent,'Draw one card');
 +});
